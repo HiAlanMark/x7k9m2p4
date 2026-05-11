@@ -393,6 +393,139 @@ export async function browserChat(
   onDone: (fullText: string, usage: Record<string, number>) => void,
   onError: (err: string) => void,
   customConfig?: { baseUrl: string; apiKey: string; model: string },
+  onToolCall?: (tool: string, args: Record<string, unknown>) => void,
+  onToolResult?: (tool: string, result: string, duration: number) => void,
+) {
+  // 优先尝试 Agent Server（本地 9800 端口）
+  const agentUrl = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
+  const agentAvailable = await checkAgentHealth(agentUrl)
+
+  if (agentAvailable) {
+    return agentChat(content, model, onChunk, onDone, onError, customConfig, onToolCall, onToolResult, agentUrl)
+  }
+
+  // Fallback: 直接调 LLM API（纯聊天，无工具能力）
+  return directChat(content, model, onChunk, onDone, onError, customConfig)
+}
+
+async function checkAgentHealth(agentUrl: string): Promise<boolean> {
+  try {
+    const r = await fetch(`${agentUrl}/v1/agent/health`, { signal: AbortSignal.timeout(1500) })
+    return r.ok
+  } catch {
+    return false
+  }
+}
+
+async function agentChat(
+  content: string,
+  model: string,
+  onChunk: (text: string) => void,
+  onDone: (fullText: string, usage: Record<string, number>) => void,
+  onError: (err: string) => void,
+  customConfig?: { baseUrl: string; apiKey: string; model: string },
+  onToolCall?: (tool: string, args: Record<string, unknown>) => void,
+  onToolResult?: (tool: string, result: string, duration: number) => void,
+  agentUrl?: string,
+) {
+  const baseUrl = customConfig?.baseUrl || GFW_AI
+  const key = customConfig?.apiKey || gfwApiKey || localStorage.getItem('gfw_api_key')
+  const activeModel = customConfig?.model || model
+
+  if (!key) {
+    onError('未配置 API Key，请在设置中配置。')
+    return
+  }
+
+  // 开发模式下 API base URL 需要通过 Vite 代理
+  let llmBase = baseUrl
+  if (isDev && llmBase.startsWith('http')) {
+    // Agent server 自己会去调 LLM API，所以把原始 URL 传给它
+  }
+
+  const url = agentUrl || (isDev ? '/proxy/agent' : 'http://127.0.0.1:9800')
+
+  try {
+    const r = await fetch(`${url}/v1/agent/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content,
+        api_base: llmBase,
+        api_key: key,
+        model: activeModel,
+        messages: [],
+      }),
+    })
+
+    if (!r.ok) {
+      const err = await r.text()
+      onError(`Agent 错误 (${r.status}): ${err}`)
+      return
+    }
+
+    const reader = r.body?.getReader()
+    if (!reader) { onError('No response body'); return }
+
+    const decoder = new TextDecoder()
+    let fullText = ''
+    let usage: Record<string, number> = {}
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const chunk = decoder.decode(value, { stream: true })
+      for (const line of chunk.split('\n')) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        if (data === '[DONE]') {
+          onDone(fullText, usage)
+          return
+        }
+        try {
+          const evt = JSON.parse(data)
+          switch (evt.type) {
+            case 'text':
+              fullText += evt.content
+              onChunk(evt.content)
+              break
+            case 'tool_call':
+              onToolCall?.(evt.tool, evt.args || {})
+              break
+            case 'tool_result':
+              onToolResult?.(evt.tool, evt.result || '', evt.duration || 0)
+              break
+            case 'usage':
+              usage = evt
+              break
+            case 'error':
+              onError(evt.message || '未知错误')
+              return
+            case 'done':
+              fullText = evt.content || fullText
+              onDone(fullText, usage)
+              return
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    onDone(fullText, usage)
+  } catch (e: unknown) {
+    onError(e instanceof Error ? e.message : String(e))
+  }
+}
+
+async function directChat(
+  content: string,
+  model: string,
+  onChunk: (text: string) => void,
+  onDone: (fullText: string, usage: Record<string, number>) => void,
+  onError: (err: string) => void,
+  customConfig?: { baseUrl: string; apiKey: string; model: string },
 ) {
   // 优先使用传入的自定义配置，否则用 gfw 默认
   // 开发模式下所有外部 API 都走 Vite 代理避免 CORS

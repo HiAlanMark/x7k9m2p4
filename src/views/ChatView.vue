@@ -254,6 +254,13 @@ async function sendMessage() {
       (fullText, usage) => chatStore.finishResponse(usage, config.model),
       (err) => { chatStore.finishResponse(); chatStore.addSystemMessage(`Error: ${err}`) },
       config,
+      // onToolCall
+      (tool, args) => { chatStore.addToolCall(tool, args) },
+      // onToolResult
+      (tool, result, duration) => {
+        const idx = chatStore.currentToolCalls.findIndex(tc => tc.tool === tool && tc.status === 'running')
+        if (idx >= 0) chatStore.completeToolCall(idx, result.substring(0, 500), 'completed')
+      },
     )
   } else {
     try { await api.agentSendMessage(text, selectedModel.value) }

@@ -93,6 +93,11 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/proxy\/2x/, ''),
         secure: true,
       },
+      '/proxy/agent': {
+        target: 'http://127.0.0.1:9800',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/proxy\/agent/, ''),
+      },
     },
   },
 })
