@@ -1,39 +1,46 @@
 <template>
   <div class="app">
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <IconStore :size="24" />
-        <h2>Hermes</h2>
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <IconStore :size="26" />
+        </div>
+        <span class="brand-name">Hermes</span>
       </div>
       <nav class="sidebar-nav">
         <router-link to="/" class="nav-item">
-          <IconChat :size="20" />
-          <span>对话</span>
+          <span class="nav-icon"><IconChat :size="20" /></span>
+          <span class="nav-label">对话</span>
         </router-link>
         <router-link to="/skills" class="nav-item">
-          <IconStore :size="20" />
-          <span>Skill 商店</span>
+          <span class="nav-icon"><IconStore :size="20" /></span>
+          <span class="nav-label">Skill 商店</span>
         </router-link>
         <router-link to="/settings" class="nav-item">
-          <IconSettings :size="20" />
-          <span>设置</span>
+          <span class="nav-icon"><IconSettings :size="20" /></span>
+          <span class="nav-label">设置</span>
         </router-link>
       </nav>
       <div class="sidebar-footer">
-        <div class="balance-display">
-          <IconStar :size="16" />
-          <span>G币余额</span>
-          <span class="amount">{{ balance.toFixed(2) }}</span>
+        <div class="balance-card">
+          <div class="balance-row">
+            <span class="balance-icon"><IconStar :size="16" /></span>
+            <span class="balance-label">G币余额</span>
+          </div>
+          <div class="balance-amount">{{ balance.toFixed(2) }}</div>
         </div>
         <div class="model-selector">
-          <select v-model="selectedModel">
-            <option v-for="m in featuredModels" :key="m.id" :value="m.id">
-              {{ m.name }}
-            </option>
-          </select>
+          <span class="selector-label">当前模型</span>
+          <div class="select-wrap">
+            <select v-model="selectedModel">
+              <option v-for="m in featuredModels" :key="m.id" :value="m.id">
+                {{ m.name }}
+              </option>
+            </select>
+          </div>
         </div>
       </div>
-    </div>
+    </aside>
     <main class="main-content">
       <router-view />
     </main>
@@ -67,18 +74,26 @@ onMounted(async () => {
 
 <style>
 :root {
-  --bg-primary: #1a1a2e;
-  --bg-secondary: #16213e;
-  --bg-input: #2a2a4a;
-  --border-color: #3a3a5a;
-  --text-primary: #e0e0e0;
-  --text-secondary: #888888;
-  --accent-primary: #0a84ff;
-  --accent-secondary: #00d4ff;
-  --accent-success: #00c853;
-  --accent-warning: #ffa500;
-  --accent-error: #ff1744;
-  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --color-primary: #0070FF;
+  --color-primary-light: #E8F3FF;
+  --color-primary-dark: #0050CC;
+  --color-accent: #6C38FF;
+  --color-bg-page: #F5F7FA;
+  --color-bg-card: #FFFFFF;
+  --color-bg-input: #F2F3F5;
+  --color-text-primary: #1D2129;
+  --color-text-secondary: #4E5969;
+  --color-text-tertiary: #86909C;
+  --color-border: #E5E6EB;
+  --color-success: #00B42A;
+  --color-warning: #FF7D00;
+  --color-error: #F53F3F;
+  --shadow-card: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-card-hover: 0 4px 20px rgba(0,0,0,0.12);
+  --radius-card: 12px;
+  --radius-btn: 8px;
+  --radius-input: 8px;
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 
 * {
@@ -89,10 +104,26 @@ onMounted(async () => {
 
 body {
   font-family: var(--font-family);
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
 }
 
 .app {
@@ -101,92 +132,179 @@ body {
   overflow: hidden;
 }
 
+/* ===== Sidebar ===== */
 .sidebar {
-  width: 260px;
-  background: var(--bg-secondary);
+  width: 240px;
+  min-width: 240px;
+  background: var(--color-bg-card);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border-color);
+  border-right: 1px solid var(--color-border);
+  user-select: none;
+  -webkit-app-region: drag;
 }
 
-.sidebar-header {
+.sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 20px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--accent-secondary);
+  gap: 12px;
+  padding: 24px 20px 20px;
+  -webkit-app-region: drag;
 }
 
-.sidebar-header h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
+.brand-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  border-radius: 10px;
+  color: #FFFFFF;
+  flex-shrink: 0;
 }
 
+.brand-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.3px;
+}
+
+/* Navigation */
 .sidebar-nav {
   flex: 1;
-  padding: 16px 12px;
+  padding: 8px 12px;
+  -webkit-app-region: no-drag;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  color: var(--text-primary);
+  padding: 10px 14px;
+  border-radius: var(--radius-btn);
+  color: var(--color-text-secondary);
   text-decoration: none;
-  margin-bottom: 4px;
-  transition: background 0.2s;
-}
-
-.nav-item:hover {
-  background: var(--bg-input);
-}
-
-.nav-item.router-link-active {
-  background: var(--accent-primary);
-  color: #ffffff;
-}
-
-.sidebar-footer {
-  padding: 16px;
-  border-top: 1px solid var(--border-color);
-}
-
-.balance-display {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0 12px;
-  font-size: 0.9rem;
-}
-
-.balance-display .amount {
-  margin-left: auto;
-  color: var(--accent-secondary);
-  font-weight: 600;
-}
-
-.model-selector select {
-  width: 100%;
-  padding: 10px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-size: 0.85rem;
+  margin-bottom: 2px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 
-.model-selector select:focus {
-  outline: none;
-  border-color: var(--accent-primary);
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
+.nav-item:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.nav-item.router-link-active {
+  background: var(--color-primary);
+  color: #FFFFFF;
+}
+
+.nav-item.router-link-active .nav-icon {
+  color: #FFFFFF;
+}
+
+/* Sidebar footer */
+.sidebar-footer {
+  padding: 12px;
+  border-top: 1px solid var(--color-border);
+  -webkit-app-region: no-drag;
+}
+
+.balance-card {
+  background: linear-gradient(135deg, #E8F3FF, #F0EAFF);
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.balance-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.balance-icon {
+  display: flex;
+  align-items: center;
+  color: var(--color-warning);
+}
+
+.balance-label {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.balance-amount {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.5px;
+}
+
+.model-selector {
+  padding: 0 4px;
+}
+
+.selector-label {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.select-wrap {
+  position: relative;
+}
+
+.select-wrap select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-family: var(--font-family);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+  transition: border-color 0.2s;
+}
+
+.select-wrap select:hover {
+  border-color: var(--color-primary);
+}
+
+.select-wrap select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0, 112, 255, 0.1);
+}
+
+/* ===== Main Content ===== */
 .main-content {
   flex: 1;
   overflow: hidden;
-  background: var(--bg-primary);
+  background: var(--color-bg-page);
 }
 </style>
