@@ -145,7 +145,7 @@ async function sendMessage() {
   if (!appStore.agentRunning) {
     isConnecting.value = true
     try {
-      await api.agentStart('/usr/local/lib/hermes-agent')
+      await api.agentStart('')
       appStore.agentRunning = true
     } catch (e: unknown) {
       chatStore.addSystemMessage(`Agent 启动失败: ${e}`)
