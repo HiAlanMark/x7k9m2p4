@@ -3,8 +3,7 @@
     <aside class="sidebar">
       <!-- Brand -->
       <div class="sidebar-brand">
-        <div class="brand-mark">H</div>
-        <span class="brand-name">Hi!XNS</span>
+        <IconBrandLogo :width="100" :height="32" color="var(--color-text-primary)" />
         <span class="brand-version">v0.1</span>
       </div>
 
@@ -81,6 +80,7 @@ import IconSettings from './components/icons/IconSettings.vue'
 import IconStar from './components/icons/IconStar.vue'
 import IconSun from './components/icons/IconSun.vue'
 import IconMoon from './components/icons/IconMoon.vue'
+import IconBrandLogo from './components/icons/IconBrandLogo.vue'
 
 const gfwStore = useGfwStore()
 const chatStore = useChatStore()
@@ -221,30 +221,7 @@ body {
   -webkit-app-region: drag;
 }
 
-.brand-mark {
-  width: 32px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-text-primary);
-  color: var(--color-bg-page);
-  border-radius: 6px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  flex-shrink: 0;
-}
-
-.brand-name {
-  font-family: var(--font-mono);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  letter-spacing: -0.3px;
-}
-
+/* Brand version tag */
 .brand-version {
   font-family: var(--font-mono);
   font-size: 10px;
