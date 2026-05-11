@@ -1,7 +1,6 @@
 use crate::gfw_types::*;
 use crate::skill_store::SkillStoreClient;
 use crate::agent_bridge::AgentBridge;
-use crate::config::AppConfig;
 use crate::AppState;
 use std::sync::Arc;
 use tokio::sync::RwLock;

@@ -1,21 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod gfw_client;
-mod gfw_types;
-mod skill_store;
-mod agent_bridge;
-mod config;
-mod commands;
-
+use hermes_desktop_lib::{AppState, gfw_client::GfwClient, config::AppConfig, commands};
 use std::sync::Arc;
-use gfw_client::GfwClient;
-use config::AppConfig;
 use tokio::sync::RwLock;
-
-pub struct AppState {
-    pub config: Arc<RwLock<AppConfig>>,
-    pub gfw_client: Arc<GfwClient>,
-}
 
 fn main() {
     let config = Arc::new(RwLock::new(AppConfig::load()));
@@ -23,10 +10,7 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .manage(AppState {
-            config,
-            gfw_client,
-        })
+        .manage(AppState { config, gfw_client })
         .invoke_handler(tauri::generate_handler![
             commands::gfw_login,
             commands::gfw_refresh_token,
