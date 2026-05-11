@@ -56,8 +56,17 @@ jobs:
       - name: Build Frontend
         run: npx vite build
 
-      - name: Cargo check
-        run: cd src-tauri && cargo check 2>&1
+      - name: Cargo check (debug)
+        run: |
+          cd src-tauri
+          echo "=== Cargo.toml ==="
+          cat Cargo.toml
+          echo ""
+          echo "=== Running cargo check ==="
+          cargo check --message-format=short 2>&1 || true
+          echo ""
+          echo "=== Running cargo check (verbose) ==="
+          cargo check 2>&1
         shell: bash
 
       - name: Build Tauri App
