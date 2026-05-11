@@ -215,6 +215,7 @@
 
           <div class="form-actions" style="margin-top: 20px;">
             <button @click="saveModelSettings" class="btn-primary">保存设置</button>
+            <span v-if="saveSuccess" class="save-feedback">设置已保存</span>
           </div>
         </div>
 
@@ -367,6 +368,7 @@ const customApiKey = ref(customProvider.value.apiKey)
 const customModel = ref(customProvider.value.model)
 const testing = ref(false)
 const testResult = ref<{ ok: boolean; message: string } | null>(null)
+const saveSuccess = ref(false)
 
 // 预设提供商
 const providerPresets = [
@@ -461,8 +463,12 @@ function saveModelSettings() {
       apiKey: customApiKey.value,
       model: customModel.value,
     })
+    // 自定义模式下更新 selectedModel 为自定义模型名
+    chatStore.selectedModel = customModel.value
   }
   chatStore.setProviderMode(providerMode.value)
+  saveSuccess.value = true
+  setTimeout(() => { saveSuccess.value = false }, 2000)
 }
 
 const featuredModels = computed(() => {
@@ -1127,5 +1133,20 @@ onMounted(async () => {
 
 .test-result.success { color: var(--color-success); }
 .test-result.error { color: var(--color-error); }
+
+.save-feedback {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-success);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 </style>

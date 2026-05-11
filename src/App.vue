@@ -31,10 +31,16 @@
         </div>
         <div class="model-selector">
           <span class="selector-label">当前模型</span>
-          <div class="select-wrap">
+          <div v-if="chatStore.providerMode === 'custom' && chatStore.customProvider.model" class="custom-model-display">
+            {{ chatStore.customProvider.model }}
+          </div>
+          <div v-else class="select-wrap">
             <select v-model="selectedModel">
               <option v-for="m in featuredModels" :key="m.id" :value="m.id">
                 {{ m.name }}
+              </option>
+              <option v-if="!featuredModels.length && selectedModel" :value="selectedModel">
+                {{ selectedModel }}
               </option>
             </select>
           </div>
@@ -351,6 +357,16 @@ body {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(0, 112, 255, 0.1);
+}
+
+.custom-model-display {
+  padding: 8px 12px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-input);
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /* ===== Theme Toggle Button ===== */
