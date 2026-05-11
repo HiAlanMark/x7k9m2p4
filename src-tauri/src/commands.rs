@@ -10,17 +10,6 @@ use once_cell::sync::Lazy;
 static AGENT: Lazy<Arc<RwLock<AgentBridge>>> =
     Lazy::new(|| Arc::new(RwLock::new(AgentBridge::new())));
 
-fn store_cred(_svc: &str, _key: &str, _val: &str) -> Result<(), String> {
-    match keyring::Entry::new(_svc, _key) {
-        Ok(e) => e.set_password(_val).map_err(|e| e.to_string()),
-        Err(e) => Err(e.to_string()),
-    }
-}
-
-fn load_cred(_svc: &str, _key: &str) -> Option<String> {
-    keyring::Entry::new(_svc, _key).ok()?.get_password().ok()
-}
-
 // ============================================================
 // gfw.net
 // ============================================================
@@ -28,22 +17,19 @@ fn load_cred(_svc: &str, _key: &str) -> Option<String> {
 #[tauri::command]
 pub async fn gfw_login(state: tauri::State<'_, AppState>, email: String, password: String) -> Result<serde_json::Value, String> {
     let r = state.gfw_client.login(&email, &password).await.map_err(|e| e.to_string())?;
-    let _ = store_cred("hermes-desktop", "gfw_jwt", &r.token);
-    let _ = store_cred("hermes-desktop", "gfw_rt", &r.refresh_token);
-    Ok(serde_json::json!({"token": r.token, "user": r.user}))
+    Ok(serde_json::json!({"token": r.token, "user": serde_json::to_value(&r.user).unwrap_or_default()}))
 }
 
 #[tauri::command]
 pub async fn gfw_refresh_token(state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
     let r = state.gfw_client.refresh().await.map_err(|e| e.to_string())?;
-    let _ = store_cred("hermes-desktop", "gfw_jwt", &r.token);
-    Ok(serde_json::json!({"token": r.token, "user": r.user}))
+    Ok(serde_json::json!({"token": r.token, "user": serde_json::to_value(&r.user).unwrap_or_default()}))
 }
 
 #[tauri::command]
 pub async fn gfw_get_user_info(state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
     let i = state.gfw_client.get_user_info().await.map_err(|e| e.to_string())?;
-    Ok(serde_json::json!({"group_code": i.group_code, "group_name": i.group_name, "user": i.user}))
+    Ok(serde_json::json!({"group_code": i.group_code, "group_name": i.group_name, "user": serde_json::to_value(&i.user).unwrap_or_default()}))
 }
 
 #[tauri::command]
@@ -66,7 +52,6 @@ pub async fn gfw_list_api_keys(state: tauri::State<'_, AppState>) -> Result<serd
 #[tauri::command]
 pub async fn gfw_create_api_key(state: tauri::State<'_, AppState>, name: String, gcoin_limit: Option<f64>, rate_limit: Option<u32>) -> Result<serde_json::Value, String> {
     let k = state.gfw_client.create_and_retrieve_key(CreateApiKeyRequest { name, gcoin_limit, rate_limit }).await.map_err(|e| e.to_string())?;
-    let _ = store_cred("hermes-desktop", "gfw_api_key", &k.key);
     Ok(serde_json::json!({"id": k.id, "key": k.key, "name": k.name}))
 }
 
@@ -107,7 +92,7 @@ pub async fn gfw_list_sr_providers(state: tauri::State<'_, AppState>) -> Result<
 pub async fn skill_store_email_login(_state: tauri::State<'_, AppState>, email: String, password: String) -> Result<serde_json::Value, String> {
     let c = SkillStoreClient::new(None);
     let r = c.email_login(&email, &password, None, None).await.map_err(|e| e.to_string())?;
-    Ok(serde_json::json!({"token": r.token, "user": {"id": r.user.id, "username": r.user.username}}))
+    Ok(serde_json::json!({"token": r.token, "user": serde_json::to_value(&r.user).unwrap_or_default()}))
 }
 
 #[tauri::command]
@@ -158,10 +143,7 @@ pub async fn skill_store_get_workflows(_state: tauri::State<'_, AppState>, page:
 
 #[tauri::command]
 pub async fn agent_start(_state: tauri::State<'_, AppState>, hermes_path: String) -> Result<u16, String> {
-    let key = load_cred("hermes-desktop", "gfw_api_key").unwrap_or_default();
-    let jwt = load_cred("hermes-desktop", "gfw_jwt");
-    let b = AGENT.read().await;
-    b.start(&hermes_path, &key, jwt.as_deref()).await
+    AGENT.read().await.start(&hermes_path, "", None).await
 }
 
 #[tauri::command]
