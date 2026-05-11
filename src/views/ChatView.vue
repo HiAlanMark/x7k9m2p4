@@ -20,7 +20,7 @@
               <span class="t-text">Hi!XNS Agent v0.1.0</span>
             </div>
             <div class="terminal-line output">
-              <span class="t-text dim">56+ models available via gfw.net</span>
+              <span class="t-text dim">56+ 模型可用 · gfw.net</span>
             </div>
             <div class="terminal-line output">
               <span class="t-status">ready</span>
@@ -28,21 +28,21 @@
             </div>
           </div>
           <div class="quick-actions">
-            <div class="quick-item" @click="quickAsk('Write a quicksort implementation in Python with type hints')">
+            <div class="quick-item" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
               <span class="qa-icon">></span>
-              <span class="qa-text">quicksort with type hints</span>
+              <span class="qa-text">快速排序 · Python</span>
             </div>
-            <div class="quick-item" @click="quickAsk('Explain how TCP three-way handshake works')">
+            <div class="quick-item" @click="quickAsk('解释 TCP 三次握手的工作原理')">
               <span class="qa-icon">></span>
-              <span class="qa-text">tcp three-way handshake</span>
+              <span class="qa-text">TCP 三次握手</span>
             </div>
-            <div class="quick-item" @click="quickAsk('Review this code for performance issues: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
+            <div class="quick-item" @click="quickAsk('审查这段代码的性能问题: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
               <span class="qa-icon">></span>
-              <span class="qa-text">code review: fibonacci</span>
+              <span class="qa-text">代码审查 · 斐波那契</span>
             </div>
-            <div class="quick-item" @click="quickAsk('Generate a Dockerfile for a Node.js app with multi-stage build')">
+            <div class="quick-item" @click="quickAsk('生成一个 Node.js 应用的多阶段构建 Dockerfile')">
               <span class="qa-icon">></span>
-              <span class="qa-text">dockerfile multi-stage build</span>
+              <span class="qa-text">Dockerfile · 多阶段构建</span>
             </div>
           </div>
         </div>
@@ -57,7 +57,7 @@
 
         <div v-else-if="msg.role === 'user' || (msg.content && msg.content.trim())" class="msg" :class="msg.role">
           <div class="msg-header">
-            <span class="msg-author" :class="msg.role">{{ msg.role === 'user' ? 'you' : 'xns' }}</span>
+            <span class="msg-author" :class="msg.role">{{ msg.role === 'user' ? '我' : 'Hi!XNS' }}</span>
             <span class="msg-time">{{ formatTime(msg.timestamp) }}</span>
           </div>
 
@@ -71,16 +71,16 @@
                 <span class="tool-tri">{{ (tc as any)._open ? '\u25BC' : '\u25B6' }}</span>
                 <span :class="['tool-indicator', tc.status]"></span>
                 <span class="tool-fn">{{ tc.tool }}</span>
-                <span class="tool-st">{{ tc.status === 'completed' ? 'ok' : tc.status === 'failed' ? 'err' : '...' }}</span>
+                <span class="tool-st">{{ tc.status === 'completed' ? '完成' : tc.status === 'failed' ? '失败' : '运行中' }}</span>
                 <span class="tool-time">{{ formatTime(msg.timestamp) }}</span>
               </div>
               <div v-if="(tc as any)._open" class="tool-body">
                 <div v-if="tc.input" class="tool-block">
-                  <div class="tool-block-title">args</div>
+                  <div class="tool-block-title">参数</div>
                   <pre class="tool-pre">{{ formatJson(tc.input) }}</pre>
                 </div>
                 <div v-if="tc.output" class="tool-block">
-                  <div class="tool-block-title">result</div>
+                  <div class="tool-block-title">结果</div>
                   <pre class="tool-pre">{{ tc.output }}</pre>
                 </div>
               </div>
@@ -105,8 +105,8 @@
       <!-- Streaming -->
       <div v-if="isStreaming" class="msg assistant streaming">
         <div class="msg-header">
-          <span class="msg-author assistant">xns</span>
-          <span class="msg-time">now</span>
+          <span class="msg-author assistant">Hi!XNS</span>
+          <span class="msg-time">现在</span>
         </div>
         <div class="msg-content ai-content markdown-body" v-html="renderMarkdown(currentResponse || '')"></div>
         <span class="block-cursor">█</span>
@@ -114,7 +114,7 @@
           <div v-for="(tc, i) in currentToolCalls" :key="i" class="tool-row compact">
             <span :class="['tool-indicator', tc.status]"></span>
             <span class="tool-fn">{{ tc.tool }}</span>
-            <span class="tool-st">{{ tc.status === 'completed' ? 'ok' : '...' }}</span>
+            <span class="tool-st">{{ tc.status === 'completed' ? '完成' : '运行中' }}</span>
           </div>
         </div>
       </div>
@@ -122,7 +122,7 @@
       <!-- Connecting -->
       <div v-if="isConnecting" class="connecting">
         <span class="connecting-spinner"></span>
-        <span>connecting</span>
+        <span>连接中</span>
       </div>
     </div>
 
@@ -135,21 +135,21 @@
           @keydown.enter.exact.prevent="sendMessage"
           @focus="inputFocused = true"
           @blur="inputFocused = false"
-          placeholder="Ask anything..."
+          placeholder="输入消息..."
           rows="1"
           ref="textareaRef"
         ></textarea>
         <button @click="sendMessage" :disabled="!inputText.trim() || isStreaming" class="send-btn">
-          <span class="send-key">Return</span>
-          <span class="send-arrow">↵</span>
+          <span class="send-key">发送</span>
+          <span class="send-arrow">↩</span>
         </button>
       </div>
       <div class="input-status">
-        <span class="status-item">{{ chatStore.getActiveConfig().model || 'no model' }}</span>
+        <span class="status-item">{{ chatStore.getActiveConfig().model || '未选择模型' }}</span>
         <span class="status-sep">/</span>
-        <span class="status-item">{{ chatStore.providerMode === 'custom' ? 'custom' : 'gfw' }}</span>
+        <span class="status-item">{{ chatStore.providerMode === 'custom' ? '自定义' : 'gfw' }}</span>
         <span class="status-sep">/</span>
-        <span class="status-item" :class="{ active: isStreaming }">{{ isStreaming ? 'streaming' : 'idle' }}</span>
+        <span class="status-item" :class="{ active: isStreaming }">{{ isStreaming ? '生成中' : '就绪' }}</span>
       </div>
     </div>
   </div>
@@ -193,7 +193,7 @@ renderer.code = function({ text, lang }: Tokens.Code) {
     ? hljs.highlight(text, { language }).value
     : hljs.highlightAuto(text).value
   const displayLang = lang || 'text'
-  return `<div class="code-block"><div class="code-header"><span class="code-lang">${displayLang}</span><button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-block').querySelector('code').textContent).then(()=>{this.textContent='copied!';setTimeout(()=>{this.textContent='copy'},1500)})">copy</button></div><pre><code class="hljs language-${displayLang}">${highlighted}</code></pre></div>`
+  return `<div class="code-block"><div class="code-header"><span class="code-lang">${displayLang}</span><button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-block').querySelector('code').textContent).then(()=>{this.textContent='已复制';setTimeout(()=>{this.textContent='复制'},1500)})">复制</button></div><pre><code class="hljs language-${displayLang}">${highlighted}</code></pre></div>`
 }
 marked.setOptions({ renderer })
 

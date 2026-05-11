@@ -12,17 +12,17 @@
       <nav class="sidebar-nav">
         <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
           <span class="nav-icon"><IconChat :size="18" /></span>
-          <span class="nav-label">Chat</span>
+          <span class="nav-label">对话</span>
           <kbd class="nav-shortcut">1</kbd>
         </router-link>
         <router-link to="/skills" class="nav-item" :class="{ active: $route.path === '/skills' }">
           <span class="nav-icon"><IconStore :size="18" /></span>
-          <span class="nav-label">Skills</span>
+          <span class="nav-label">技能商店</span>
           <kbd class="nav-shortcut">2</kbd>
         </router-link>
         <router-link to="/settings" class="nav-item" :class="{ active: $route.path === '/settings' }">
           <span class="nav-icon"><IconSettings :size="18" /></span>
-          <span class="nav-label">Settings</span>
+          <span class="nav-label">设置</span>
           <kbd class="nav-shortcut">3</kbd>
         </router-link>
       </nav>
@@ -37,13 +37,13 @@
           </div>
           <div class="session-row">
             <span class="session-dot dot-dim"></span>
-            <span class="session-label dim">{{ chatStore.providerMode === 'custom' ? 'custom api' : 'gfw.net' }}</span>
+            <span class="session-label dim">{{ chatStore.providerMode === 'custom' ? '自定义 API' : 'gfw.net' }}</span>
           </div>
         </div>
 
         <!-- Balance -->
         <div v-if="chatStore.providerMode !== 'custom'" class="balance-line">
-          <span class="balance-label">balance</span>
+          <span class="balance-label">余额</span>
           <span class="balance-value">{{ balance.toFixed(2) }} G</span>
         </div>
 
@@ -56,10 +56,10 @@
         </div>
 
         <!-- Theme toggle -->
-        <button class="theme-btn" @click="appStore.toggleTheme" :title="appStore.isDark ? 'Light mode' : 'Dark mode'">
+        <button class="theme-btn" @click="appStore.toggleTheme" :title="appStore.isDark ? '切换亮色' : '切换暗色'">
           <IconSun v-if="appStore.isDark" :size="14" />
           <IconMoon v-else :size="14" />
-          <span>{{ appStore.isDark ? 'light' : 'dark' }}</span>
+          <span>{{ appStore.isDark ? '亮色' : '暗色' }}</span>
         </button>
       </div>
     </aside>
