@@ -17,15 +17,11 @@
         "minWidth": 900,
         "minHeight": 600,
         "resizable": true,
-        "fullscreen": false,
-        "titleBarStyle": "Overlay",
-        "hiddenTitle": true,
-        "transparent": false,
-        "decorations": true
+        "fullscreen": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' ws://127.0.0.1:* https://api.gfw.net https://2x.com.cn; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'"
+      "csp": "default-src 'self'; connect-src 'self' ws://127.0.0.1:* https://api.gfw.net https://2x.com.cn https://api.2x.com.cn; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'"
     }
   },
   "bundle": {
@@ -37,17 +33,7 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ],
-    "windows": {
-      "nsis": {
-        "installerIcon": "icons/icon.ico",
-        "installMode": "perMachine",
-        "languages": ["SimpChinese", "English"]
-      }
-    },
-    "macos": {
-      "minimumSystemVersion": "12.0"
-    }
+    ]
   },
   "plugins": {
     "shell": {
