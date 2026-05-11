@@ -5,5 +5,5 @@
   </svg>
 </template>
 <script setup lang="ts">
-defineProps<{ size?: number }>()
+withDefaults(defineProps<{ size?: number }>(), { size: 24 })
 </script>

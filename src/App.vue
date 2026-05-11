@@ -2,26 +2,26 @@
   <div class="app">
     <div class="sidebar">
       <div class="sidebar-header">
-        <IconStore size="24" />
+        <IconStore :size="24" />
         <h2>Hermes</h2>
       </div>
       <nav class="sidebar-nav">
         <router-link to="/" class="nav-item">
-          <IconChat size="20" />
+          <IconChat :size="20" />
           <span>对话</span>
         </router-link>
         <router-link to="/skills" class="nav-item">
-          <IconStore size="20" />
+          <IconStore :size="20" />
           <span>Skill 商店</span>
         </router-link>
         <router-link to="/settings" class="nav-item">
-          <IconSettings size="20" />
+          <IconSettings :size="20" />
           <span>设置</span>
         </router-link>
       </nav>
       <div class="sidebar-footer">
         <div class="balance-display">
-          <IconStar size="16" />
+          <IconStar :size="16" />
           <span>G币余额</span>
           <span class="amount">{{ balance.toFixed(2) }}</span>
         </div>

@@ -212,7 +212,7 @@ function logout() {
 
 async function loadProfile() {
   try {
-    profile.value = await api.twoXGetProfile()
+    profile.value = await api.twoXGetProfile() as { nickname?: string; username: string }
   } catch {
     // ignore
   }
@@ -282,8 +282,7 @@ async function loadMyDownloads() {
 
 async function toggleFavoriteSkill(slug: string) {
   try {
-    const favorited = await api.twoXToggleFavorite(slug)
-    // Refresh skills to update state
+    await api.twoXToggleFavorite(slug)
     await loadSkills()
   } catch (e: unknown) {
     alert(e instanceof Error ? e.message : String(e))
@@ -300,9 +299,9 @@ async function downloadSkill(slug: string) {
 }
 
 onMounted(async () => {
-  // Load public data first
   await loadSkills()
   await loadRankings()
+  await loadWorkflows()
 })
 </script>
 

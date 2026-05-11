@@ -61,13 +61,23 @@ export const useChatStore = defineStore('chat', () => {
     currentToolCalls.value = []
   }
 
+  function addSystemMessage(content: string) {
+    const msg: ChatMessage = {
+      id: generateId(),
+      role: 'system',
+      content,
+      timestamp: new Date().toISOString(),
+    }
+    messages.value.push(msg)
+  }
+
   function clearMessages() {
     messages.value = []
   }
 
   return {
     messages, isStreaming, currentResponse, currentToolCalls, selectedModel,
-    addUserMessage, startAssistantResponse, appendToResponse,
+    addUserMessage, addSystemMessage, startAssistantResponse, appendToResponse,
     addToolCall, completeToolCall, finishResponse, clearMessages,
   }
 })
