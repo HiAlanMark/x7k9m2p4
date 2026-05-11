@@ -4,11 +4,8 @@ use std::fs;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
-    /// gfw.net 配置
     pub gfw: GfwConfig,
-    /// 2x.com.cn Skill 商店配置
     pub skill_store: SkillStoreConfig,
-    /// Agent 配置
     pub agent: AgentConfig,
 }
 
@@ -24,7 +21,6 @@ pub struct GfwConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillStoreConfig {
     pub base_url: String,
-    pub access_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,8 +42,7 @@ impl Default for AppConfig {
                 api_key_id: None,
             },
             skill_store: SkillStoreConfig {
-                base_url: "https://2x.com.cn".to_string(),
-                access_token: None,
+                base_url: "https://api.2x.com.cn/api/v1".to_string(),
             },
             agent: AgentConfig {
                 context_length: 128000,
@@ -63,17 +58,9 @@ impl AppConfig {
     pub fn load() -> Self {
         let config_path = Self::config_path();
         if config_path.exists() {
-            match fs::read_to_string(&config_path) {
-                Ok(content) => {
-                    match serde_json::from_str(&content) {
-                        Ok(config) => return config,
-                        Err(e) => {
-                            eprintln!("Failed to parse config: {}", e);
-                        }
-                    }
-                }
-                Err(e) => {
-                    eprintln!("Failed to read config: {}", e);
+            if let Ok(content) = fs::read_to_string(&config_path) {
+                if let Ok(config) = serde_json::from_str(&content) {
+                    return config;
                 }
             }
         }
@@ -85,21 +72,15 @@ impl AppConfig {
         if let Some(parent) = config_path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let content = serde_json::to_string_pretty(self)?;
+        let content = serde_json::to_string_pretty(self)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
         fs::write(&config_path, content)?;
         Ok(())
     }
 
     fn config_path() -> PathBuf {
-        let base = dirs::config_dir().unwrap_or_else(|| {
-            #[cfg(target_os = "macos")]
-            return PathBuf::from("/Users/unknown/Library/Application Support");
-            #[cfg(target_os = "windows")]
-            return PathBuf::from("C:/Users/unknown/AppData/Roaming");
-            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-            return PathBuf::from("/root/.config");
-        });
-
+        let base = dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."));
         base.join("hermes-desktop").join("config.json")
     }
 }

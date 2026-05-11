@@ -10,8 +10,6 @@ pub struct GfwApiResponse<T> {
     #[serde(default)]
     pub message: String,
     pub data: Option<T>,
-    #[serde(default, rename = "request_id")]
-    pub request_id: Option<String>,
 }
 
 // ============================================================
@@ -24,18 +22,20 @@ pub struct LoginRequest<'a> {
     pub password: &'a str,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct LoginResponse {
     pub token: String,
     pub refresh_token: String,
     pub user: UserProfile,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct UserProfile {
     pub id: u64,
+    #[serde(default)]
     pub uuid: String,
     pub email: String,
+    #[serde(default)]
     pub nickname: String,
     #[serde(default)]
     pub gcoin_balance: f64,
@@ -45,7 +45,9 @@ pub struct UserProfile {
     pub total_recharge: f64,
     #[serde(default)]
     pub total_consumed: f64,
+    #[serde(default)]
     pub status: u32,
+    #[serde(default)]
     pub role: u32,
     #[serde(default)]
     pub user_group_code: String,
@@ -64,7 +66,7 @@ pub struct RefreshTokenRequest<'a> {
 // 用户详情
 // ============================================================
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct UserDetail {
     pub group_code: String,
     pub group_name: String,
@@ -90,20 +92,28 @@ pub struct ApiKeyListResponse {
     pub keys: Vec<ApiKeyInfo>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct ApiKeyInfo {
     pub id: u64,
+    #[serde(default)]
     pub user_id: u64,
     pub key_prefix: String,
+    #[serde(default)]
     pub can_retrieve: bool,
     pub name: String,
+    #[serde(default)]
     pub rate_limit: u32,
+    #[serde(default)]
     pub gcoin_limit: f64,
+    #[serde(default)]
     pub used_quota: f64,
+    #[serde(default)]
     pub cycle_type: String,
     pub cycle_reset_at: Option<String>,
     pub last_used_at: Option<String>,
+    #[serde(default)]
     pub is_active: bool,
+    #[serde(default)]
     pub created_at: String,
 }
 
@@ -124,15 +134,16 @@ pub struct CreateApiKeyResponse {
 #[derive(Deserialize)]
 pub struct ApiKeyObject {
     pub id: u64,
-    pub user_id: u64,
+    #[serde(default)]
     pub key_prefix: String,
+    #[serde(default)]
     pub can_retrieve: bool,
     pub name: String,
+    #[serde(default)]
     pub gcoin_limit: f64,
-    pub used_quota: f64,
-    pub cycle_type: String,
-    pub cycle_reset_at: Option<String>,
-    pub is_active: bool,
+    #[serde(default)]
+    pub rate_limit: u32,
+    #[serde(default)]
     pub created_at: String,
 }
 
@@ -141,7 +152,6 @@ pub struct FullKeyResponse {
     pub key: String,
 }
 
-#[derive(Debug, Clone)]
 pub struct FullApiKey {
     pub id: u64,
     pub key: String,
@@ -151,7 +161,7 @@ pub struct FullApiKey {
 }
 
 // ============================================================
-// 模型 (管理 API - 完整信息)
+// 模型
 // ============================================================
 
 #[derive(Deserialize)]
@@ -159,16 +169,17 @@ pub struct ModelsResponse {
     pub models: Vec<ModelFull>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct ModelFull {
-    #[serde(rename = "model_code")]
+    #[serde(alias = "model_code")]
     pub id: String,
-    #[serde(rename = "model_name")]
+    #[serde(alias = "model_name", default)]
     pub name: String,
-    #[serde(rename = "model_name_en")]
+    #[serde(alias = "model_name_en", default)]
     pub name_en: String,
+    #[serde(default)]
     pub provider: String,
-    #[serde(rename = "model_type")]
+    #[serde(alias = "model_type", default)]
     pub model_type: String,
     #[serde(default)]
     pub input_price: f64,
@@ -182,7 +193,9 @@ pub struct ModelFull {
     pub max_output_tokens: u64,
     #[serde(default)]
     pub max_input_tokens: u64,
+    #[serde(default)]
     pub is_available: bool,
+    #[serde(default)]
     pub is_featured: bool,
     #[serde(default)]
     pub rpm: u32,
@@ -201,42 +214,9 @@ pub struct ModelFull {
     #[serde(default)]
     pub description: String,
     #[serde(default)]
-    pub pricing_rules: Option<PricingRules>,
+    pub pricing_rules: Option<serde_json::Value>,
     #[serde(default)]
     pub discount: Option<f64>,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-pub struct PricingRules {
-    pub input: Vec<PricingTier>,
-    pub output: Vec<PricingTier>,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-pub struct PricingTier {
-    pub condition: String,
-    #[serde(default)]
-    pub input_price: f64,
-    #[serde(default)]
-    pub output_price: f64,
-}
-
-// ============================================================
-// OpenAI 兼容 /v1/models 响应
-// ============================================================
-
-#[derive(Deserialize)]
-pub struct OpenAiModelsResponse {
-    pub data: Vec<OpenAiModelInfo>,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-pub struct OpenAiModelInfo {
-    pub id: String,
-    #[serde(default)]
-    pub object: String,
-    #[serde(default)]
-    pub owned_by: String,
 }
 
 // ============================================================
@@ -248,9 +228,10 @@ pub struct DailyUsageResponse {
     pub daily_usage: Vec<DailyUsage>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct DailyUsage {
     pub date: String,
+    #[serde(default)]
     pub request_count: u64,
     #[serde(default)]
     pub input_tokens: u64,
@@ -265,12 +246,16 @@ pub struct MonthlyUsageResponse {
     pub monthly_usage: Vec<MonthlyUsage>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct MonthlyUsage {
     pub month: String,
+    #[serde(default)]
     pub request_count: u64,
+    #[serde(default)]
     pub input_tokens: u64,
+    #[serde(default)]
     pub output_tokens: u64,
+    #[serde(default)]
     pub total_cost: f64,
 }
 
@@ -283,18 +268,25 @@ pub struct RechargePackagesResponse {
     pub packages: Vec<RechargePackage>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct RechargePackage {
     pub id: u64,
     pub name: String,
+    #[serde(default)]
     pub description: String,
     pub price: f64,
     pub gcoin_amount: f64,
+    #[serde(default)]
     pub bonus_gcoin: f64,
+    #[serde(default)]
     pub discount_rate: f64,
+    #[serde(default)]
     pub is_active: bool,
+    #[serde(default)]
     pub purchase_limit: u32,
+    #[serde(default)]
     pub upgrade_group: String,
+    #[serde(default)]
     pub badge: String,
 }
 
@@ -309,14 +301,19 @@ pub struct RechargeOrderResponse {
     pub order: RechargeOrder,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct RechargeOrder {
     pub id: String,
+    #[serde(default)]
     pub package_id: u64,
+    #[serde(default)]
     pub amount: f64,
+    #[serde(default)]
     pub pay_method: String,
+    #[serde(default)]
     pub status: String,
     pub pay_url: Option<String>,
+    #[serde(default)]
     pub created_at: String,
 }
 
@@ -329,16 +326,20 @@ pub struct SrProvidersResponse {
     pub providers: Vec<SrProvider>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct SrProvider {
     pub id: u64,
     pub code: String,
     pub name: String,
-    #[serde(rename = "model_type")]
+    #[serde(alias = "model_type", default)]
     pub model_type: String,
+    #[serde(default)]
     pub base_url: String,
+    #[serde(default)]
     pub auth_header: String,
+    #[serde(default)]
     pub auth_prefix: String,
+    #[serde(default)]
     pub is_active: bool,
 }
 
@@ -346,111 +347,45 @@ pub struct SrProvider {
 // 错误
 // ============================================================
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum GfwError {
-    #[error("网络错误: {0}")]
-    Network(#[from] reqwest::Error),
-
-    #[error("API 错误: {message} (code: {code})")]
+    Network(reqwest::Error),
     Api { code: u32, message: String },
-
-    #[error("未登录")]
     NotLoggedIn,
-
-    #[error("Token 过期")]
-    TokenExpired,
-
-    #[error("无刷新 Token")]
     NoRefreshToken,
-
-    #[error("API Key 无效")]
-    InvalidApiKey,
-
-    #[error("余额不足")]
-    InsufficientBalance,
-
-    #[error("频率限制")]
-    RateLimited,
-
-    #[error("序列化错误: {0}")]
-    Serde(#[from] serde_json::Error),
 }
 
-impl GfwError {
-    pub fn from_api_response(code: u32, message: String) -> Self {
-        match code {
-            1001 | 1005 => GfwError::TokenExpired,
-            1007 => GfwError::NotLoggedIn,
-            _ => GfwError::Api { code, message },
+impl std::fmt::Display for GfwError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GfwError::Network(e) => write!(f, "网络错误: {}", e),
+            GfwError::Api { code, message } => write!(f, "API 错误({}): {}", code, message),
+            GfwError::NotLoggedIn => write!(f, "未登录"),
+            GfwError::NoRefreshToken => write!(f, "无刷新 Token"),
         }
     }
 }
 
-// ============================================================
-// 前端通信类型
-// ============================================================
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(tag = "type")]
-pub enum FrontendMessage {
-    // 连接
-    Connected {
-        hermes_version: String,
-        gfw_base: String,
-        timestamp: String,
-    },
-    // 流式响应
-    StreamChunk {
-        id: String,
-        content: String,
-        timestamp: String,
-    },
-    // 工具调用
-    ToolCallStart {
-        id: String,
-        tool: String,
-        tool_input: serde_json::Value,
-        timestamp: String,
-    },
-    ToolCallResult {
-        id: String,
-        tool: String,
-        status: String,
-        output: String,
-        timestamp: String,
-    },
-    // 完成
-    ChatComplete {
-        id: String,
-        final_response: String,
-        token_usage: serde_json::Value,
-        model: String,
-        duration_ms: u64,
-        timestamp: String,
-    },
-    // 取消
-    Cancelled {
-        id: String,
-        timestamp: String,
-    },
-    // 错误
-    Error {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        id: Option<String>,
-        error_code: String,
-        message: String,
-        recoverable: bool,
-        timestamp: String,
-    },
-    // 心跳
-    Pong {
-        timestamp: String,
-    },
+impl From<reqwest::Error> for GfwError {
+    fn from(e: reqwest::Error) -> Self {
+        GfwError::Network(e)
+    }
 }
+
+impl GfwError {
+    pub fn from_api_response(code: u32, message: String) -> Self {
+        GfwError::Api { code, message }
+    }
+}
+
+// ============================================================
+// WebSocket 通信类型
+// ============================================================
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "type")]
 pub enum BackendMessage {
+    #[serde(rename = "chat")]
     Chat {
         id: String,
         content: String,
@@ -461,15 +396,18 @@ pub enum BackendMessage {
         #[serde(default)]
         attachments: Vec<serde_json::Value>,
     },
+    #[serde(rename = "config_update")]
     ConfigUpdate {
         #[serde(skip_serializing_if = "Option::is_none")]
         gfw: Option<GfwConfigUpdate>,
         #[serde(skip_serializing_if = "Option::is_none")]
         gfw_jwt: Option<String>,
     },
+    #[serde(rename = "cancel")]
     Cancel {
         id: String,
     },
+    #[serde(rename = "ping")]
     Ping,
 }
 
