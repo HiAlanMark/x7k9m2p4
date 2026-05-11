@@ -34,6 +34,7 @@ pub struct UserProfile {
     pub id: u64,
     #[serde(default)]
     pub uuid: String,
+    #[serde(default)]
     pub email: String,
     #[serde(default)]
     pub nickname: String,
@@ -62,10 +63,6 @@ pub struct RefreshTokenRequest<'a> {
     pub refresh_token: &'a str,
 }
 
-// ============================================================
-// 用户详情
-// ============================================================
-
 #[derive(Deserialize, Clone)]
 pub struct UserDetail {
     pub group_code: String,
@@ -73,10 +70,6 @@ pub struct UserDetail {
     pub is_reseller: bool,
     pub user: UserProfile,
 }
-
-// ============================================================
-// 余额
-// ============================================================
 
 #[derive(Deserialize)]
 pub struct BalanceResponse {
@@ -97,9 +90,11 @@ pub struct ApiKeyInfo {
     pub id: u64,
     #[serde(default)]
     pub user_id: u64,
+    #[serde(default)]
     pub key_prefix: String,
     #[serde(default)]
     pub can_retrieve: bool,
+    #[serde(default)]
     pub name: String,
     #[serde(default)]
     pub rate_limit: u32,
@@ -137,14 +132,11 @@ pub struct ApiKeyObject {
     #[serde(default)]
     pub key_prefix: String,
     #[serde(default)]
-    pub can_retrieve: bool,
     pub name: String,
     #[serde(default)]
     pub gcoin_limit: f64,
     #[serde(default)]
     pub rate_limit: u32,
-    #[serde(default)]
-    pub created_at: String,
 }
 
 #[derive(Deserialize)]
@@ -186,21 +178,13 @@ pub struct ModelFull {
     #[serde(default)]
     pub output_price: f64,
     #[serde(default)]
-    pub cache_price: f64,
-    #[serde(default)]
     pub context_window: u64,
     #[serde(default)]
     pub max_output_tokens: u64,
     #[serde(default)]
-    pub max_input_tokens: u64,
-    #[serde(default)]
     pub is_available: bool,
     #[serde(default)]
     pub is_featured: bool,
-    #[serde(default)]
-    pub rpm: u32,
-    #[serde(default)]
-    pub tpm: u64,
     #[serde(default)]
     pub supports_thinking: bool,
     #[serde(default)]
@@ -208,15 +192,7 @@ pub struct ModelFull {
     #[serde(default)]
     pub supports_function_call: bool,
     #[serde(default)]
-    pub supports_json_output: bool,
-    #[serde(default)]
-    pub supports_cache: bool,
-    #[serde(default)]
     pub description: String,
-    #[serde(default)]
-    pub pricing_rules: Option<serde_json::Value>,
-    #[serde(default)]
-    pub discount: Option<f64>,
 }
 
 // ============================================================
@@ -231,24 +207,6 @@ pub struct DailyUsageResponse {
 #[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct DailyUsage {
     pub date: String,
-    #[serde(default)]
-    pub request_count: u64,
-    #[serde(default)]
-    pub input_tokens: u64,
-    #[serde(default)]
-    pub output_tokens: u64,
-    #[serde(default)]
-    pub total_cost: f64,
-}
-
-#[derive(Deserialize)]
-pub struct MonthlyUsageResponse {
-    pub monthly_usage: Vec<MonthlyUsage>,
-}
-
-#[derive(Deserialize, Clone, Debug, Serialize)]
-pub struct MonthlyUsage {
-    pub month: String,
     #[serde(default)]
     pub request_count: u64,
     #[serde(default)]
@@ -279,14 +237,6 @@ pub struct RechargePackage {
     #[serde(default)]
     pub bonus_gcoin: f64,
     #[serde(default)]
-    pub discount_rate: f64,
-    #[serde(default)]
-    pub is_active: bool,
-    #[serde(default)]
-    pub purchase_limit: u32,
-    #[serde(default)]
-    pub upgrade_group: String,
-    #[serde(default)]
     pub badge: String,
 }
 
@@ -296,25 +246,12 @@ pub struct CreateRechargeOrderRequest {
     pub pay_method: String,
 }
 
-#[derive(Deserialize)]
-pub struct RechargeOrderResponse {
-    pub order: RechargeOrder,
-}
-
 #[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct RechargeOrder {
     pub id: String,
     #[serde(default)]
-    pub package_id: u64,
-    #[serde(default)]
-    pub amount: f64,
-    #[serde(default)]
-    pub pay_method: String,
-    #[serde(default)]
     pub status: String,
     pub pay_url: Option<String>,
-    #[serde(default)]
-    pub created_at: String,
 }
 
 // ============================================================
@@ -334,12 +271,6 @@ pub struct SrProvider {
     #[serde(alias = "model_type", default)]
     pub model_type: String,
     #[serde(default)]
-    pub base_url: String,
-    #[serde(default)]
-    pub auth_header: String,
-    #[serde(default)]
-    pub auth_prefix: String,
-    #[serde(default)]
     pub is_active: bool,
 }
 
@@ -358,18 +289,16 @@ pub enum GfwError {
 impl std::fmt::Display for GfwError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GfwError::Network(e) => write!(f, "网络错误: {}", e),
-            GfwError::Api { code, message } => write!(f, "API 错误({}): {}", code, message),
+            GfwError::Network(e) => write!(f, "{}", e),
+            GfwError::Api { message, .. } => write!(f, "{}", message),
             GfwError::NotLoggedIn => write!(f, "未登录"),
-            GfwError::NoRefreshToken => write!(f, "无刷新 Token"),
+            GfwError::NoRefreshToken => write!(f, "无刷新Token"),
         }
     }
 }
 
 impl From<reqwest::Error> for GfwError {
-    fn from(e: reqwest::Error) -> Self {
-        GfwError::Network(e)
-    }
+    fn from(e: reqwest::Error) -> Self { GfwError::Network(e) }
 }
 
 impl GfwError {
@@ -379,7 +308,7 @@ impl GfwError {
 }
 
 // ============================================================
-// WebSocket 通信类型
+// WebSocket 消息
 // ============================================================
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -396,27 +325,8 @@ pub enum BackendMessage {
         #[serde(default)]
         attachments: Vec<serde_json::Value>,
     },
-    #[serde(rename = "config_update")]
-    ConfigUpdate {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        gfw: Option<GfwConfigUpdate>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        gfw_jwt: Option<String>,
-    },
     #[serde(rename = "cancel")]
-    Cancel {
-        id: String,
-    },
+    Cancel { id: String },
     #[serde(rename = "ping")]
     Ping,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct GfwConfigUpdate {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub base_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub api_key: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_model: Option<String>,
 }

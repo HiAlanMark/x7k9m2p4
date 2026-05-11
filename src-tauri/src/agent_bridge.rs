@@ -1,38 +1,28 @@
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
-use tokio::process::{Command, Child};
+use tokio::process::Command;
 use std::process::Stdio;
 use tokio_tungstenite::connect_async;
 use futures_util::{SinkExt, StreamExt};
-use tokio_tungstenite::tungstenite::Message;
-use crate::gfw_types::{BackendMessage, GfwConfigUpdate};
+use crate::gfw_types::BackendMessage;
 
 pub struct AgentBridge {
-    state: Arc<RwLock<AgentState>>,
-    tx: Arc<RwLock<Option<mpsc::UnboundedSender<Message>>>>,
-}
-
-struct AgentState {
-    process: Option<Child>,
-    port: Option<u16>,
-    is_running: bool,
+    port: Arc<RwLock<Option<u16>>>,
+    running: Arc<RwLock<bool>>,
+    tx: Arc<RwLock<Option<mpsc::UnboundedSender<String>>>>,
 }
 
 impl AgentBridge {
     pub fn new() -> Self {
         Self {
-            state: Arc::new(RwLock::new(AgentState {
-                process: None,
-                port: None,
-                is_running: false,
-            })),
+            port: Arc::new(RwLock::new(None)),
+            running: Arc::new(RwLock::new(false)),
             tx: Arc::new(RwLock::new(None)),
         }
     }
 
     pub async fn start(&self, hermes_path: &str, api_key: &str, jwt: Option<&str>) -> Result<u16, String> {
-        let mut state = self.state.write().await;
-        if state.is_running {
+        if *self.running.read().await {
             return Err("Agent is already running".to_string());
         }
 
@@ -45,43 +35,40 @@ impl AgentBridge {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        if let Some(jwt_val) = jwt {
-            cmd.env("GFW_JWT", jwt_val);
+        if let Some(j) = jwt {
+            cmd.env("GFW_JWT", j);
         }
 
-        let mut child = cmd.spawn().map_err(|e| format!("Failed to start agent: {}", e))?;
+        let mut child = cmd.spawn().map_err(|e| format!("spawn failed: {}", e))?;
 
-        if let Some(stdout) = child.stdout.take() {
-            use tokio::io::AsyncBufReadExt;
-            let mut reader = tokio::io::BufReader::new(stdout);
-            let mut line = String::new();
+        let stdout = child.stdout.take().ok_or("no stdout")?;
+        use tokio::io::AsyncBufReadExt;
+        let mut reader = tokio::io::BufReader::new(stdout);
+        let mut line = String::new();
 
-            let read_result = tokio::time::timeout(
-                std::time::Duration::from_secs(10),
-                reader.read_line(&mut line)
-            ).await;
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(15),
+            reader.read_line(&mut line),
+        ).await;
 
-            if let Ok(Ok(_)) = read_result {
+        match result {
+            Ok(Ok(_)) => {
                 if let Some(port_str) = line.strip_prefix("HERMES_DESKTOP_PORT:") {
                     if let Ok(port) = port_str.trim().parse::<u16>() {
-                        state.process = Some(child);
-                        state.port = Some(port);
-                        state.is_running = true;
-                        drop(state);
+                        *self.port.write().await = Some(port);
+                        *self.running.write().await = true;
                         return Ok(port);
                     }
                 }
             }
+            _ => {}
         }
 
         let _ = child.kill().await;
-        Err("Failed to get agent port".to_string())
+        Err("Failed to read agent port".to_string())
     }
 
     pub async fn send_message(&self, content: &str, model: Option<&str>) -> Result<(), String> {
-        let tx_guard = self.tx.read().await;
-        let tx = tx_guard.as_ref().ok_or("Agent not connected")?;
-
         let msg = BackendMessage::Chat {
             id: uuid::Uuid::new_v4().to_string(),
             content: content.to_string(),
@@ -89,29 +76,32 @@ impl AgentBridge {
             model: model.map(|s| s.to_string()),
             attachments: vec![],
         };
-
         let json = serde_json::to_string(&msg).map_err(|e| e.to_string())?;
-        tx.send(Message::Text(json.into())).map_err(|e| e.to_string())
+
+        let tx_guard = self.tx.read().await;
+        if let Some(tx) = tx_guard.as_ref() {
+            tx.send(json).map_err(|e| e.to_string())
+        } else {
+            Err("Agent not connected".to_string())
+        }
     }
 
     pub async fn cancel(&self, msg_id: &str) -> Result<(), String> {
-        let tx_guard = self.tx.read().await;
-        let tx = tx_guard.as_ref().ok_or("Agent not connected")?;
-
         let msg = BackendMessage::Cancel { id: msg_id.to_string() };
         let json = serde_json::to_string(&msg).map_err(|e| e.to_string())?;
-        tx.send(Message::Text(json.into())).map_err(|e| e.to_string())
+
+        let tx_guard = self.tx.read().await;
+        if let Some(tx) = tx_guard.as_ref() {
+            tx.send(json).map_err(|e| e.to_string())
+        } else {
+            Err("Agent not connected".to_string())
+        }
     }
 
     pub async fn stop(&self) -> Result<(), String> {
-        let mut state = self.state.write().await;
         *self.tx.write().await = None;
-        if let Some(ref mut child) = state.process {
-            let _ = child.kill().await;
-        }
-        state.process = None;
-        state.port = None;
-        state.is_running = false;
+        *self.running.write().await = false;
+        *self.port.write().await = None;
         Ok(())
     }
 }
