@@ -3,7 +3,7 @@
     <aside class="sidebar">
       <!-- Brand -->
       <div class="sidebar-brand">
-        <IconBrandLogo :width="100" :height="32" color="var(--color-text-primary)" />
+        <IconBrandLogo :width="120" :height="24" :dark="appStore.isDark" />
         <span class="brand-version">v0.1</span>
       </div>
 
