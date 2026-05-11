@@ -390,22 +390,27 @@ export async function browserChat(
   onChunk: (text: string) => void,
   onDone: (fullText: string, usage: Record<string, number>) => void,
   onError: (err: string) => void,
+  customConfig?: { baseUrl: string; apiKey: string; model: string },
 ) {
-  const key = gfwApiKey || localStorage.getItem('gfw_api_key')
+  // 优先使用传入的自定义配置，否则用 gfw 默认
+  const baseUrl = customConfig?.baseUrl || GFW_AI
+  const key = customConfig?.apiKey || gfwApiKey || localStorage.getItem('gfw_api_key')
+  const activeModel = customConfig?.model || model
+
   if (!key) {
-    onError('No API Key configured. Go to Settings to create one.')
+    onError('未配置 API Key，请在设置中配置 gfw.net 账户或自定义 API 提供商。')
     return
   }
 
   try {
-    const r = await fetch(`${GFW_AI}/chat/completions`, {
+    const r = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model,
+        model: activeModel,
         messages: [{ role: 'user', content }],
         stream: true,
       }),

@@ -95,8 +95,36 @@
         <div v-if="activeSection === 'model'" class="content-section">
           <h2 class="section-title">模型设置</h2>
 
-          <div class="card">
+          <!-- Provider 选择 -->
+          <div class="card" style="margin-bottom: 20px;">
             <div class="card-body">
+              <div class="provider-tabs">
+                <button
+                  :class="['provider-tab', { active: providerMode === 'gfw' }]"
+                  @click="providerMode = 'gfw'; chatStore.setProviderMode('gfw')"
+                >
+                  <IconStar :size="16" />
+                  <span>gfw.net (内置)</span>
+                </button>
+                <button
+                  :class="['provider-tab', { active: providerMode === 'custom' }]"
+                  @click="providerMode = 'custom'; chatStore.setProviderMode('custom')"
+                >
+                  <IconSettings :size="16" />
+                  <span>自定义 API</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- gfw.net 模式 -->
+          <div v-if="providerMode === 'gfw'" class="card">
+            <div class="card-header">
+              <span class="card-header-tag default">默认</span>
+              <span>gfw.net 模型服务</span>
+            </div>
+            <div class="card-body">
+              <p class="hint-text">使用 gfw.net 内置的 API 中转服务，支持 56+ 模型，需要先在账户页面登录。</p>
               <div class="form-row">
                 <label class="form-label">默认模型</label>
                 <div class="form-input-wrap">
@@ -122,8 +150,71 @@
             </div>
           </div>
 
+          <!-- 自定义 API 模式 -->
+          <div v-if="providerMode === 'custom'" class="card">
+            <div class="card-header">
+              <span class="card-header-tag custom">自定义</span>
+              <span>自定义 API 提供商</span>
+            </div>
+            <div class="card-body">
+              <p class="hint-text">
+                接入任何兼容 OpenAI API 格式的服务（如 OpenAI、Anthropic、DeepSeek、Ollama、vLLM 等）。
+              </p>
+              <div class="form-row">
+                <label class="form-label">名称</label>
+                <input v-model="customName" type="text" placeholder="例如: OpenAI / DeepSeek / 本地 Ollama" class="form-input" />
+              </div>
+              <div class="form-row">
+                <label class="form-label">API Base URL</label>
+                <input v-model="customBaseUrl" type="text" placeholder="例如: https://api.openai.com/v1" class="form-input" />
+              </div>
+              <div class="form-row">
+                <label class="form-label">API Key</label>
+                <input v-model="customApiKey" type="password" placeholder="sk-..." class="form-input" />
+              </div>
+              <div class="form-row">
+                <label class="form-label">模型名称</label>
+                <input v-model="customModel" type="text" placeholder="例如: gpt-4o / deepseek-chat / llama3" class="form-input" />
+              </div>
+              <div class="form-row">
+                <label class="form-label">上下文长度</label>
+                <input v-model.number="contextLength" type="number" class="form-input" style="max-width: 200px;" />
+              </div>
+              <div class="form-row">
+                <label class="form-label">流式输出</label>
+                <label class="toggle">
+                  <input v-model="streaming" type="checkbox" />
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-text">{{ streaming ? '已启用' : '已关闭' }}</span>
+                </label>
+              </div>
+
+              <!-- 预设快捷填充 -->
+              <div class="presets-section">
+                <span class="presets-label">快速填充：</span>
+                <button v-for="preset in providerPresets" :key="preset.name" class="preset-btn" @click="applyPreset(preset)">
+                  {{ preset.name }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 连接测试 -->
+          <div class="card" style="margin-top: 16px;">
+            <div class="card-body">
+              <div class="test-row">
+                <button @click="testConnection" :disabled="testing" class="btn-secondary">
+                  {{ testing ? '测试中...' : '测试连接' }}
+                </button>
+                <span v-if="testResult" :class="['test-result', testResult.ok ? 'success' : 'error']">
+                  {{ testResult.message }}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div class="form-actions" style="margin-top: 20px;">
-            <button @click="saveSettings" class="btn-primary">保存设置</button>
+            <button @click="saveModelSettings" class="btn-primary">保存设置</button>
           </div>
         </div>
 
@@ -256,7 +347,7 @@ const gfwStore = useGfwStore()
 const chatStore = useChatStore()
 
 const { isLoggedIn, user, balance, models, apiKeys, dailyUsage, rechargePackages, loading } = storeToRefs(gfwStore)
-const { selectedModel } = storeToRefs(chatStore)
+const { selectedModel, providerMode: storeProviderMode, customProvider } = storeToRefs(chatStore)
 
 const email = ref('')
 const password = ref('')
@@ -267,6 +358,76 @@ const newKeyName = ref('')
 const newKeyLimit = ref(50)
 const userInfo = ref<{ group_name: string } | null>(null)
 const activeSection = ref('account')
+
+// 自定义 provider
+const providerMode = ref(storeProviderMode.value)
+const customName = ref(customProvider.value.name)
+const customBaseUrl = ref(customProvider.value.baseUrl)
+const customApiKey = ref(customProvider.value.apiKey)
+const customModel = ref(customProvider.value.model)
+const testing = ref(false)
+const testResult = ref<{ ok: boolean; message: string } | null>(null)
+
+// 预设提供商
+const providerPresets = [
+  { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' },
+  { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  { name: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514' },
+  { name: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1', model: 'llama3' },
+  { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'openai/gpt-4o' },
+  { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile' },
+]
+
+function applyPreset(preset: { name: string; baseUrl: string; model: string }) {
+  customName.value = preset.name
+  customBaseUrl.value = preset.baseUrl
+  customModel.value = preset.model
+}
+
+async function testConnection() {
+  testing.value = true
+  testResult.value = null
+
+  const config = providerMode.value === 'custom'
+    ? { baseUrl: customBaseUrl.value, apiKey: customApiKey.value, model: customModel.value }
+    : chatStore.getActiveConfig()
+
+  if (!config.apiKey) {
+    testResult.value = { ok: false, message: '请先填写 API Key' }
+    testing.value = false
+    return
+  }
+
+  try {
+    const r = await fetch(`${config.baseUrl}/models`, {
+      headers: { Authorization: `Bearer ${config.apiKey}` },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (r.ok) {
+      const data = await r.json()
+      const count = data?.data?.length || '未知'
+      testResult.value = { ok: true, message: `连接成功，可用模型: ${count} 个` }
+    } else {
+      const text = await r.text()
+      testResult.value = { ok: false, message: `HTTP ${r.status}: ${text.slice(0, 100)}` }
+    }
+  } catch (e: unknown) {
+    testResult.value = { ok: false, message: `连接失败: ${e instanceof Error ? e.message : String(e)}` }
+  }
+  testing.value = false
+}
+
+function saveModelSettings() {
+  if (providerMode.value === 'custom') {
+    chatStore.setCustomProvider({
+      name: customName.value,
+      baseUrl: customBaseUrl.value,
+      apiKey: customApiKey.value,
+      model: customModel.value,
+    })
+  }
+  chatStore.setProviderMode(providerMode.value)
+}
 
 const featuredModels = computed(() => {
   return models.value.filter(m => m.is_featured && m.is_available)
@@ -298,8 +459,7 @@ async function createKey() {
 }
 
 function saveSettings() {
-  // Save to config
-  chatStore.selectedModel = selectedModel.value
+  saveModelSettings()
 }
 
 onMounted(async () => {
@@ -807,4 +967,129 @@ onMounted(async () => {
   width: 100%;
   margin-top: 12px;
 }
+/* ===== Provider Tabs ===== */
+.provider-tabs {
+  display: flex;
+  gap: 12px;
+}
+
+.provider-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding: 14px 20px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.provider-tab:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.provider-tab.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Card header */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.card-header-tag {
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.card-header-tag.default {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.card-header-tag.custom {
+  background: #F0EAFF;
+  color: var(--color-accent);
+}
+
+[data-theme="dark"] .card-header-tag.custom {
+  background: #1E1640;
+}
+
+.hint-text {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+/* Presets */
+.presets-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.presets-label {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin-right: 4px;
+}
+
+.preset-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.preset-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+/* Test connection */
+.test-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.test-result {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.test-result.success { color: var(--color-success); }
+.test-result.error { color: var(--color-error); }
+
 </style>

@@ -193,16 +193,18 @@ async function sendMessage() {
   chatStore.startAssistantResponse()
 
   if (isBrowserMode()) {
-    // 浏览器模式：直接调用 gfw.net API 流式对话
+    // 浏览器模式：直接调用 API 流式对话
+    const config = chatStore.getActiveConfig()
     await browserChat(
       text,
       selectedModel.value,
       (chunk) => chatStore.appendToResponse(chunk),
-      (fullText, usage) => chatStore.finishResponse(usage, selectedModel.value),
+      (fullText, usage) => chatStore.finishResponse(usage, config.model),
       (err) => {
         chatStore.finishResponse()
         chatStore.addSystemMessage(`Error: ${err}`)
-      }
+      },
+      config,
     )
   } else {
     // Tauri 模式：通过 Agent 子进程
