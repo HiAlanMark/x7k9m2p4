@@ -22,9 +22,11 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
 // 浏览器模式：直接 HTTP 调用 (无需 Tauri 后端)
 // ============================================================
 
-const GFW_BASE = 'https://api.gfw.net/api/v1'
-const GFW_AI = 'https://api.gfw.net/v1'
-const TWO_X_BASE = 'https://api.2x.com.cn/api/v1'
+// 浏览器开发模式下通过 Vite 代理避免 CORS
+const isDev = import.meta.env?.DEV ?? false
+const GFW_BASE = isDev ? '/proxy/gfw/api/v1' : 'https://api.gfw.net/api/v1'
+const GFW_AI = isDev ? '/proxy/gfw/v1' : 'https://api.gfw.net/v1'
+const TWO_X_BASE = isDev ? '/proxy/2x/api/v1' : 'https://api.2x.com.cn/api/v1'
 
 let gfwJwt: string | null = localStorage.getItem('gfw_jwt')
 let gfwApiKey: string | null = localStorage.getItem('gfw_api_key')
@@ -393,7 +395,11 @@ export async function browserChat(
   customConfig?: { baseUrl: string; apiKey: string; model: string },
 ) {
   // 优先使用传入的自定义配置，否则用 gfw 默认
-  const baseUrl = customConfig?.baseUrl || GFW_AI
+  // 自定义 URL 在开发模式下也需要代理（如果是 gfw.net 的话）
+  let baseUrl = customConfig?.baseUrl || GFW_AI
+  if (isDev && baseUrl.includes('api.gfw.net')) {
+    baseUrl = baseUrl.replace('https://api.gfw.net', '/proxy/gfw')
+  }
   const key = customConfig?.apiKey || gfwApiKey || localStorage.getItem('gfw_api_key')
   const activeModel = customConfig?.model || model
 

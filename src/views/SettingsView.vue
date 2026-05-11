@@ -398,21 +398,50 @@ async function testConnection() {
     return
   }
 
+  if (!config.baseUrl) {
+    testResult.value = { ok: false, message: '请先填写 API Base URL' }
+    testing.value = false
+    return
+  }
+
   try {
-    const r = await fetch(`${config.baseUrl}/models`, {
-      headers: { Authorization: `Bearer ${config.apiKey}` },
-      signal: AbortSignal.timeout(10000),
+    // 用一个最小的 chat completion 请求来测试，比 /models 端点更可靠
+    // 因为 /models 在某些提供商上可能不支持或有 CORS 问题
+    const r = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: config.model || 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'hi' }],
+        max_tokens: 1,
+      }),
+      signal: AbortSignal.timeout(15000),
     })
     if (r.ok) {
       const data = await r.json()
-      const count = data?.data?.length || '未知'
-      testResult.value = { ok: true, message: `连接成功，可用模型: ${count} 个` }
+      const model = data?.model || config.model || '未知'
+      testResult.value = { ok: true, message: `连接成功! 模型: ${model}` }
+    } else if (r.status === 401) {
+      testResult.value = { ok: false, message: 'API Key 无效 (401 Unauthorized)' }
+    } else if (r.status === 404) {
+      testResult.value = { ok: false, message: 'API 地址错误，端点不存在 (404)' }
     } else {
-      const text = await r.text()
-      testResult.value = { ok: false, message: `HTTP ${r.status}: ${text.slice(0, 100)}` }
+      let errText = ''
+      try { errText = await r.text() } catch {}
+      testResult.value = { ok: false, message: `HTTP ${r.status}: ${errText.slice(0, 120)}` }
     }
   } catch (e: unknown) {
-    testResult.value = { ok: false, message: `连接失败: ${e instanceof Error ? e.message : String(e)}` }
+    const msg = e instanceof Error ? e.message : String(e)
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS')) {
+      testResult.value = { ok: false, message: '网络错误（可能是跨域限制）。请检查 API 地址是否正确，或在桌面版中测试。' }
+    } else if (msg.includes('timeout') || msg.includes('abort')) {
+      testResult.value = { ok: false, message: '连接超时，请检查 API 地址是否可访问。' }
+    } else {
+      testResult.value = { ok: false, message: `连接失败: ${msg}` }
+    }
   }
   testing.value = false
 }
