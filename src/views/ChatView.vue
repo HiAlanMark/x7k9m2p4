@@ -97,6 +97,7 @@ import { useGfwStore } from '../stores/gfw'
 import { storeToRefs } from 'pinia'
 import { marked } from 'marked'
 import * as api from '../api'
+import { isBrowserMode, browserChat } from '../api'
 
 const chatStore = useChatStore()
 const appStore = useAppStore()
@@ -141,8 +142,8 @@ async function sendMessage() {
   inputText.value = ''
   chatStore.addUserMessage(text)
 
-  // 确保 Agent 运行
-  if (!appStore.agentRunning) {
+  // 确保 Agent 运行 (仅 Tauri 模式)
+  if (!isBrowserMode() && !appStore.agentRunning) {
     isConnecting.value = true
     try {
       await api.agentStart('')
@@ -157,10 +158,25 @@ async function sendMessage() {
 
   chatStore.startAssistantResponse()
 
-  try {
-    await api.agentSendMessage(text, selectedModel.value)
-  } catch (e: unknown) {
-    chatStore.finishResponse()
+  if (isBrowserMode()) {
+    // 浏览器模式：直接调用 gfw.net API 流式对话
+    await browserChat(
+      text,
+      selectedModel.value,
+      (chunk) => chatStore.appendToResponse(chunk),
+      (fullText, usage) => chatStore.finishResponse(usage, selectedModel.value),
+      (err) => {
+        chatStore.finishResponse()
+        chatStore.addSystemMessage(`Error: ${err}`)
+      }
+    )
+  } else {
+    // Tauri 模式：通过 Agent 子进程
+    try {
+      await api.agentSendMessage(text, selectedModel.value)
+    } catch (e: unknown) {
+      chatStore.finishResponse()
+    }
   }
 }
 
