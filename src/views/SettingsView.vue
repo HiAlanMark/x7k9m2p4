@@ -405,14 +405,21 @@ async function testConnection() {
   }
 
   try {
-    // 用一个最小的 chat completion 请求来测试，比 /models 端点更可靠
-    // 因为 /models 在某些提供商上可能不支持或有 CORS 问题
-    const r = await fetch(`${config.baseUrl}/chat/completions`, {
+    // 开发模式下通过 Vite 代理避免 CORS
+    const isDev = import.meta.env?.DEV ?? false
+    let fetchUrl = `${config.baseUrl}/chat/completions`
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${config.apiKey}`,
+      'Content-Type': 'application/json',
+    }
+    if (isDev && config.baseUrl.startsWith('http')) {
+      headers['x-proxy-target'] = config.baseUrl
+      fetchUrl = '/proxy/custom/chat/completions'
+    }
+
+    const r = await fetch(fetchUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         model: config.model || 'gpt-4o-mini',
         messages: [{ role: 'user', content: 'hi' }],

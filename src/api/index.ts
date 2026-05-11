@@ -395,10 +395,12 @@ export async function browserChat(
   customConfig?: { baseUrl: string; apiKey: string; model: string },
 ) {
   // 优先使用传入的自定义配置，否则用 gfw 默认
-  // 自定义 URL 在开发模式下也需要代理（如果是 gfw.net 的话）
+  // 开发模式下所有外部 API 都走 Vite 代理避免 CORS
   let baseUrl = customConfig?.baseUrl || GFW_AI
-  if (isDev && baseUrl.includes('api.gfw.net')) {
-    baseUrl = baseUrl.replace('https://api.gfw.net', '/proxy/gfw')
+  let proxyTarget = ''
+  if (isDev && baseUrl.startsWith('http')) {
+    proxyTarget = baseUrl
+    baseUrl = '/proxy/custom'
   }
   const key = customConfig?.apiKey || gfwApiKey || localStorage.getItem('gfw_api_key')
   const activeModel = customConfig?.model || model
@@ -409,12 +411,17 @@ export async function browserChat(
   }
 
   try {
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    }
+    if (proxyTarget) {
+      headers['x-proxy-target'] = proxyTarget
+    }
+
     const r = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         model: activeModel,
         messages: [{ role: 'user', content }],
