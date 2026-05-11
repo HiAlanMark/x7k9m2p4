@@ -8,16 +8,16 @@
             <span class="terminal-dot red"></span>
             <span class="terminal-dot yellow"></span>
             <span class="terminal-dot green"></span>
-            <span class="terminal-title">hermes</span>
+            <span class="terminal-title">hixns</span>
           </div>
           <div class="terminal-body">
             <div class="terminal-line">
               <span class="t-prompt">$</span>
-              <span class="t-cmd">hermes</span>
+              <span class="t-cmd">hixns</span>
               <span class="t-flag">--interactive</span>
             </div>
             <div class="terminal-line output">
-              <span class="t-text">Hermes Agent v0.1.0</span>
+              <span class="t-text">Hi!XNS Agent v0.1.0</span>
             </div>
             <div class="terminal-line output">
               <span class="t-text dim">56+ models available via gfw.net</span>
@@ -57,7 +57,7 @@
 
         <div v-else-if="msg.role === 'user' || (msg.content && msg.content.trim())" class="msg" :class="msg.role">
           <div class="msg-header">
-            <span class="msg-author" :class="msg.role">{{ msg.role === 'user' ? 'you' : 'hermes' }}</span>
+            <span class="msg-author" :class="msg.role">{{ msg.role === 'user' ? 'you' : 'xns' }}</span>
             <span class="msg-time">{{ formatTime(msg.timestamp) }}</span>
           </div>
 
@@ -105,7 +105,7 @@
       <!-- Streaming -->
       <div v-if="isStreaming" class="msg assistant streaming">
         <div class="msg-header">
-          <span class="msg-author assistant">hermes</span>
+          <span class="msg-author assistant">xns</span>
           <span class="msg-time">now</span>
         </div>
         <div class="msg-content ai-content markdown-body" v-html="renderMarkdown(currentResponse || '')"></div>
@@ -161,7 +161,8 @@ import { useChatStore } from '../stores/chat'
 import { useAppStore } from '../stores/app'
 import { useGfwStore } from '../stores/gfw'
 import { storeToRefs } from 'pinia'
-import { marked } from 'marked'
+import { marked, type Tokens } from 'marked'
+import hljs from 'highlight.js'
 import * as api from '../api'
 import { isBrowserMode, browserChat } from '../api'
 import IconSend from '../components/icons/IconSend.vue'
@@ -183,6 +184,18 @@ const messagesRef = ref<HTMLElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isConnecting = ref(false)
 const inputFocused = ref(false)
+
+// Configure marked with highlight.js
+const renderer = new marked.Renderer()
+renderer.code = function({ text, lang }: Tokens.Code) {
+  const language = lang && hljs.getLanguage(lang) ? lang : ''
+  const highlighted = language
+    ? hljs.highlight(text, { language }).value
+    : hljs.highlightAuto(text).value
+  const displayLang = lang || 'text'
+  return `<div class="code-block"><div class="code-header"><span class="code-lang">${displayLang}</span><button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-block').querySelector('code').textContent).then(()=>{this.textContent='copied!';setTimeout(()=>{this.textContent='copy'},1500)})">copy</button></div><pre><code class="hljs language-${displayLang}">${highlighted}</code></pre></div>`
+}
+marked.setOptions({ renderer })
 
 watch(inputText, async () => {
   await nextTick()
@@ -472,7 +485,68 @@ onMounted(async () => {
   color: var(--color-text-primary);
 }
 
-/* Code - always dark */
+/* Code blocks with syntax highlighting */
+.markdown-body :deep(.code-block) {
+  margin: 12px 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #21262D;
+}
+
+.markdown-body :deep(.code-header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  background: #161B22;
+  border-bottom: 1px solid #21262D;
+}
+
+.markdown-body :deep(.code-lang) {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #7D8590;
+  text-transform: lowercase;
+}
+
+.markdown-body :deep(.code-copy) {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #7D8590;
+  background: transparent;
+  border: 1px solid #30363D;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.markdown-body :deep(.code-copy:hover) {
+  color: #E6EDF3;
+  border-color: #484F58;
+}
+
+.markdown-body :deep(.code-block pre) {
+  background: #0D1117;
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border: none;
+  border-radius: 0;
+}
+
+.markdown-body :deep(.code-block pre code) {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #E6EDF3;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Fallback for pre without code-block wrapper */
 .markdown-body :deep(pre) {
   background: #0D1117;
   border: 1px solid #21262D;
@@ -480,17 +554,62 @@ onMounted(async () => {
   padding: 14px 16px;
   overflow-x: auto;
   margin: 12px 0;
-  position: relative;
 }
 
 .markdown-body :deep(pre code) {
   background: none;
   padding: 0;
+  border: none;
   color: #E6EDF3;
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.6;
 }
+
+/* highlight.js token colors (GitHub Dark) */
+.markdown-body :deep(.hljs-keyword),
+.markdown-body :deep(.hljs-selector-tag),
+.markdown-body :deep(.hljs-built_in),
+.markdown-body :deep(.hljs-type) { color: #FF7B72; }
+
+.markdown-body :deep(.hljs-string),
+.markdown-body :deep(.hljs-addition) { color: #A5D6FF; }
+
+.markdown-body :deep(.hljs-number),
+.markdown-body :deep(.hljs-literal),
+.markdown-body :deep(.hljs-meta .hljs-meta-string) { color: #79C0FF; }
+
+.markdown-body :deep(.hljs-comment),
+.markdown-body :deep(.hljs-deletion) { color: #8B949E; }
+
+.markdown-body :deep(.hljs-function),
+.markdown-body :deep(.hljs-title),
+.markdown-body :deep(.hljs-title.function_) { color: #D2A8FF; }
+
+.markdown-body :deep(.hljs-variable),
+.markdown-body :deep(.hljs-attr),
+.markdown-body :deep(.hljs-params) { color: #FFA657; }
+
+.markdown-body :deep(.hljs-class .hljs-title),
+.markdown-body :deep(.hljs-title.class_) { color: #FFA657; }
+
+.markdown-body :deep(.hljs-symbol),
+.markdown-body :deep(.hljs-bullet) { color: #7EE787; }
+
+.markdown-body :deep(.hljs-regexp) { color: #7EE787; }
+
+.markdown-body :deep(.hljs-selector-class),
+.markdown-body :deep(.hljs-selector-attr),
+.markdown-body :deep(.hljs-selector-pseudo) { color: #D2A8FF; }
+
+.markdown-body :deep(.hljs-template-tag),
+.markdown-body :deep(.hljs-template-variable) { color: #FFA657; }
+
+.markdown-body :deep(.hljs-doctag) { color: #FF7B72; }
+
+.markdown-body :deep(.hljs-tag) { color: #7EE787; }
+.markdown-body :deep(.hljs-name) { color: #7EE787; }
+.markdown-body :deep(.hljs-attribute) { color: #79C0FF; }
 
 .markdown-body :deep(code) {
   background: var(--color-bg-input);

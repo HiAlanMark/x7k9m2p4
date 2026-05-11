@@ -4,7 +4,7 @@
       <!-- Brand -->
       <div class="sidebar-brand">
         <div class="brand-mark">H</div>
-        <span class="brand-name">hermes</span>
+        <span class="brand-name">Hi!XNS</span>
         <span class="brand-version">v0.1</span>
       </div>
 
@@ -222,7 +222,7 @@ body {
 }
 
 .brand-mark {
-  width: 28px;
+  width: 32px;
   height: 28px;
   display: flex;
   align-items: center;
@@ -231,8 +231,9 @@ body {
   color: var(--color-bg-page);
   border-radius: 6px;
   font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
   flex-shrink: 0;
 }
 

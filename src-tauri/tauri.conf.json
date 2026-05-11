@@ -1,7 +1,7 @@
 {
-  "productName": "Hermes Desktop",
+  "productName": "Hi!XNS",
   "version": "0.1.0",
-  "identifier": "com.hermes.desktop",
+  "identifier": "com.hixns.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "Hermes Desktop",
+        "title": "Hi!XNS",
         "width": 1280,
         "height": 860,
         "minWidth": 900,
