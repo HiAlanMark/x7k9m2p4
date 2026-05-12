@@ -405,6 +405,7 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 	toolCallRe := regexp.MustCompile(`(?s)<tool_call>\s*(\{.*?\})\s*</tool_call>`)
 
 	for iter := 0; iter < maxIter; iter++ {
+		log.Printf("[agentLoop] 开始第 %d 轮，消息数: %d", iter, len(messages))
 		// 纯文本请求 — 不使用 API 的 tools 参数，兼容所有模型
 		body := map[string]any{
 			"model":    model,
@@ -480,6 +481,7 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 
 		if len(matches) == 0 {
 			// 没有工具调用 — 直接推送文本并结束
+			log.Printf("[agentLoop] iter=%d 无工具调用，推送文本 (%d 字符)", iter, len(text))
 			sse.send(map[string]any{"type": "text", "content": text})
 			messages = append(messages, map[string]any{"role": "assistant", "content": text})
 			sse.send(map[string]any{"type": "done", "content": text})
@@ -487,6 +489,7 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 		}
 
 		// 有工具调用 — 先推送工具调用之前的文本
+		log.Printf("[agentLoop] iter=%d 检测到 %d 个工具调用", iter, len(matches))
 		firstIdx := strings.Index(text, "<tool_call>")
 		if firstIdx > 0 {
 			prefix := strings.TrimSpace(text[:firstIdx])
@@ -526,8 +529,16 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 		}
 
 		// 把 assistant 消息和工具结果追加到消息列表
-		messages = append(messages, map[string]any{"role": "assistant", "content": text})
-		messages = append(messages, map[string]any{"role": "user", "content": "以下是工具调用的结果，请根据结果回答用户的问题：" + toolResults.String()})
+		// 注意：不要把原始 <tool_call> 标签放到 assistant 消息里
+		// 用干净的描述替代，避免模型在第二轮困惑
+		var cleanAssistant strings.Builder
+		if firstIdx > 0 {
+			cleanAssistant.WriteString(strings.TrimSpace(text[:firstIdx]))
+			cleanAssistant.WriteString("\n\n")
+		}
+		cleanAssistant.WriteString("[已调用工具并获取结果]")
+		messages = append(messages, map[string]any{"role": "assistant", "content": cleanAssistant.String()})
+		messages = append(messages, map[string]any{"role": "user", "content": "以下是工具调用的结果，请根据结果用中文详细回答用户的问题：" + toolResults.String()})
 	}
 
 	sse.send(map[string]any{"type": "error", "message": fmt.Sprintf("Agent 已达最大迭代次数 (%d)", maxIter)})
