@@ -104,53 +104,68 @@
                   @click="providerMode = 'gfw'; chatStore.setProviderMode('gfw')"
                 >
                   <IconStar :size="16" />
-                  <span>gfw.net (内置)</span>
+                  <span>GFW.NET 内置</span>
                 </button>
                 <button
                   :class="['provider-tab', { active: providerMode === 'custom' }]"
                   @click="providerMode = 'custom'; chatStore.setProviderMode('custom')"
                 >
                   <IconSettings :size="16" />
-                  <span>自定义 API</span>
+                  <span>自定义提供商</span>
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- gfw.net 模式 -->
+          <!-- GFW.NET 模式 -->
           <div v-if="providerMode === 'gfw'" class="card">
             <div class="card-header">
-              <span class="card-header-tag default">默认</span>
-              <span>gfw.net 模型服务</span>
+              <span class="card-header-tag default">GFW.NET</span>
+              <span>内置模型服务</span>
             </div>
             <div class="card-body">
-              <p class="hint-text">使用 gfw.net 内置的 API 中转服务，支持 56+ 模型，需要先在账户页面登录。</p>
+              <p class="hint-text">GFW.NET 提供 {{ gfwModels.length || '40+' }} 个模型的 API 中转服务，支持 OpenAI、Anthropic、DeepSeek、Qwen 等主流厂商。</p>
+
               <div class="form-row">
-                <label class="form-label">默认模型</label>
-                <div class="form-input-wrap">
-                  <select v-model="selectedModel" class="form-select">
-                    <option v-for="m in featuredModels" :key="m.id" :value="m.id">
-                      {{ m.name }} ({{ m.provider }}) - 上下文 {{ formatContext(m.context_window) }}
-                    </option>
-                  </select>
-                </div>
+                <label class="form-label">GFW API Key</label>
+                <input v-model="gfwApiKey" type="password" placeholder="gfw-..." class="form-input" />
+                <p class="form-hint">在 gfw.net 控制台获取 API Key</p>
               </div>
+
               <div class="form-row">
-                <label class="form-label">上下文长度</label>
-                <input v-model.number="contextLength" type="number" class="form-input" style="max-width: 200px;" />
-              </div>
-              <div class="form-row">
-                <label class="form-label">流式输出</label>
-                <label class="toggle">
-                  <input v-model="streaming" type="checkbox" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ streaming ? '已启用' : '已关闭' }}</span>
+                <label class="form-label">
+                  模型选择
+                  <button class="sync-btn" @click="syncGfwModels" :disabled="gfwSyncing" title="从 GFW.NET 同步模型列表">
+                    {{ gfwSyncing ? '同步中...' : '同步模型' }}
+                  </button>
                 </label>
+                <select v-model="selectedModel" class="form-select" v-if="gfwModels.length > 0">
+                  <option v-for="m in gfwModels" :key="m.model_code" :value="m.model_code">
+                    {{ m.model_name }} ({{ m.provider }}) {{ m.input_price ? '¥' + m.input_price + '/M' : '免费' }}
+                  </option>
+                </select>
+                <input v-else v-model="selectedModel" type="text" placeholder="输入模型名称，或点击同步获取列表" class="form-input" />
+              </div>
+
+              <!-- 当前选中模型的详情 -->
+              <div v-if="selectedGfwModel" class="model-detail">
+                <div class="detail-row">
+                  <span class="detail-label">提供商</span>
+                  <span class="detail-value">{{ selectedGfwModel.provider }}</span>
+                </div>
+                <div class="detail-row" v-if="selectedGfwModel.input_price">
+                  <span class="detail-label">价格</span>
+                  <span class="detail-value">输入 ¥{{ selectedGfwModel.input_price }}/M · 输出 ¥{{ selectedGfwModel.output_price }}/M</span>
+                </div>
+                <div class="detail-row" v-if="selectedGfwModel.context_length">
+                  <span class="detail-label">上下文</span>
+                  <span class="detail-value">{{ formatContext(selectedGfwModel.context_length) }}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- 自定义 API 模式 -->
+          <!-- 自定义提供商模式 -->
           <div v-if="providerMode === 'custom'" class="card">
             <div class="card-header">
               <span class="card-header-tag custom">自定义</span>
@@ -158,40 +173,38 @@
             </div>
             <div class="card-body">
               <p class="hint-text">
-                接入任何兼容 OpenAI API 格式的服务（如 OpenAI、Anthropic、DeepSeek、Ollama、vLLM 等）。
+                接入任何兼容 OpenAI API 格式的服务。配置方式与 Hermes Agent 的 custom_providers 完全一致。
               </p>
+
               <div class="form-row">
-                <label class="form-label">名称</label>
-                <input v-model="customName" type="text" placeholder="例如: OpenAI / DeepSeek / 本地 Ollama" class="form-input" />
+                <label class="form-label">提供商名称</label>
+                <input v-model="customName" type="text" placeholder="例如: my-openai / deepseek / local-ollama" class="form-input" />
+                <p class="form-hint">用于标识此提供商，可自定义</p>
               </div>
               <div class="form-row">
                 <label class="form-label">API Base URL</label>
-                <input v-model="customBaseUrl" type="text" placeholder="例如: https://api.openai.com/v1" class="form-input" />
+                <input v-model="customBaseUrl" type="text" placeholder="https://api.openai.com/v1" class="form-input" />
+                <p class="form-hint">API 端点地址，必须以 /v1 结尾</p>
               </div>
               <div class="form-row">
                 <label class="form-label">API Key</label>
                 <input v-model="customApiKey" type="password" placeholder="sk-..." class="form-input" />
+                <p class="form-hint">提供商的 API 密钥</p>
               </div>
               <div class="form-row">
-                <label class="form-label">模型名称</label>
-                <input v-model="customModel" type="text" placeholder="例如: gpt-4o / deepseek-chat / llama3" class="form-input" />
+                <label class="form-label">默认模型</label>
+                <input v-model="customModel" type="text" placeholder="gpt-4o / deepseek-chat / qwen-plus / llama3" class="form-input" />
+                <p class="form-hint">模型 ID，参考提供商文档</p>
               </div>
               <div class="form-row">
                 <label class="form-label">上下文长度</label>
                 <input v-model.number="contextLength" type="number" class="form-input" style="max-width: 200px;" />
-              </div>
-              <div class="form-row">
-                <label class="form-label">流式输出</label>
-                <label class="toggle">
-                  <input v-model="streaming" type="checkbox" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ streaming ? '已启用' : '已关闭' }}</span>
-                </label>
+                <p class="form-hint">模型的最大上下文窗口（token 数）</p>
               </div>
 
-              <!-- 预设快捷填充 -->
+              <!-- Hermes 风格的预设提供商 -->
               <div class="presets-section">
-                <span class="presets-label">快速填充：</span>
+                <span class="presets-label">快速预设：</span>
                 <button v-for="preset in providerPresets" :key="preset.name" class="preset-btn" @click="applyPreset(preset)">
                   {{ preset.name }}
                 </button>
@@ -199,7 +212,7 @@
             </div>
           </div>
 
-          <!-- 连接测试 -->
+          <!-- 连接测试 + 保存 -->
           <div class="card" style="margin-top: 16px;">
             <div class="card-body">
               <div class="test-row">
@@ -370,6 +383,41 @@ const testing = ref(false)
 const testResult = ref<{ ok: boolean; message: string } | null>(null)
 const saveSuccess = ref(false)
 
+// GFW 模型列表
+const gfwApiKey = ref(localStorage.getItem('gfw_api_key') || '')
+const gfwModels = ref<any[]>([])
+const gfwSyncing = ref(false)
+
+const selectedGfwModel = computed(() => {
+  return gfwModels.value.find(m => m.model_code === selectedModel.value) || null
+})
+
+async function syncGfwModels() {
+  gfwSyncing.value = true
+  try {
+    const isDev = import.meta.env?.DEV ?? false
+    const base = isDev ? '/proxy/gfw/api/v1' : 'https://api.gfw.net/api/v1'
+    const r = await fetch(`${base}/models`)
+    const body = await r.json()
+    gfwModels.value = (body.data?.models || []).sort((a: any, b: any) => {
+      // featured 优先，然后按 provider 分组
+      if (a.is_featured !== b.is_featured) return b.is_featured ? 1 : -1
+      return (a.provider || '').localeCompare(b.provider || '')
+    })
+    localStorage.setItem('gfw_models_cache', JSON.stringify(gfwModels.value))
+  } catch (e) {
+    console.error('同步模型失败:', e)
+  } finally {
+    gfwSyncing.value = false
+  }
+}
+
+// 从缓存加载 GFW 模型列表
+try {
+  const cached = localStorage.getItem('gfw_models_cache')
+  if (cached) gfwModels.value = JSON.parse(cached)
+} catch { /* ignore */ }
+
 // 预设提供商
 const providerPresets = [
   { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' },
@@ -456,14 +504,16 @@ async function testConnection() {
 }
 
 function saveModelSettings() {
-  if (providerMode.value === 'custom') {
+  if (providerMode.value === 'gfw') {
+    // 保存 GFW API Key
+    localStorage.setItem('gfw_api_key', gfwApiKey.value)
+  } else if (providerMode.value === 'custom') {
     chatStore.setCustomProvider({
       name: customName.value,
       baseUrl: customBaseUrl.value,
       apiKey: customApiKey.value,
       model: customModel.value,
     })
-    // 自定义模式下更新 selectedModel 为自定义模型名
     chatStore.selectedModel = customModel.value
   }
   chatStore.setProviderMode(providerMode.value)
@@ -1120,6 +1170,63 @@ onMounted(async () => {
 }
 
 /* Test connection */
+
+/* Model detail */
+.model-detail {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--color-bg-input);
+  border-radius: var(--radius-btn);
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 12px;
+}
+
+.detail-label {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.detail-value {
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.sync-btn {
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.sync-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.sync-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.form-hint {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin: 4px 0 0;
+}
 .test-row {
   display: flex;
   align-items: center;
