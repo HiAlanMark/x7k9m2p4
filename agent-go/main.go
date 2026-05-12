@@ -1022,6 +1022,7 @@ type hermesInfo struct {
 	Version   string `json:"version,omitempty"`
 	SourceDir string `json:"source_dir,omitempty"`
 	SkillsDir string `json:"skills_dir"`
+	Source    string `json:"source"` // "bundled" | "system" | "user" | ""
 }
 
 func detectHermes() hermesInfo {
@@ -1120,7 +1121,14 @@ func detectHermes() hermesInfo {
 
 	// 判断来源
 	if strings.Contains(info.Path, "bundled") {
+		info.Source = "bundled"
 		info.Version += " (内嵌)"
+	} else if strings.Contains(info.Path, ".hermes") {
+		info.Source = "user"
+		info.Version += " (用户安装)"
+	} else {
+		info.Source = "system"
+		info.Version += " (系统安装)"
 	}
 
 	return info
