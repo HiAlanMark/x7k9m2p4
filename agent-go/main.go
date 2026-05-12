@@ -4,6 +4,7 @@
 package main
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"context"
@@ -622,6 +623,155 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	flusher.Flush()
 }
 
+// ============================================================
+// Skill Install Handler
+// ============================================================
+
+func handleInstallSkill(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+
+	var body struct {
+		Slug     string `json:"slug"`
+		Category string `json:"category"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, `{"error":"无效的 JSON"}`, 400)
+		return
+	}
+	if body.Slug == "" {
+		http.Error(w, `{"error":"slug 不能为空"}`, 400)
+		return
+	}
+
+	log.Printf("[install-skill] 开始安装: %s (分类: %s)", body.Slug, body.Category)
+
+	// 1. 下载 ZIP
+	downloadURL := fmt.Sprintf("https://api.2x.com.cn/api/v1/skills/%s/download-file", body.Slug)
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return nil // follow redirects
+		},
+	}
+
+	resp, err := client.Get(downloadURL)
+	if err != nil {
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(map[string]any{"error": "下载失败: " + err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		w.WriteHeader(resp.StatusCode)
+		json.NewEncoder(w).Encode(map[string]any{"error": fmt.Sprintf("下载失败 (%d)", resp.StatusCode)})
+		return
+	}
+
+	zipData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(map[string]any{"error": "读取下载内容失败"})
+		return
+	}
+
+	log.Printf("[install-skill] 已下载 %d 字节", len(zipData))
+
+	// 2. 解析 ZIP，提取 _meta.json 和 SKILL.md frontmatter 确定分类
+	zipReader, err := newZipReader(zipData)
+	if err != nil {
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(map[string]any{"error": "ZIP 文件无效"})
+		return
+	}
+
+	// 确定安装目录
+	category := body.Category
+	if category == "" {
+		category = "community" // 默认分类
+	}
+	// 清理分类名（去除中文空格等，转小写英文）
+	category = sanitizeCategory(category)
+
+	skillsDir := filepath.Join(getHome(), ".hermes", "skills", category)
+	installDir := filepath.Join(skillsDir, body.Slug)
+
+	// 3. 创建目录并解压
+	os.MkdirAll(installDir, 0755)
+
+	fileCount := 0
+	for _, f := range zipReader.File {
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(filepath.Join(installDir, f.Name), 0755)
+			continue
+		}
+
+		// 安全检查：防止路径穿越
+		destPath := filepath.Join(installDir, f.Name)
+		if !strings.HasPrefix(destPath, installDir) {
+			continue
+		}
+
+		os.MkdirAll(filepath.Dir(destPath), 0755)
+		rc, err := f.Open()
+		if err != nil {
+			continue
+		}
+		data, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			continue
+		}
+		os.WriteFile(destPath, data, 0644)
+		fileCount++
+	}
+
+	log.Printf("[install-skill] 已安装到 %s (%d 个文件)", installDir, fileCount)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"success":  true,
+		"slug":     body.Slug,
+		"path":     installDir,
+		"files":    fileCount,
+		"category": category,
+	})
+}
+
+func newZipReader(data []byte) (*zip.Reader, error) {
+	return zip.NewReader(bytes.NewReader(data), int64(len(data)))
+}
+
+func sanitizeCategory(cat string) string {
+	// 常见中文分类映射到英文目录名
+	catMap := map[string]string{
+		"AI 智能": "ai", "ai 智能": "ai", "AI智能": "ai",
+		"效率提升": "productivity", "效率": "productivity",
+		"开发工具": "devtools", "开发": "devtools",
+		"浏览器自动化": "browser-automation",
+		"安全合规": "security", "安全": "security",
+		"知识管理": "knowledge", "知识": "knowledge",
+		"通讯协作": "communication", "通讯": "communication",
+		"数据分析": "data", "数据": "data",
+		"内容创作": "creative", "创意": "creative",
+		"搜索研究": "research", "研究": "research",
+	}
+	if mapped, ok := catMap[cat]; ok {
+		return mapped
+	}
+	// 如果已经是英文就直接用
+	clean := strings.ToLower(strings.TrimSpace(cat))
+	clean = strings.ReplaceAll(clean, " ", "-")
+	if clean == "" {
+		return "community"
+	}
+	return clean
+}
+
 func setCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
@@ -728,6 +878,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/agent/health", handleHealth)
 	mux.HandleFunc("/v1/agent/chat", handleChat)
+	mux.HandleFunc("/v1/agent/install-skill", handleInstallSkill)
 
 	addr := host + ":" + port
 

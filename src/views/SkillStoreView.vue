@@ -318,24 +318,29 @@ async function openDetail(skill: TwoXSkill) {
 }
 
 async function installSkill(skill: TwoXSkill) {
+  showToast(`正在安装 ${skill.name}...`, 'success')
   try {
-    const url = await api.twoXGetDownloadUrl(skill.slug)
-    // In Tauri: invoke download + install. In browser: open URL
-    if ((window as any).__TAURI_INTERNALS__) {
-      showToast(`正在安装 ${skill.name}...`, 'success')
-      // TODO: invoke Tauri command to download & install skill
+    const isDev = import.meta.env?.DEV ?? false
+    const agentUrl = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
+    const r = await fetch(`${agentUrl}/v1/agent/install-skill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: skill.slug, category: skill.category || '' }),
+    })
+    const data = await r.json()
+    if (data.success) {
+      showToast(`${skill.name} 安装成功 (${data.files} 个文件)`, 'success')
     } else {
-      window.open(url, '_blank')
-      showToast(`已打开下载链接: ${skill.name}`, 'success')
+      const errMsg = data.error || '未知错误'
+      if (errMsg.includes('429') || errMsg.includes('401') || errMsg.includes('403')) {
+        rateLimited.value = true
+        showToast('下载受限，请前往设置绑定 2x CLI Token', 'warn')
+      } else {
+        showToast(`安装失败: ${errMsg}`, 'error')
+      }
     }
   } catch (e: any) {
-    const msg = e?.message || String(e)
-    if (msg.includes('429') || msg.includes('rate') || msg.includes('limit') || msg.includes('401') || msg.includes('403')) {
-      rateLimited.value = true
-      showToast('下载受限，请前往设置绑定 2x CLI Token', 'warn')
-    } else {
-      showToast(`安装失败: ${msg}`, 'error')
-    }
+    showToast(`安装失败: Agent 未启动或网络错误`, 'error')
   }
 }
 
