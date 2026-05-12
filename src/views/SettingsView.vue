@@ -215,21 +215,26 @@
               <div class="form-row">
                 <label class="form-label">API Base URL</label>
                 <input v-model="customBaseUrl" type="text" placeholder="https://api.openai.com/v1" class="form-input" :disabled="customUpstream !== '__manual__'" />
-                <p class="form-hint" v-if="customUpstream !== '__manual__'">已自动填入，切换「手动输入」可修改</p>
               </div>
               <div class="form-row">
                 <label class="form-label">API Key</label>
                 <input v-model="customApiKey" type="password" placeholder="sk-..." class="form-input" />
               </div>
               <div class="form-row">
-                <label class="form-label">模型</label>
-                <div v-if="currentPresetModels.length > 0" class="model-select-group">
-                  <select v-model="customModel" class="form-select">
-                    <option v-for="m in currentPresetModels" :key="m" :value="m">{{ m }}</option>
-                  </select>
-                  <p class="form-hint">可直接编辑输入其他模型 ID</p>
-                </div>
+                <label class="form-label">
+                  模型
+                  <button
+                    v-if="customUpstream !== '__manual__'"
+                    class="sync-btn"
+                    @click="fetchUpstreamModels"
+                    :disabled="upstreamModelsSyncing"
+                  >{{ upstreamModelsSyncing ? '获取中...' : '获取模型列表' }}</button>
+                </label>
+                <select v-if="upstreamModels.length > 0" v-model="customModel" class="form-select">
+                  <option v-for="m in upstreamModels" :key="m" :value="m">{{ m }}</option>
+                </select>
                 <input v-else v-model="customModel" type="text" placeholder="gpt-4o / deepseek-chat / qwen-plus" class="form-input" />
+                <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
               </div>
               <div class="form-row">
                 <label class="form-label">上下文长度</label>
@@ -463,42 +468,90 @@ try {
   if (cached) gfwModels.value = JSON.parse(cached)
 } catch { /* ignore */ }
 
-// 预设提供商（含常用模型列表）
+// 预设提供商（对齐 Hermes Agent 支持的上游列表）
 const providerPresets = [
-  { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'o4-mini', 'o3', 'o3-mini', 'gpt-4-turbo'] },
-  { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', models: ['deepseek-chat', 'deepseek-reasoner'] },
-  { name: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514', models: ['claude-sonnet-4-20250514', 'claude-opus-4-20250514', 'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-20241022'] },
-  { name: 'Ollama', baseUrl: 'http://localhost:11434/v1', model: 'llama3', models: ['llama3', 'llama3.1', 'qwen2.5', 'deepseek-r1', 'gemma2', 'mistral', 'phi3'] },
-  { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'openai/gpt-4o', models: ['openai/gpt-4o', 'anthropic/claude-sonnet-4', 'google/gemini-2.5-pro', 'deepseek/deepseek-chat-v3'] },
-  { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile', models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'] },
-  { name: 'Qwen (DashScope)', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', models: ['qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-long', 'qwen3-235b-a22b'] },
+  { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' },
+  { name: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514' },
+  { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  { name: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-pro' },
+  { name: 'xAI / Grok', baseUrl: 'https://api.x.ai/v1', model: 'grok-3' },
+  { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'openai/gpt-4o' },
+  { name: 'Qwen (DashScope)', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+  { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile' },
+  { name: 'Hugging Face', baseUrl: 'https://api-inference.huggingface.co/v1', model: 'meta-llama/Llama-3.3-70B-Instruct' },
+  { name: 'MiniMax', baseUrl: 'https://api.minimax.chat/v1', model: 'MiniMax-M1' },
+  { name: 'Kimi / Moonshot', baseUrl: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-auto' },
+  { name: 'Z.AI / GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-plus' },
+  { name: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1', model: 'llama3' },
 ]
 
 const customUpstream = ref<string>(
   providerPresets.find(p => p.name === customProvider.value.name)?.name || '__manual__'
 )
 
-// 当前上游对应的模型列表
-const currentPresetModels = computed(() => {
-  const preset = providerPresets.find(p => p.name === customUpstream.value)
-  return preset?.models || []
-})
+// 实时从上游 /models 接口获取的模型列表
+const upstreamModels = ref<string[]>([])
+const upstreamModelsSyncing = ref(false)
+const upstreamModelsError = ref('')
+
+async function fetchUpstreamModels() {
+  const baseUrl = customBaseUrl.value
+  const apiKey = customApiKey.value
+  if (!baseUrl) { upstreamModelsError.value = '请先填写 API Base URL'; return }
+  if (!apiKey) { upstreamModelsError.value = '请先填写 API Key'; return }
+
+  upstreamModelsSyncing.value = true
+  upstreamModelsError.value = ''
+
+  try {
+    const isDev = import.meta.env?.DEV ?? false
+    let fetchUrl = `${baseUrl}/models`
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${apiKey}`,
+    }
+    if (isDev && baseUrl.startsWith('http')) {
+      headers['x-proxy-target'] = baseUrl
+      fetchUrl = '/proxy/custom/models'
+    }
+
+    const r = await fetch(fetchUrl, {
+      headers,
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!r.ok) {
+      upstreamModelsError.value = `HTTP ${r.status}: 获取模型列表失败`
+      return
+    }
+    const body = await r.json()
+    const modelList: string[] = (body.data || [])
+      .map((m: any) => m.id || m.model || '')
+      .filter((id: string) => id)
+      .sort()
+    if (modelList.length === 0) {
+      upstreamModelsError.value = '未获取到模型列表'
+      return
+    }
+    upstreamModels.value = modelList
+    // 如果当前选的模型不在列表中，自动选第一个
+    if (!modelList.includes(customModel.value)) {
+      customModel.value = modelList[0]
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    upstreamModelsError.value = `获取失败: ${msg}`
+  } finally {
+    upstreamModelsSyncing.value = false
+  }
+}
 
 function selectUpstream(preset: { name: string; baseUrl: string; model: string }) {
   customUpstream.value = preset.name
   customName.value = preset.name
   customBaseUrl.value = preset.baseUrl
-  // 如果当前模型不在新列表中，切换到默认模型
-  const presetObj = providerPresets.find(p => p.name === preset.name)
-  if (presetObj && !presetObj.models.includes(customModel.value)) {
-    customModel.value = preset.model
-  }
-}
-
-function applyPreset(preset: { name: string; baseUrl: string; model: string }) {
-  customName.value = preset.name
-  customBaseUrl.value = preset.baseUrl
   customModel.value = preset.model
+  // 切换上游时清空之前获取的模型列表
+  upstreamModels.value = []
+  upstreamModelsError.value = ''
 }
 
 async function testConnection() {

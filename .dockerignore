@@ -1,0 +1,41 @@
+# 版本控制
+.git
+.gitignore
+
+# 依赖目录（容器内重新安装）
+node_modules
+
+# 构建产物（容器内重新构建）
+dist
+build
+
+# 开发 & 编辑器配置
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+
+# 环境变量文件（不应打包进镜像）
+.env
+.env.*
+!.env.example
+
+# Docker 相关
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# 文档 & 测试
+README.md
+LICENSE
+docs
+coverage
+__tests__
+*.test.js
+*.spec.js
+
+# 日志
+logs
+*.log
+npm-debug.log*
