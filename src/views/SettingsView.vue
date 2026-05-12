@@ -191,42 +191,49 @@
               <span>自定义 API 提供商</span>
             </div>
             <div class="card-body">
-              <p class="hint-text">
-                接入任何兼容 OpenAI API 格式的服务。配置方式与 Hermes Agent 的 custom_providers 完全一致。
-              </p>
-
+              <!-- 上游选择 -->
               <div class="form-row">
+                <label class="form-label">上游提供商</label>
+                <div class="provider-chips">
+                  <button
+                    v-for="preset in providerPresets"
+                    :key="preset.name"
+                    :class="['chip', { active: customUpstream === preset.name }]"
+                    @click="selectUpstream(preset)"
+                  >{{ preset.name }}</button>
+                  <button
+                    :class="['chip', { active: customUpstream === '__manual__' }]"
+                    @click="customUpstream = '__manual__'"
+                  >手动输入</button>
+                </div>
+              </div>
+
+              <div class="form-row" v-if="customUpstream === '__manual__'">
                 <label class="form-label">提供商名称</label>
-                <input v-model="customName" type="text" placeholder="例如: my-openai / deepseek / local-ollama" class="form-input" />
-                <p class="form-hint">用于标识此提供商，可自定义</p>
+                <input v-model="customName" type="text" placeholder="my-provider" class="form-input" />
               </div>
               <div class="form-row">
                 <label class="form-label">API Base URL</label>
-                <input v-model="customBaseUrl" type="text" placeholder="https://api.openai.com/v1" class="form-input" />
-                <p class="form-hint">API 端点地址，必须以 /v1 结尾</p>
+                <input v-model="customBaseUrl" type="text" placeholder="https://api.openai.com/v1" class="form-input" :disabled="customUpstream !== '__manual__'" />
+                <p class="form-hint" v-if="customUpstream !== '__manual__'">已自动填入，切换「手动输入」可修改</p>
               </div>
               <div class="form-row">
                 <label class="form-label">API Key</label>
                 <input v-model="customApiKey" type="password" placeholder="sk-..." class="form-input" />
-                <p class="form-hint">提供商的 API 密钥</p>
               </div>
               <div class="form-row">
-                <label class="form-label">默认模型</label>
-                <input v-model="customModel" type="text" placeholder="gpt-4o / deepseek-chat / qwen-plus / llama3" class="form-input" />
-                <p class="form-hint">模型 ID，参考提供商文档</p>
+                <label class="form-label">模型</label>
+                <div v-if="currentPresetModels.length > 0" class="model-select-group">
+                  <select v-model="customModel" class="form-select">
+                    <option v-for="m in currentPresetModels" :key="m" :value="m">{{ m }}</option>
+                  </select>
+                  <p class="form-hint">可直接编辑输入其他模型 ID</p>
+                </div>
+                <input v-else v-model="customModel" type="text" placeholder="gpt-4o / deepseek-chat / qwen-plus" class="form-input" />
               </div>
               <div class="form-row">
                 <label class="form-label">上下文长度</label>
                 <input v-model.number="contextLength" type="number" class="form-input" style="max-width: 200px;" />
-                <p class="form-hint">模型的最大上下文窗口（token 数）</p>
-              </div>
-
-              <!-- Hermes 风格的预设提供商 -->
-              <div class="presets-section">
-                <span class="presets-label">快速预设：</span>
-                <button v-for="preset in providerPresets" :key="preset.name" class="preset-btn" @click="applyPreset(preset)">
-                  {{ preset.name }}
-                </button>
               </div>
             </div>
           </div>
@@ -456,15 +463,37 @@ try {
   if (cached) gfwModels.value = JSON.parse(cached)
 } catch { /* ignore */ }
 
-// 预设提供商
+// 预设提供商（含常用模型列表）
 const providerPresets = [
-  { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' },
-  { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-  { name: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514' },
-  { name: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1', model: 'llama3' },
-  { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'openai/gpt-4o' },
-  { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile' },
+  { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'o4-mini', 'o3', 'o3-mini', 'gpt-4-turbo'] },
+  { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', models: ['deepseek-chat', 'deepseek-reasoner'] },
+  { name: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514', models: ['claude-sonnet-4-20250514', 'claude-opus-4-20250514', 'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-20241022'] },
+  { name: 'Ollama', baseUrl: 'http://localhost:11434/v1', model: 'llama3', models: ['llama3', 'llama3.1', 'qwen2.5', 'deepseek-r1', 'gemma2', 'mistral', 'phi3'] },
+  { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'openai/gpt-4o', models: ['openai/gpt-4o', 'anthropic/claude-sonnet-4', 'google/gemini-2.5-pro', 'deepseek/deepseek-chat-v3'] },
+  { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile', models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'] },
+  { name: 'Qwen (DashScope)', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', models: ['qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-long', 'qwen3-235b-a22b'] },
 ]
+
+const customUpstream = ref<string>(
+  providerPresets.find(p => p.name === customProvider.value.name)?.name || '__manual__'
+)
+
+// 当前上游对应的模型列表
+const currentPresetModels = computed(() => {
+  const preset = providerPresets.find(p => p.name === customUpstream.value)
+  return preset?.models || []
+})
+
+function selectUpstream(preset: { name: string; baseUrl: string; model: string }) {
+  customUpstream.value = preset.name
+  customName.value = preset.name
+  customBaseUrl.value = preset.baseUrl
+  // 如果当前模型不在新列表中，切换到默认模型
+  const presetObj = providerPresets.find(p => p.name === preset.name)
+  if (presetObj && !presetObj.models.includes(customModel.value)) {
+    customModel.value = preset.model
+  }
+}
 
 function applyPreset(preset: { name: string; baseUrl: string; model: string }) {
   customName.value = preset.name
@@ -1190,5 +1219,14 @@ onMounted(async () => {
   font-size: 9px;
   color: var(--color-text-tertiary);
   font-weight: 400;
+}
+
+.model-select-group {
+  width: 100%;
+}
+
+.form-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
