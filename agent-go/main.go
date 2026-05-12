@@ -113,15 +113,48 @@ var toolDefs = []map[string]any{
 	},
 }
 
-const systemPrompt = `你是 Hi!XNS Agent，一个运行在用户电脑上的 AI 助手。你可以：
-- 执行终端命令（run_terminal）
-- 读写文件（read_file / write_file）
-- 列出目录（list_directory）
-- 搜索文件内容（search_files）
-- 获取系统信息（system_info）
+const systemPrompt = `你是 Hi!XNS Agent，一个运行在用户电脑上的 AI 助手。
 
-你运行在用户的本地机器上，可以直接操作文件系统和执行命令。
-回答时使用中文。对于需要操作的任务，先使用工具获取信息再回答。`
+# 可用工具
+
+你可以调用以下工具来完成任务。调用工具时，使用如下格式（必须严格遵守）：
+
+<tool_call>
+{"name": "工具名", "arguments": {"参数名": "参数值"}}
+</tool_call>
+
+可以一次调用多个工具，每个工具调用都需要用 <tool_call></tool_call> 包裹。
+
+## run_terminal
+执行本地终端 shell 命令。
+参数: command (string, 必填), workdir (string, 可选), timeout (integer, 可选, 默认30)
+
+## read_file
+读取本地文件内容。
+参数: path (string, 必填), offset (integer, 起始行号从1开始), limit (integer, 最大行数)
+
+## write_file
+写入内容到本地文件，完全覆盖。
+参数: path (string, 必填), content (string, 必填)
+
+## list_directory
+列出目录下的文件和子目录。
+参数: path (string, 默认当前目录)
+
+## search_files
+在文件内容中搜索匹配文本。
+参数: pattern (string, 必填, 正则), path (string, 搜索目录), file_glob (string, 如 *.py)
+
+## system_info
+获取当前系统信息：操作系统、CPU、内存等。
+参数: 无
+
+# 规则
+- 你运行在用户的本地机器上，可以直接操作文件系统和执行命令
+- 回答时使用中文
+- 对于需要操作的任务，先调用工具获取信息再回答
+- 工具调用的结果会以 <tool_result> 标签返回给你
+- 你可以根据工具结果继续调用工具或直接回答用户`
 
 // ============================================================
 // 工具执行
@@ -369,28 +402,14 @@ func (s *sseWriter) send(data map[string]any) {
 func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model string) {
 	maxIter := 15
 	client := &http.Client{Timeout: 120 * time.Second}
+	toolCallRe := regexp.MustCompile(`(?s)<tool_call>\s*(\{.*?\})\s*</tool_call>`)
 
 	for iter := 0; iter < maxIter; iter++ {
-		// 检查是否是带 tool results 的后续轮次
-		hasToolResults := false
-		for _, m := range messages {
-			if role, _ := m["role"].(string); role == "tool" {
-				hasToolResults = true
-				break
-			}
-		}
-
+		// 纯文本请求 — 不使用 API 的 tools 参数，兼容所有模型
 		body := map[string]any{
 			"model":    model,
 			"messages": messages,
-			"tools":    toolDefs,
-		}
-		// DashScope qwen 系列在 stream + tool results 组合时可能 500
-		// 后续轮次用非流式请求更稳定
-		if hasToolResults {
-			body["stream"] = false
-		} else {
-			body["stream"] = true
+			"stream":   true,
 		}
 		bodyBytes, _ := json.Marshal(body)
 
@@ -415,162 +434,100 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 			return
 		}
 
-		// 解析响应（支持流式和非流式）
-		var contentParts []string
-		toolCalls := make(map[int]map[string]string) // index -> {id, name, arguments}
-
-		if hasToolResults {
-			// 非流式：读取完整 JSON 响应
-			respBody, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
+		// 流式读取完整内容
+		var fullContent strings.Builder
+		scanner := bufio.NewScanner(resp.Body)
+		// 增大 scanner buffer 以处理大行
+		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if !strings.HasPrefix(line, "data: ") {
+				continue
+			}
+			data := strings.TrimSpace(line[6:])
+			if data == "[DONE]" {
+				break
+			}
 
 			var parsed map[string]any
-			if err := json.Unmarshal(respBody, &parsed); err != nil {
-				sse.send(map[string]any{"type": "error", "message": "解析响应失败: " + err.Error()})
-				return
+			if err := json.Unmarshal([]byte(data), &parsed); err != nil {
+				continue
 			}
 
 			choices, _ := parsed["choices"].([]any)
-			if len(choices) > 0 {
-				choice, _ := choices[0].(map[string]any)
-				msg, _ := choice["message"].(map[string]any)
-				if c, ok := msg["content"].(string); ok && c != "" {
-					contentParts = append(contentParts, c)
-					sse.send(map[string]any{"type": "text", "content": c})
-				}
-				// 非流式 tool_calls
-				if tcs, ok := msg["tool_calls"].([]any); ok {
-					for i, tc := range tcs {
-						tcMap, _ := tc.(map[string]any)
-						toolCalls[i] = map[string]string{"id": "", "name": "", "arguments": ""}
-						if id, ok := tcMap["id"].(string); ok {
-							toolCalls[i]["id"] = id
-						}
-						if fn, ok := tcMap["function"].(map[string]any); ok {
-							if n, ok := fn["name"].(string); ok {
-								toolCalls[i]["name"] = n
-							}
-							if a, ok := fn["arguments"].(string); ok {
-								toolCalls[i]["arguments"] = a
-							}
-						}
-					}
-				}
+			if len(choices) == 0 {
+				continue
 			}
+			choice, _ := choices[0].(map[string]any)
+			delta, _ := choice["delta"].(map[string]any)
+
+			if c, ok := delta["content"].(string); ok && c != "" {
+				fullContent.WriteString(c)
+				// 只推送不在 <tool_call> 标签内的文本给前端
+				// 实际上先累积，后面统一处理
+			}
+
 			if usage, ok := parsed["usage"].(map[string]any); ok {
 				sse.send(map[string]any{"type": "usage", "prompt_tokens": usage["prompt_tokens"], "completion_tokens": usage["completion_tokens"], "total_tokens": usage["total_tokens"]})
 			}
-		} else {
-			// 流式：解析 SSE
-			scanner := bufio.NewScanner(resp.Body)
-			for scanner.Scan() {
-				line := scanner.Text()
-				if !strings.HasPrefix(line, "data: ") {
-					continue
-				}
-				data := strings.TrimSpace(line[6:])
-				if data == "[DONE]" {
-					break
-				}
-
-				var parsed map[string]any
-				if err := json.Unmarshal([]byte(data), &parsed); err != nil {
-					continue
-				}
-
-				choices, _ := parsed["choices"].([]any)
-				if len(choices) == 0 {
-					continue
-				}
-				choice, _ := choices[0].(map[string]any)
-				delta, _ := choice["delta"].(map[string]any)
-
-				if c, ok := delta["content"].(string); ok && c != "" {
-					contentParts = append(contentParts, c)
-					sse.send(map[string]any{"type": "text", "content": c})
-				}
-
-				if tcs, ok := delta["tool_calls"].([]any); ok {
-					for _, tc := range tcs {
-						tcMap, _ := tc.(map[string]any)
-						idx := int(floatVal(tcMap, "index", 0))
-						if _, exists := toolCalls[idx]; !exists {
-							toolCalls[idx] = map[string]string{"id": "", "name": "", "arguments": ""}
-						}
-						if id, ok := tcMap["id"].(string); ok && id != "" {
-							toolCalls[idx]["id"] = id
-						}
-						if fn, ok := tcMap["function"].(map[string]any); ok {
-							if n, ok := fn["name"].(string); ok && n != "" {
-								toolCalls[idx]["name"] = n
-							}
-							if a, ok := fn["arguments"].(string); ok {
-								toolCalls[idx]["arguments"] += a
-							}
-						}
-					}
-				}
-
-				if usage, ok := parsed["usage"].(map[string]any); ok {
-					sse.send(map[string]any{"type": "usage", "prompt_tokens": usage["prompt_tokens"], "completion_tokens": usage["completion_tokens"], "total_tokens": usage["total_tokens"]})
-				}
-			}
-			resp.Body.Close()
 		}
+		resp.Body.Close()
 
-		fullContent := strings.Join(contentParts, "")
+		text := fullContent.String()
 
-		// 没有 tool calls → 结束
-		if len(toolCalls) == 0 {
-			messages = append(messages, map[string]any{"role": "assistant", "content": fullContent})
-			sse.send(map[string]any{"type": "done", "content": fullContent})
+		// 检测是否包含 <tool_call> 标签
+		matches := toolCallRe.FindAllStringSubmatch(text, -1)
+
+		if len(matches) == 0 {
+			// 没有工具调用 — 直接推送文本并结束
+			sse.send(map[string]any{"type": "text", "content": text})
+			messages = append(messages, map[string]any{"role": "assistant", "content": text})
+			sse.send(map[string]any{"type": "done", "content": text})
 			return
 		}
 
-		// 有 tool calls → 执行
-		tcList := make([]map[string]any, 0)
-		for i := 0; i < len(toolCalls); i++ {
-			tc := toolCalls[i]
-			tcList = append(tcList, map[string]any{
-				"id":   tc["id"],
-				"type": "function",
-				"function": map[string]any{
-					"name":      tc["name"],
-					"arguments": tc["arguments"],
-				},
-			})
+		// 有工具调用 — 先推送工具调用之前的文本
+		firstIdx := strings.Index(text, "<tool_call>")
+		if firstIdx > 0 {
+			prefix := strings.TrimSpace(text[:firstIdx])
+			if prefix != "" {
+				sse.send(map[string]any{"type": "text", "content": prefix})
+			}
 		}
 
-		// DashScope 要求 content 必须是字符串（不能为 null/省略）
-		assistantMsg := map[string]any{"role": "assistant", "content": fullContent, "tool_calls": tcList}
-		messages = append(messages, assistantMsg)
-
-		for _, tc := range tcList {
-			fn, _ := tc["function"].(map[string]any)
-			toolName, _ := fn["name"].(string)
-			argsStr, _ := fn["arguments"].(string)
-			tcID, _ := tc["id"].(string)
-
-			var toolArgs map[string]any
-			json.Unmarshal([]byte(argsStr), &toolArgs)
-			if toolArgs == nil {
-				toolArgs = map[string]any{}
+		// 执行每个工具调用
+		var toolResults strings.Builder
+		for i, match := range matches {
+			if len(match) < 2 {
+				continue
+			}
+			var tc struct {
+				Name string         `json:"name"`
+				Args map[string]any `json:"arguments"`
+			}
+			if err := json.Unmarshal([]byte(match[1]), &tc); err != nil {
+				continue
+			}
+			if tc.Args == nil {
+				tc.Args = map[string]any{}
 			}
 
-			sse.send(map[string]any{"type": "tool_call", "id": tcID, "tool": toolName, "args": toolArgs, "status": "running"})
+			tcID := fmt.Sprintf("tc_%d_%d", iter, i)
+
+			sse.send(map[string]any{"type": "tool_call", "id": tcID, "tool": tc.Name, "args": tc.Args, "status": "running"})
 
 			t0 := time.Now()
-			result := executeTool(toolName, toolArgs)
+			result := executeTool(tc.Name, tc.Args)
 			duration := time.Since(t0).Seconds()
 
-			sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": toolName, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
+			sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
 
-			messages = append(messages, map[string]any{
-				"role":         "tool",
-				"tool_call_id": tcID,
-				"content":      truncate(result, 3500),
-			})
+			toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: %s\n</tool_result>\n", tc.Name, truncate(result, 3500)))
 		}
+
+		// 把 assistant 消息和工具结果追加到消息列表
+		messages = append(messages, map[string]any{"role": "assistant", "content": text})
+		messages = append(messages, map[string]any{"role": "user", "content": "以下是工具调用的结果，请根据结果回答用户的问题：" + toolResults.String()})
 	}
 
 	sse.send(map[string]any{"type": "error", "message": fmt.Sprintf("Agent 已达最大迭代次数 (%d)", maxIter)})
