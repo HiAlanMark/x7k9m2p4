@@ -317,10 +317,12 @@ onMounted(async () => {
   align-items: center;
   gap: 6px;
   padding: 10px 14px;
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid var(--glass-border);
   border-bottom: none;
-  border-radius: 8px 8px 0 0;
+  border-radius: 12px 12px 0 0;
 }
 
 .terminal-dot {
@@ -432,7 +434,9 @@ onMounted(async () => {
 }
 
 .msg.assistant {
-  background: var(--color-bg-card);
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px) saturate(1.3);
+  -webkit-backdrop-filter: blur(8px) saturate(1.3);
 }
 
 .msg-header {
@@ -838,41 +842,30 @@ onMounted(async () => {
   padding: 0 48px 16px;
   padding-top: 48px;
   z-index: 10;
-  /* 底部实色 → 上方渐变透明 */
   background: linear-gradient(to top,
     var(--color-bg-page) 0%,
-    var(--color-bg-page) 40%,
-    rgba(250, 250, 250, 0.85) 60%,
-    rgba(250, 250, 250, 0.5) 80%,
-    rgba(250, 250, 250, 0) 100%
-  );
-}
-
-/* 暗色模式渐变 */
-[data-theme="dark"] .input-area {
-  background: linear-gradient(to top,
-    var(--color-bg-page) 0%,
-    var(--color-bg-page) 40%,
-    rgba(9, 9, 11, 0.85) 60%,
-    rgba(9, 9, 11, 0.5) 80%,
-    rgba(9, 9, 11, 0) 100%
+    var(--color-bg-page) 30%,
+    transparent 100%
   );
 }
 
 .input-box {
   display: flex;
   align-items: flex-start;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 10px 12px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 10px 14px;
   gap: 8px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .input-box.focused {
-  border-color: var(--color-text-tertiary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 20px rgba(10,132,255,0.12);
 }
 
 .input-chevron {

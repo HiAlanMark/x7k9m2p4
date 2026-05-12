@@ -577,18 +577,21 @@ onMounted(() => {
 .search-input {
   width: 100%;
   padding: 9px 12px 9px 36px;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
   font-size: 13px;
   font-family: var(--font-family);
   color: var(--color-text-primary);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .search-input:focus {
-  border-color: var(--color-text-tertiary);
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 12px rgba(10,132,255,0.10);
 }
 
 .search-input::placeholder {
@@ -621,9 +624,9 @@ onMounted(() => {
 
 .filter-chip {
   padding: 5px 12px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
   font-size: 12px;
   font-family: var(--font-family);
   color: var(--color-text-secondary);
@@ -742,17 +745,20 @@ onMounted(() => {
 }
 
 .skill-card {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(16px) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
   padding: 16px;
   cursor: pointer;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .skill-card:hover {
   border-color: var(--color-text-tertiary);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
 }
 
 .card-header {

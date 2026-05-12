@@ -701,8 +701,10 @@ onMounted(async () => {
 .settings-nav {
   width: 180px;
   min-width: 180px;
-  background: var(--color-bg-card);
-  border-right: 1px solid var(--color-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-right: 1px solid var(--glass-border);
   padding: 20px 0;
 }
 
@@ -762,9 +764,11 @@ onMounted(async () => {
 
 /* ===== Card ===== */
 .card {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(16px) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -798,18 +802,19 @@ onMounted(async () => {
 .form-input {
   width: 100%;
   padding: 7px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
   font-size: 13px;
   font-family: var(--font-mono);
   color: var(--color-text-primary);
   background: var(--color-bg-input);
-  transition: border-color 0.12s;
+  transition: border-color 0.12s, box-shadow 0.12s;
   outline: none;
 }
 
 .form-input:focus {
-  border-color: var(--color-text-tertiary);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(10,132,255,0.08);
 }
 
 .form-input::placeholder {
@@ -1030,9 +1035,11 @@ onMounted(async () => {
 }
 
 .package-card {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
   padding: 16px 14px;
   text-align: center;
   position: relative;
@@ -1074,9 +1081,9 @@ onMounted(async () => {
   gap: 6px;
   flex: 1;
   padding: 10px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--color-bg-input);
   color: var(--color-text-secondary);
   font-size: 12px;
   font-weight: 500;
@@ -1246,9 +1253,9 @@ onMounted(async () => {
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 3px;
-  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: var(--color-bg-input);
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
