@@ -403,14 +403,18 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 	maxIter := 15
 	client := &http.Client{Timeout: 120 * time.Second}
 	toolCallRe := regexp.MustCompile(`(?s)<tool_call>\s*(\{.*?\})\s*</tool_call>`)
+	// 累计所有轮次的 token 用量
+	totalPrompt := 0
+	totalCompletion := 0
 
 	for iter := 0; iter < maxIter; iter++ {
 		log.Printf("[agentLoop] 开始第 %d 轮，消息数: %d", iter, len(messages))
 		// 纯文本请求 — 不使用 API 的 tools 参数，兼容所有模型
 		body := map[string]any{
-			"model":    model,
-			"messages": messages,
-			"stream":   true,
+			"model":          model,
+			"messages":       messages,
+			"stream":         true,
+			"stream_options": map[string]any{"include_usage": true},
 		}
 		bodyBytes, _ := json.Marshal(body)
 
@@ -456,6 +460,15 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 			}
 
 			choices, _ := parsed["choices"].([]any)
+
+			// 先提取 usage（可能在 choices 为空的独立 chunk 中）
+			if usage, ok := parsed["usage"].(map[string]any); ok {
+				pt := int(floatVal(usage, "prompt_tokens", 0))
+				ct := int(floatVal(usage, "completion_tokens", 0))
+				totalPrompt += pt
+				totalCompletion += ct
+			}
+
 			if len(choices) == 0 {
 				continue
 			}
@@ -464,12 +477,6 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 
 			if c, ok := delta["content"].(string); ok && c != "" {
 				fullContent.WriteString(c)
-				// 只推送不在 <tool_call> 标签内的文本给前端
-				// 实际上先累积，后面统一处理
-			}
-
-			if usage, ok := parsed["usage"].(map[string]any); ok {
-				sse.send(map[string]any{"type": "usage", "prompt_tokens": usage["prompt_tokens"], "completion_tokens": usage["completion_tokens"], "total_tokens": usage["total_tokens"]})
 			}
 		}
 		resp.Body.Close()
@@ -484,6 +491,7 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 			log.Printf("[agentLoop] iter=%d 无工具调用，推送文本 (%d 字符)", iter, len(text))
 			sse.send(map[string]any{"type": "text", "content": text})
 			messages = append(messages, map[string]any{"role": "assistant", "content": text})
+			sse.send(map[string]any{"type": "usage", "prompt_tokens": totalPrompt, "completion_tokens": totalCompletion, "total_tokens": totalPrompt + totalCompletion})
 			sse.send(map[string]any{"type": "done", "content": text})
 			return
 		}
