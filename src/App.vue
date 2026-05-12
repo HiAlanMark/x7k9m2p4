@@ -26,18 +26,18 @@
         </router-link>
       </nav>
 
-      <!-- Session list (在对话页面时显示) -->
-      <div v-if="$route.path === '/'" class="session-list">
+      <!-- Session list (始终显示) -->
+      <div class="session-list">
         <div class="session-list-header">
           <span class="session-list-title">会话</span>
-          <button class="new-session-btn" @click="chatStore.newSession()" title="新建会话">+</button>
+          <button class="new-session-btn" @click="chatStore.newSession(); router.push('/')" title="新建会话">+</button>
         </div>
         <div class="session-items">
           <div
             v-for="s in chatStore.sortedSessions"
             :key="s.id"
             :class="['session-item', { active: s.id === chatStore.activeSessionId }]"
-            @click="chatStore.switchSession(s.id)"
+            @click="chatStore.switchSession(s.id); router.push('/')"
           >
             <span class="session-item-title">{{ s.title }}</span>
             <span class="session-item-count">{{ s.messages.filter(m => m.role === 'user').length }}</span>
@@ -95,6 +95,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useGfwStore } from './stores/gfw'
 import { useChatStore } from './stores/chat'
 import { useAppStore } from './stores/app'
@@ -110,6 +111,7 @@ import IconBrandLogo from './components/icons/IconBrandLogo.vue'
 const gfwStore = useGfwStore()
 const chatStore = useChatStore()
 const appStore = useAppStore()
+const router = useRouter()
 const { balance, featuredModels } = storeToRefs(gfwStore)
 const { selectedModel } = storeToRefs(chatStore)
 
