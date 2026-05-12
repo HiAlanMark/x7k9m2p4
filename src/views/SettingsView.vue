@@ -124,8 +124,6 @@
               <span>内置模型服务</span>
             </div>
             <div class="card-body">
-              <p class="hint-text">GFW.NET 提供 {{ gfwModels.length || '40+' }} 个模型的 API 中转服务，支持 OpenAI、Anthropic、DeepSeek、Qwen 等主流厂商。</p>
-
               <div class="form-row">
                 <label class="form-label">GFW API Key</label>
                 <input v-model="gfwApiKey" type="password" placeholder="gfw-..." class="form-input" />
@@ -134,31 +132,52 @@
 
               <div class="form-row">
                 <label class="form-label">
-                  模型选择
+                  提供商
                   <button class="sync-btn" @click="syncGfwModels" :disabled="gfwSyncing" title="从 GFW.NET 同步模型列表">
-                    {{ gfwSyncing ? '同步中...' : '同步模型' }}
+                    {{ gfwSyncing ? '同步中...' : '同步' }}
                   </button>
                 </label>
-                <select v-model="selectedModel" class="form-select" v-if="gfwModels.length > 0">
-                  <option v-for="m in gfwModels" :key="m.model_code" :value="m.model_code">
-                    {{ m.model_name }} ({{ m.provider }}) {{ m.input_price ? '¥' + m.input_price + '/M' : '免费' }}
+                <div v-if="gfwProviders.length > 0" class="provider-chips">
+                  <button
+                    :class="['chip', { active: !selectedProvider }]"
+                    @click="selectedProvider = ''"
+                  >全部</button>
+                  <button
+                    v-for="p in gfwProviders"
+                    :key="p"
+                    :class="['chip', { active: selectedProvider === p }]"
+                    @click="selectedProvider = p"
+                  >{{ p }} <span class="chip-count">{{ providerModelCount(p) }}</span></button>
+                </div>
+                <p v-else class="form-hint">点击「同步」获取提供商列表</p>
+              </div>
+
+              <div class="form-row">
+                <label class="form-label">模型</label>
+                <select v-model="selectedModel" class="form-select" v-if="filteredGfwModels.length > 0">
+                  <option v-for="m in filteredGfwModels" :key="m.model_code" :value="m.model_code">
+                    {{ m.model_name }}{{ !selectedProvider ? ' (' + m.provider + ')' : '' }} {{ m.input_price ? '¥' + m.input_price + '/M' : '' }}
                   </option>
                 </select>
-                <input v-else v-model="selectedModel" type="text" placeholder="输入模型名称，或点击同步获取列表" class="form-input" />
+                <input v-else v-model="selectedModel" type="text" placeholder="输入模型名称" class="form-input" />
               </div>
 
               <!-- 当前选中模型的详情 -->
               <div v-if="selectedGfwModel" class="model-detail">
                 <div class="detail-row">
-                  <span class="detail-label">提供商</span>
+                  <span class="detail-label">provider</span>
                   <span class="detail-value">{{ selectedGfwModel.provider }}</span>
                 </div>
+                <div class="detail-row">
+                  <span class="detail-label">model</span>
+                  <span class="detail-value">{{ selectedGfwModel.model_code }}</span>
+                </div>
                 <div class="detail-row" v-if="selectedGfwModel.input_price">
-                  <span class="detail-label">价格</span>
-                  <span class="detail-value">输入 ¥{{ selectedGfwModel.input_price }}/M · 输出 ¥{{ selectedGfwModel.output_price }}/M</span>
+                  <span class="detail-label">price</span>
+                  <span class="detail-value">¥{{ selectedGfwModel.input_price }}/M in · ¥{{ selectedGfwModel.output_price }}/M out</span>
                 </div>
                 <div class="detail-row" v-if="selectedGfwModel.context_length">
-                  <span class="detail-label">上下文</span>
+                  <span class="detail-label">context</span>
                   <span class="detail-value">{{ formatContext(selectedGfwModel.context_length) }}</span>
                 </div>
               </div>
@@ -387,10 +406,29 @@ const saveSuccess = ref(false)
 const gfwApiKey = ref(localStorage.getItem('gfw_api_key') || '')
 const gfwModels = ref<any[]>([])
 const gfwSyncing = ref(false)
+const selectedProvider = ref('')
 
 const selectedGfwModel = computed(() => {
   return gfwModels.value.find(m => m.model_code === selectedModel.value) || null
 })
+
+// 从模型列表提取去重的提供商列表
+const gfwProviders = computed(() => {
+  const set = new Set<string>()
+  gfwModels.value.forEach(m => { if (m.provider) set.add(m.provider) })
+  return Array.from(set).sort()
+})
+
+// 按选中的提供商筛选模型
+const filteredGfwModels = computed(() => {
+  if (!selectedProvider.value) return gfwModels.value
+  return gfwModels.value.filter(m => m.provider === selectedProvider.value)
+})
+
+// 统计每个提供商的模型数量
+function providerModelCount(provider: string): number {
+  return gfwModels.value.filter(m => m.provider === provider).length
+}
 
 async function syncGfwModels() {
   gfwSyncing.value = true
@@ -1113,4 +1151,44 @@ onMounted(async () => {
 .settings-content::-webkit-scrollbar { width: 4px; }
 .settings-content::-webkit-scrollbar-track { background: transparent; }
 .settings-content::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+
+/* Provider chips */
+.provider-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.chip:hover {
+  border-color: var(--color-text-tertiary);
+  color: var(--color-text-primary);
+}
+
+.chip.active {
+  border-color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.chip-count {
+  font-size: 9px;
+  color: var(--color-text-tertiary);
+  font-weight: 400;
+}
 </style>
