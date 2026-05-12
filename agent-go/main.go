@@ -571,6 +571,7 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 		"runtime":  "go",
 		"tools":    tools,
 		"platform": runtime.GOOS + " " + runtime.GOARCH,
+		"hermes":   hermesState,
 	})
 }
 
@@ -837,26 +838,73 @@ func getHome() string {
 }
 
 // ============================================================
-// Hermes 子进程管理（可选）
+// Hermes Agent 集成 — 作为 Hi!XNS 的内部组件
 // ============================================================
 
-func findHermes() string {
-	// 检测 hermes 命令是否可用
-	if path, err := exec.LookPath("hermes"); err == nil {
-		return path
+type hermesInfo struct {
+	Available bool   `json:"available"`
+	Path      string `json:"path,omitempty"`
+	Version   string `json:"version,omitempty"`
+	SourceDir string `json:"source_dir,omitempty"`
+	SkillsDir string `json:"skills_dir"`
+}
+
+func detectHermes() hermesInfo {
+	info := hermesInfo{
+		SkillsDir: filepath.Join(getHome(), ".hermes", "skills"),
 	}
-	// 检测常见安装路径
+
+	// 查找 hermes 可执行文件
+	hermesPath := ""
 	candidates := []string{
 		filepath.Join(getHome(), ".hermes", "bin", "hermes"),
 		"/usr/local/bin/hermes",
 	}
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
+	// 优先用 PATH 中的
+	if p, err := exec.LookPath("hermes"); err == nil {
+		hermesPath = p
+	} else {
+		for _, c := range candidates {
+			if _, err := os.Stat(c); err == nil {
+				hermesPath = c
+				break
+			}
 		}
 	}
-	return ""
+
+	if hermesPath == "" {
+		return info
+	}
+
+	info.Available = true
+	info.Path = hermesPath
+
+	// 获取版本
+	if out, err := exec.Command(hermesPath, "--version").Output(); err == nil {
+		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+		if len(lines) > 0 {
+			info.Version = lines[0]
+		}
+	}
+
+	// 检测源码目录
+	sourceCandidates := []string{
+		"/usr/local/lib/hermes-agent",
+		filepath.Join(getHome(), ".hermes", "hermes-agent"),
+		filepath.Join(getHome(), "hermes-agent"),
+	}
+	for _, d := range sourceCandidates {
+		if _, err := os.Stat(filepath.Join(d, "run_agent.py")); err == nil {
+			info.SourceDir = d
+			break
+		}
+	}
+
+	return info
 }
+
+// 全局 Hermes 信息（启动时检测一次）
+var hermesState hermesInfo
 
 // ============================================================
 // Main
@@ -882,11 +930,18 @@ func main() {
 
 	addr := host + ":" + port
 
-	// 检测 Hermes
-	hermesPath := findHermes()
-	if hermesPath != "" {
-		log.Printf("[Hi!XNS] 检测到 Hermes Agent: %s", hermesPath)
+	// 检测 Hermes Agent
+	hermesState = detectHermes()
+	if hermesState.Available {
+		log.Printf("[Hi!XNS] Hermes Agent 已集成: %s", hermesState.Version)
+		log.Printf("[Hi!XNS] Hermes 路径: %s", hermesState.Path)
+		if hermesState.SourceDir != "" {
+			log.Printf("[Hi!XNS] Hermes 源码: %s", hermesState.SourceDir)
+		}
+	} else {
+		log.Printf("[Hi!XNS] Hermes Agent 未检测到，使用内置工具")
 	}
+	log.Printf("[Hi!XNS] 技能目录: %s", hermesState.SkillsDir)
 
 	tools := make([]string, len(toolDefs))
 	for i, t := range toolDefs {
