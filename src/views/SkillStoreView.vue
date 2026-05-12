@@ -497,7 +497,7 @@ onMounted(() => {
 .skill-store {
   height: 100%;
   overflow-y: auto;
-  background: var(--color-bg-page);
+  background: transparent;
   padding: 24px 32px 32px;
   position: relative;
 }

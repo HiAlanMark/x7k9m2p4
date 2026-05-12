@@ -689,7 +689,7 @@ onMounted(async () => {
 .settings-view {
   height: 100%;
   overflow: hidden;
-  background: var(--color-bg-page);
+  background: transparent;
 }
 
 .settings-layout {

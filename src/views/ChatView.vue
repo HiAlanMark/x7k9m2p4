@@ -286,7 +286,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--color-bg-page);
+  background: transparent;
   position: relative;
   overflow: hidden;
 }

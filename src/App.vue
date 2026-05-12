@@ -222,7 +222,27 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ===== iOS 26 Glass Background Mesh ===== */
+.app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(0,112,255,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 75%, rgba(108,56,255,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 50% 10%, rgba(48,209,88,0.08) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+[data-theme="dark"] .app::before {
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(10,132,255,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 75%, rgba(191,90,242,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 50% 10%, rgba(48,209,88,0.08) 0%, transparent 50%);
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -235,6 +255,8 @@ body {
   display: flex;
   height: 100vh;
   overflow: hidden;
+  position: relative;
+  background: var(--color-bg-page);
 }
 
 /* ===== Sidebar ===== */
@@ -250,6 +272,8 @@ body {
   user-select: none;
   -webkit-app-region: drag;
   transition: background 0.3s, border-color 0.3s;
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar-brand {
@@ -579,7 +603,8 @@ body {
 .main-content {
   flex: 1;
   overflow: hidden;
-  background: var(--color-bg-page);
-  transition: background 0.2s;
+  position: relative;
+  z-index: 1;
+  transition: background 0.3s;
 }
 </style>
