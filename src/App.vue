@@ -157,7 +157,7 @@ onMounted(async () => {
   --radius-card: 8px;
   --radius-btn: 6px;
   --radius-input: 6px;
-  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Noto Sans', sans-serif;
+  --font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
 
   --color-msg-user-bg: #18181B;
