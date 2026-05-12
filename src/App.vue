@@ -41,12 +41,20 @@
           >
             <span class="session-item-title">{{ s.title }}</span>
             <span class="session-item-count">{{ s.messages.filter(m => m.role === 'user').length }}</span>
+            <!-- 删除：先确认再删 -->
             <button
-              v-if="chatStore.sessions.length > 1"
+              v-if="chatStore.sessions.length > 1 && confirmDeleteId !== s.id"
               class="session-delete-btn"
-              @click.stop="chatStore.deleteSession(s.id)"
+              @click.stop="confirmDeleteId = s.id"
               title="删除会话"
-            >x</button>
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <!-- 确认状态 -->
+            <span v-if="confirmDeleteId === s.id" class="confirm-delete" @click.stop>
+              <button class="confirm-yes" @click.stop="chatStore.deleteSession(s.id); confirmDeleteId = ''" title="确认删除">删除</button>
+              <button class="confirm-no" @click.stop="confirmDeleteId = ''" title="取消">取消</button>
+            </span>
           </div>
         </div>
       </div>
@@ -94,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGfwStore } from './stores/gfw'
 import { useChatStore } from './stores/chat'
@@ -114,6 +122,7 @@ const appStore = useAppStore()
 const router = useRouter()
 const { balance, featuredModels } = storeToRefs(gfwStore)
 const { selectedModel } = storeToRefs(chatStore)
+const confirmDeleteId = ref('')
 
 const activeModelDisplay = computed(() => {
   if (chatStore.providerMode === 'custom' && chatStore.customProvider.model) {
@@ -466,12 +475,11 @@ body {
   background: transparent;
   border: none;
   color: var(--color-text-tertiary);
-  font-size: 10px;
-  font-family: var(--font-mono);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.1s, color 0.1s;
   flex-shrink: 0;
+  padding: 0;
 }
 
 .session-item:hover .session-delete-btn {
@@ -480,6 +488,52 @@ body {
 
 .session-delete-btn:hover {
   color: var(--color-error);
+}
+
+/* 确认删除 */
+.confirm-delete {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  animation: fadeSlide 0.15s ease;
+}
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateX(4px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.confirm-yes {
+  padding: 1px 6px;
+  background: var(--color-error);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+
+.confirm-yes:hover { opacity: 0.85; }
+
+.confirm-no {
+  padding: 1px 6px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.confirm-no:hover {
+  border-color: var(--color-text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .session-items::-webkit-scrollbar { width: 3px; }
