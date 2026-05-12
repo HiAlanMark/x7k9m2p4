@@ -83,8 +83,7 @@ var toolDefs = []map[string]any{
 			"description": "列出目录下的文件和子目录。",
 			"parameters": map[string]any{
 				"type":       "object",
-				"properties": map[string]any{"path": map[string]any{"type": "string", "description": "目录路径"}},
-				"required":   []string{},
+				"properties": map[string]any{"path": map[string]any{"type": "string", "description": "目录路径，默认当前目录"}},
 			},
 		},
 	},
@@ -109,7 +108,7 @@ var toolDefs = []map[string]any{
 		"function": map[string]any{
 			"name":        "system_info",
 			"description": "获取当前系统信息：操作系统、CPU、内存、磁盘、Go版本等。",
-			"parameters":  map[string]any{"type": "object", "properties": map[string]any{}, "required": []string{}},
+			"parameters":  map[string]any{"type": "object", "properties": map[string]any{}},
 		},
 	},
 }
@@ -372,11 +371,26 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 	client := &http.Client{Timeout: 120 * time.Second}
 
 	for iter := 0; iter < maxIter; iter++ {
+		// 检查是否是带 tool results 的后续轮次
+		hasToolResults := false
+		for _, m := range messages {
+			if role, _ := m["role"].(string); role == "tool" {
+				hasToolResults = true
+				break
+			}
+		}
+
 		body := map[string]any{
 			"model":    model,
 			"messages": messages,
 			"tools":    toolDefs,
-			"stream":   true,
+		}
+		// DashScope qwen 系列在 stream + tool results 组合时可能 500
+		// 后续轮次用非流式请求更稳定
+		if hasToolResults {
+			body["stream"] = false
+		} else {
+			body["stream"] = true
 		}
 		bodyBytes, _ := json.Marshal(body)
 
@@ -401,67 +415,108 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 			return
 		}
 
-		// 解析 SSE 流
+		// 解析响应（支持流式和非流式）
 		var contentParts []string
 		toolCalls := make(map[int]map[string]string) // index -> {id, name, arguments}
 
-		scanner := bufio.NewScanner(resp.Body)
-		for scanner.Scan() {
-			line := scanner.Text()
-			if !strings.HasPrefix(line, "data: ") {
-				continue
-			}
-			data := strings.TrimSpace(line[6:])
-			if data == "[DONE]" {
-				break
-			}
+		if hasToolResults {
+			// 非流式：读取完整 JSON 响应
+			respBody, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
 
 			var parsed map[string]any
-			if err := json.Unmarshal([]byte(data), &parsed); err != nil {
-				continue
+			if err := json.Unmarshal(respBody, &parsed); err != nil {
+				sse.send(map[string]any{"type": "error", "message": "解析响应失败: " + err.Error()})
+				return
 			}
 
 			choices, _ := parsed["choices"].([]any)
-			if len(choices) == 0 {
-				continue
-			}
-			choice, _ := choices[0].(map[string]any)
-			delta, _ := choice["delta"].(map[string]any)
-
-			// 文本
-			if c, ok := delta["content"].(string); ok && c != "" {
-				contentParts = append(contentParts, c)
-				sse.send(map[string]any{"type": "text", "content": c})
-			}
-
-			// Tool calls
-			if tcs, ok := delta["tool_calls"].([]any); ok {
-				for _, tc := range tcs {
-					tcMap, _ := tc.(map[string]any)
-					idx := int(floatVal(tcMap, "index", 0))
-					if _, exists := toolCalls[idx]; !exists {
-						toolCalls[idx] = map[string]string{"id": "", "name": "", "arguments": ""}
-					}
-					if id, ok := tcMap["id"].(string); ok && id != "" {
-						toolCalls[idx]["id"] = id
-					}
-					if fn, ok := tcMap["function"].(map[string]any); ok {
-						if n, ok := fn["name"].(string); ok && n != "" {
-							toolCalls[idx]["name"] = n
+			if len(choices) > 0 {
+				choice, _ := choices[0].(map[string]any)
+				msg, _ := choice["message"].(map[string]any)
+				if c, ok := msg["content"].(string); ok && c != "" {
+					contentParts = append(contentParts, c)
+					sse.send(map[string]any{"type": "text", "content": c})
+				}
+				// 非流式 tool_calls
+				if tcs, ok := msg["tool_calls"].([]any); ok {
+					for i, tc := range tcs {
+						tcMap, _ := tc.(map[string]any)
+						toolCalls[i] = map[string]string{"id": "", "name": "", "arguments": ""}
+						if id, ok := tcMap["id"].(string); ok {
+							toolCalls[i]["id"] = id
 						}
-						if a, ok := fn["arguments"].(string); ok {
-							toolCalls[idx]["arguments"] += a
+						if fn, ok := tcMap["function"].(map[string]any); ok {
+							if n, ok := fn["name"].(string); ok {
+								toolCalls[i]["name"] = n
+							}
+							if a, ok := fn["arguments"].(string); ok {
+								toolCalls[i]["arguments"] = a
+							}
 						}
 					}
 				}
 			}
-
-			// Usage
 			if usage, ok := parsed["usage"].(map[string]any); ok {
 				sse.send(map[string]any{"type": "usage", "prompt_tokens": usage["prompt_tokens"], "completion_tokens": usage["completion_tokens"], "total_tokens": usage["total_tokens"]})
 			}
+		} else {
+			// 流式：解析 SSE
+			scanner := bufio.NewScanner(resp.Body)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if !strings.HasPrefix(line, "data: ") {
+					continue
+				}
+				data := strings.TrimSpace(line[6:])
+				if data == "[DONE]" {
+					break
+				}
+
+				var parsed map[string]any
+				if err := json.Unmarshal([]byte(data), &parsed); err != nil {
+					continue
+				}
+
+				choices, _ := parsed["choices"].([]any)
+				if len(choices) == 0 {
+					continue
+				}
+				choice, _ := choices[0].(map[string]any)
+				delta, _ := choice["delta"].(map[string]any)
+
+				if c, ok := delta["content"].(string); ok && c != "" {
+					contentParts = append(contentParts, c)
+					sse.send(map[string]any{"type": "text", "content": c})
+				}
+
+				if tcs, ok := delta["tool_calls"].([]any); ok {
+					for _, tc := range tcs {
+						tcMap, _ := tc.(map[string]any)
+						idx := int(floatVal(tcMap, "index", 0))
+						if _, exists := toolCalls[idx]; !exists {
+							toolCalls[idx] = map[string]string{"id": "", "name": "", "arguments": ""}
+						}
+						if id, ok := tcMap["id"].(string); ok && id != "" {
+							toolCalls[idx]["id"] = id
+						}
+						if fn, ok := tcMap["function"].(map[string]any); ok {
+							if n, ok := fn["name"].(string); ok && n != "" {
+								toolCalls[idx]["name"] = n
+							}
+							if a, ok := fn["arguments"].(string); ok {
+								toolCalls[idx]["arguments"] += a
+							}
+						}
+					}
+				}
+
+				if usage, ok := parsed["usage"].(map[string]any); ok {
+					sse.send(map[string]any{"type": "usage", "prompt_tokens": usage["prompt_tokens"], "completion_tokens": usage["completion_tokens"], "total_tokens": usage["total_tokens"]})
+				}
+			}
+			resp.Body.Close()
 		}
-		resp.Body.Close()
 
 		fullContent := strings.Join(contentParts, "")
 
@@ -486,10 +541,8 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 			})
 		}
 
-		assistantMsg := map[string]any{"role": "assistant", "tool_calls": tcList}
-		if fullContent != "" {
-			assistantMsg["content"] = fullContent
-		}
+		// DashScope 要求 content 必须是字符串（不能为 null/省略）
+		assistantMsg := map[string]any{"role": "assistant", "content": fullContent, "tool_calls": tcList}
 		messages = append(messages, assistantMsg)
 
 		for _, tc := range tcList {
@@ -515,7 +568,7 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 			messages = append(messages, map[string]any{
 				"role":         "tool",
 				"tool_call_id": tcID,
-				"content":      result,
+				"content":      truncate(result, 3500),
 			})
 		}
 	}
