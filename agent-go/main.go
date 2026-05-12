@@ -1029,20 +1029,62 @@ func detectHermes() hermesInfo {
 		SkillsDir: filepath.Join(getHome(), ".hermes", "skills"),
 	}
 
-	// 查找 hermes 可执行文件
+	// 查找 hermes — 优先应用内嵌，然后系统安装
 	hermesPath := ""
-	candidates := []string{
-		filepath.Join(getHome(), ".hermes", "bin", "hermes"),
-		"/usr/local/bin/hermes",
+
+	// 1. 应用内嵌: 可执行文件同目录下的 bundled/hermes-agent/
+	exeDir := ""
+	if exe, err := os.Executable(); err == nil {
+		exeDir = filepath.Dir(exe)
 	}
-	// 优先用 PATH 中的
-	if p, err := exec.LookPath("hermes"); err == nil {
-		hermesPath = p
-	} else {
-		for _, c := range candidates {
-			if _, err := os.Stat(c); err == nil {
-				hermesPath = c
-				break
+	bundledPaths := []string{}
+	if exeDir != "" {
+		bundledPaths = append(bundledPaths,
+			filepath.Join(exeDir, "bundled", "hermes-agent"),            // 同目录
+			filepath.Join(exeDir, "..", "bundled", "hermes-agent"),       // 开发模式
+			filepath.Join(exeDir, "..", "Resources", "hermes-agent"),     // macOS bundle
+		)
+	}
+	// 项目目录（开发时）
+	if cwd, err := os.Getwd(); err == nil {
+		bundledPaths = append(bundledPaths, filepath.Join(cwd, "bundled", "hermes-agent"))
+	}
+
+	for _, bp := range bundledPaths {
+		if _, err := os.Stat(filepath.Join(bp, "run_agent.py")); err == nil {
+			info.SourceDir = bp
+			// 使用内嵌的 venv 中的 hermes
+			venvHermes := filepath.Join(bp, "venv", "bin", "hermes")
+			if runtime.GOOS == "windows" {
+				venvHermes = filepath.Join(bp, "venv", "Scripts", "hermes.exe")
+			}
+			if _, err := os.Stat(venvHermes); err == nil {
+				hermesPath = venvHermes
+			} else {
+				// 尝试 run-hermes.sh
+				runScript := filepath.Join(bp, "run-hermes.sh")
+				if _, err := os.Stat(runScript); err == nil {
+					hermesPath = runScript
+				}
+			}
+			break
+		}
+	}
+
+	// 2. 系统安装
+	if hermesPath == "" {
+		systemCandidates := []string{
+			filepath.Join(getHome(), ".hermes", "bin", "hermes"),
+			"/usr/local/bin/hermes",
+		}
+		if p, err := exec.LookPath("hermes"); err == nil {
+			hermesPath = p
+		} else {
+			for _, c := range systemCandidates {
+				if _, err := os.Stat(c); err == nil {
+					hermesPath = c
+					break
+				}
 			}
 		}
 	}
@@ -1062,17 +1104,23 @@ func detectHermes() hermesInfo {
 		}
 	}
 
-	// 检测源码目录
-	sourceCandidates := []string{
-		"/usr/local/lib/hermes-agent",
-		filepath.Join(getHome(), ".hermes", "hermes-agent"),
-		filepath.Join(getHome(), "hermes-agent"),
-	}
-	for _, d := range sourceCandidates {
-		if _, err := os.Stat(filepath.Join(d, "run_agent.py")); err == nil {
-			info.SourceDir = d
-			break
+	// 如果还没找到源码目录，从系统路径检测
+	if info.SourceDir == "" {
+		sourceCandidates := []string{
+			"/usr/local/lib/hermes-agent",
+			filepath.Join(getHome(), ".hermes", "hermes-agent"),
 		}
+		for _, d := range sourceCandidates {
+			if _, err := os.Stat(filepath.Join(d, "run_agent.py")); err == nil {
+				info.SourceDir = d
+				break
+			}
+		}
+	}
+
+	// 判断来源
+	if strings.Contains(info.Path, "bundled") {
+		info.Version += " (内嵌)"
 	}
 
 	return info
