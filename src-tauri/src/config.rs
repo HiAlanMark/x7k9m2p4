@@ -81,6 +81,6 @@ impl AppConfig {
     fn config_path() -> PathBuf {
         let base = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."));
-        base.join("hermes-desktop").join("config.json")
+        base.join("hixns").join("config.json")
     }
 }

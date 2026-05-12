@@ -1,12 +1,12 @@
 [package]
-name = "hermes-desktop"
+name = "hixns-desktop"
 version = "0.1.0"
-description = "Hermes Desktop AI Agent"
-authors = ["Hermes Team"]
+description = "Hi!XNS Desktop AI Agent"
+authors = ["Hi!XNS Team"]
 edition = "2021"
 
 [lib]
-name = "hermes_desktop_lib"
+name = "hixns_desktop_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

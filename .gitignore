@@ -3,3 +3,6 @@ dist/
 src-tauri/target/
 *.lock
 agent-go/hixns-agent
+agent/server.py
+hermes_bridge.py
+src-tauri/resources/

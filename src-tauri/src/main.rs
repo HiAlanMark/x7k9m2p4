@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use hermes_desktop_lib::{AppState, gfw_client::GfwClient, config::AppConfig, commands};
+use hixns_desktop_lib::{AppState, gfw_client::GfwClient, config::AppConfig, commands};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 

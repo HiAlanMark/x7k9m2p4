@@ -1,10 +1,10 @@
-# Hermes Desktop 架构说明
+# Hi!XNS Desktop 架构说明
 
 ## 架构层次
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Hermes Desktop Application                    │
+│                    Hi!XNS Application                    │
 │                                                                   │
 │  ┌───────────────────────────────────────────────────────────┐   │
 │  │                    用户界面层 (GUI)                        │   │
@@ -27,7 +27,7 @@
 │  ┌───────────────────────────────────────────────────────────┐   │
 │  │                    AI Agent 层 (Python) ← 最底层           │   │
 │  │  resources/hermes-agent/hermes_cli/desktop_server.py      │   │
-│  │  - 导入完整的 Hermes Agent 核心                             │   │
+│  │  - 导入完整的 Hi!XNS Agent 核心                             │   │
 │  │    • run_agent.AIAgent                                    │   │
 │  │    • hermes_cli.config                                    │   │
 │  │    • tools/* (所有工具)                                    │   │
@@ -58,19 +58,19 @@
 └──────────────────────┘              └──────────────────────────────┘
 ```
 
-## Hermes Agent 在底层的运行方式
+## Hi!XNS Agent 在底层的运行方式
 
 ### 启动流程
-1. 用户双击 Hermes Desktop 应用
+1. 用户双击 Hi!XNS 应用
 2. Tauri 主进程 (Rust) 启动
 3. Rust 通过 `agent_bridge.rs` 启动 Python 子进程:
    ```
    python resources/hermes-agent/hermes_cli/desktop_server.py --port 0
    ```
 4. Python 进程:
-   - 添加 Hermes Agent 源码到 sys.path
+   - 添加 Hi!XNS Agent 源码到 sys.path
    - 导入 `run_agent.AIAgent`
-   - 初始化完整的 Hermes Agent 实例
+   - 初始化完整的 Hi!XNS Agent 实例
    - 在本机随机端口启动 WebSocket 服务
    - 输出端口号: `HERMES_DESKTOP_PORT:12345`
 5. Rust 读取端口号，建立 WebSocket 连接
@@ -94,7 +94,7 @@ desktop_server.py::handle_chat()
     │ get_hermes_agent() → AIAgent 实例
     │ asyncio.to_thread(agent.chat(content))
     ▼
-Hermes Agent 核心
+Hi!XNS Agent 核心
     │ - 构建 System Prompt
     │ - 调用 LLM (gfw.net)
     │ - 工具调用循环
@@ -111,16 +111,16 @@ WebSocket 流式返回给 Rust → Vue
 
 ### 关键设计决策
 
-**为什么 Hermes Agent 在底层运行？**
+**为什么 Hi!XNS Agent 在底层运行？**
 - ✅ 完整的 AI 能力：所有 Hermes 工具、技能、记忆都可用
 - ✅ 隔离性好：Agent 崩溃不影响 GUI
 - ✅ 易于更新：Agent 核心可独立更新
 - ✅ 跨平台一致：Python 在 Windows/macOS/Linux 行为一致
 
 **降级机制**
-- 如果 Hermes Agent 核心导入失败，自动降级到模拟模式
+- 如果 Hi!XNS Agent 核心导入失败，自动降级到模拟模式
 - 模拟模式仍提供基本对话功能，但无工具调用能力
-- 生产环境应始终使用完整 Hermes Agent
+- 生产环境应始终使用完整 Hi!XNS Agent
 
 ## API 集成
 

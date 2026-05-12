@@ -1,12 +1,12 @@
-# Hermes Desktop
+# Hi!XNS Desktop
 
-基于 Tauri v2 + Vue 3 + Hermes Agent 的跨平台桌面 AI Agent 应用。
+基于 Tauri v2 + Vue 3 + Hi!XNS Agent 的跨平台桌面 AI Agent 应用。
 
 ## 技术栈
 
 - **桌面框架**: Tauri v2 (Rust + WebView)
 - **前端**: Vue 3 + TypeScript + Pinia + Vue Router
-- **AI Agent**: Hermes Agent (Python)
+- **AI Agent**: Hi!XNS Agent (Python)
 - **通信**: WebSocket (本地进程间通信)
 - **API 服务**: gfw.net (模型调用、计费)
 - **Skill/工作流商店**: 2x.com.cn (技能市场、工作流市场、AI 社区)
@@ -77,14 +77,14 @@ npm run tauri build
 ## 项目结构
 
 ```
-hermes-desktop/
+hixns-desktop/
 ├── src-tauri/                    # Tauri Rust 后端
 │   ├── src/
 │   │   ├── main.rs               # 应用入口 + 命令注册
 │   │   ├── gfw_client.rs         # gfw.net API 客户端
 │   │   ├── gfw_types.rs          # gfw 数据类型定义
 │   │   ├── skill_store.rs        # 2x.com.cn 客户端 (真实 API)
-│   │   ├── agent_bridge.rs       # Hermes Agent 进程管理
+│   │   ├── agent_bridge.rs       # Hi!XNS Agent 进程管理
 │   │   ├── config.rs             # 配置管理
 │   │   └── commands.rs           # Tauri 命令 (35+ 个)
 │   ├── tauri.conf.json
@@ -130,8 +130,8 @@ hermes-desktop/
 ## 配置
 
 配置存储在:
-- macOS: `~/Library/Application Support/hermes-desktop/config.json`
-- Windows: `%APPDATA%/hermes-desktop/config.json`
-- Linux: `~/.config/hermes-desktop/config.json`
+- macOS: `~/Library/Application Support/hixns-desktop/config.json`
+- Windows: `%APPDATA%/hixns-desktop/config.json`
+- Linux: `~/.config/hixns-desktop/config.json`
 
 敏感信息 (API Key, JWT) 存储在系统密钥链中。
