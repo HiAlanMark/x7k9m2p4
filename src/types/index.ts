@@ -251,3 +251,11 @@ export interface ToolCallInfo {
   output?: string
   status: 'running' | 'completed' | 'failed'
 }
+
+export interface ChatSession {
+  id: string
+  title: string
+  messages: ChatMessage[]
+  createdAt: string
+  updatedAt: string
+}

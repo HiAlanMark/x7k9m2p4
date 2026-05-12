@@ -26,6 +26,31 @@
         </router-link>
       </nav>
 
+      <!-- Session list (在对话页面时显示) -->
+      <div v-if="$route.path === '/'" class="session-list">
+        <div class="session-list-header">
+          <span class="session-list-title">会话</span>
+          <button class="new-session-btn" @click="chatStore.newSession()" title="新建会话">+</button>
+        </div>
+        <div class="session-items">
+          <div
+            v-for="s in chatStore.sortedSessions"
+            :key="s.id"
+            :class="['session-item', { active: s.id === chatStore.activeSessionId }]"
+            @click="chatStore.switchSession(s.id)"
+          >
+            <span class="session-item-title">{{ s.title }}</span>
+            <span class="session-item-count">{{ s.messages.filter(m => m.role === 'user').length }}</span>
+            <button
+              v-if="chatStore.sessions.length > 1"
+              class="session-delete-btn"
+              @click.stop="chatStore.deleteSession(s.id)"
+              title="删除会话"
+            >x</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Footer -->
       <div class="sidebar-footer">
         <!-- Session info -->
@@ -234,7 +259,6 @@ body {
 
 /* Navigation */
 .sidebar-nav {
-  flex: 1;
   padding: 4px 8px;
   -webkit-app-region: no-drag;
 }
@@ -297,6 +321,132 @@ body {
   opacity: 1;
   color: var(--color-primary);
 }
+
+/* Session list */
+.session-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--color-border);
+  -webkit-app-region: no-drag;
+}
+
+.session-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 6px;
+}
+
+.session-list-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.new-session-btn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: var(--font-mono);
+}
+
+.new-session-btn:hover {
+  border-color: var(--color-text-secondary);
+  color: var(--color-text-primary);
+}
+
+.session-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 6px 8px;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--radius-btn);
+  cursor: pointer;
+  transition: background 0.1s;
+  margin-bottom: 1px;
+}
+
+.session-item:hover {
+  background: var(--color-bg-input);
+}
+
+.session-item.active {
+  background: var(--color-bg-input);
+}
+
+.session-item-title {
+  flex: 1;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.session-item.active .session-item-title {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.session-item-count {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-input);
+  padding: 1px 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.session-delete-btn {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  flex-shrink: 0;
+}
+
+.session-item:hover .session-delete-btn {
+  opacity: 1;
+}
+
+.session-delete-btn:hover {
+  color: var(--color-error);
+}
+
+.session-items::-webkit-scrollbar { width: 3px; }
+.session-items::-webkit-scrollbar-track { background: transparent; }
+.session-items::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
 
 /* Sidebar footer */
 .sidebar-footer {
