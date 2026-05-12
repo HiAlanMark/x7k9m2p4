@@ -773,6 +773,181 @@ func sanitizeCategory(cat string) string {
 	return clean
 }
 
+// ============================================================
+// Skill List & Uninstall Handlers
+// ============================================================
+
+func handleListSkills(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+
+	skillsRoot := filepath.Join(getHome(), ".hermes", "skills")
+	var installed []map[string]any
+
+	// 递归扫描所有 SKILL.md
+	filepath.Walk(skillsRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || info.Name() != "SKILL.md" {
+			return nil
+		}
+
+		skillDir := filepath.Dir(path)
+		slug := filepath.Base(skillDir)
+		category := filepath.Base(filepath.Dir(skillDir))
+		// 如果 category == "skills" 说明是顶级技能
+		if category == "skills" {
+			category = ""
+		}
+
+		entry := map[string]any{
+			"slug":     slug,
+			"category": category,
+			"path":     skillDir,
+		}
+
+		// 解析 SKILL.md frontmatter
+		if data, err := os.ReadFile(path); err == nil {
+			content := string(data)
+			if strings.HasPrefix(content, "---\n") {
+				if end := strings.Index(content[4:], "\n---"); end > 0 {
+					fm := content[4 : 4+end]
+					for _, line := range strings.Split(fm, "\n") {
+						parts := strings.SplitN(line, ":", 2)
+						if len(parts) != 2 {
+							continue
+						}
+						key := strings.TrimSpace(parts[0])
+						val := strings.TrimSpace(parts[1])
+						val = strings.Trim(val, "\"'")
+						switch key {
+						case "name":
+							entry["name"] = val
+						case "description":
+							entry["description"] = val
+						case "version":
+							entry["version"] = val
+						case "author":
+							entry["author"] = val
+						}
+					}
+				}
+			}
+		}
+
+		// 如果没有 name，用 slug
+		if _, ok := entry["name"]; !ok {
+			entry["name"] = slug
+		}
+
+		// 解析 _meta.json（2x 商店安装的技能有此文件）
+		metaPath := filepath.Join(skillDir, "_meta.json")
+		if data, err := os.ReadFile(metaPath); err == nil {
+			var meta map[string]any
+			if json.Unmarshal(data, &meta) == nil {
+				entry["source"] = "2x"
+				if v, ok := meta["version"].(string); ok && entry["version"] == nil {
+					entry["version"] = v
+				}
+			}
+		} else {
+			entry["source"] = "builtin"
+		}
+
+		// 目录大小（文件数）
+		fileCount := 0
+		filepath.Walk(skillDir, func(_ string, fi os.FileInfo, _ error) error {
+			if fi != nil && !fi.IsDir() {
+				fileCount++
+			}
+			return nil
+		})
+		entry["files"] = fileCount
+
+		installed = append(installed, entry)
+		return nil
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"skills": installed,
+		"total":  len(installed),
+		"path":   skillsRoot,
+	})
+}
+
+func handleUninstallSkill(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+
+	var body struct {
+		Slug     string `json:"slug"`
+		Category string `json:"category"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, `{"error":"无效的 JSON"}`, 400)
+		return
+	}
+	if body.Slug == "" {
+		http.Error(w, `{"error":"slug 不能为空"}`, 400)
+		return
+	}
+
+	skillsRoot := filepath.Join(getHome(), ".hermes", "skills")
+
+	// 查找技能目录
+	var targetDir string
+	if body.Category != "" {
+		// 直接定位
+		targetDir = filepath.Join(skillsRoot, body.Category, body.Slug)
+	} else {
+		// 搜索所有分类
+		filepath.Walk(skillsRoot, func(path string, info os.FileInfo, err error) error {
+			if err != nil || !info.IsDir() || info.Name() != body.Slug {
+				return nil
+			}
+			// 确认包含 SKILL.md
+			if _, e := os.Stat(filepath.Join(path, "SKILL.md")); e == nil {
+				targetDir = path
+				return filepath.SkipAll
+			}
+			return nil
+		})
+	}
+
+	if targetDir == "" {
+		w.WriteHeader(404)
+		json.NewEncoder(w).Encode(map[string]any{"error": fmt.Sprintf("技能 %s 未找到", body.Slug)})
+		return
+	}
+
+	// 安全检查
+	if !strings.HasPrefix(targetDir, skillsRoot) {
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode(map[string]any{"error": "路径不安全"})
+		return
+	}
+
+	log.Printf("[uninstall-skill] 卸载: %s (%s)", body.Slug, targetDir)
+
+	if err := os.RemoveAll(targetDir); err != nil {
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(map[string]any{"error": "卸载失败: " + err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"success": true,
+		"slug":    body.Slug,
+		"path":    targetDir,
+	})
+}
+
 func setCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
@@ -927,6 +1102,8 @@ func main() {
 	mux.HandleFunc("/v1/agent/health", handleHealth)
 	mux.HandleFunc("/v1/agent/chat", handleChat)
 	mux.HandleFunc("/v1/agent/install-skill", handleInstallSkill)
+	mux.HandleFunc("/v1/agent/skills", handleListSkills)
+	mux.HandleFunc("/v1/agent/uninstall-skill", handleUninstallSkill)
 
 	addr := host + ":" + port
 

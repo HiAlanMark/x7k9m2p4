@@ -16,6 +16,21 @@
       </div>
     </div>
 
+    <!-- Tabs: 商店 / 已安装 -->
+    <div class="main-tabs">
+      <button :class="['main-tab', { active: activeTab === 'store' }]" @click="activeTab = 'store'">
+        商店
+        <span class="tab-count" v-if="totalCount > 0">{{ totalCount }}</span>
+      </button>
+      <button :class="['main-tab', { active: activeTab === 'installed' }]" @click="activeTab = 'installed'; loadInstalled()">
+        已安装
+        <span class="tab-count" v-if="installedSkills.length > 0">{{ installedSkills.length }}</span>
+      </button>
+    </div>
+
+    <!-- Store tab content -->
+    <template v-if="activeTab === 'store'">
+
     <!-- Search + Filters -->
     <div class="search-bar">
       <span class="search-icon"><IconSearch :size="16" /></span>
@@ -113,6 +128,56 @@
       </button>
     </div>
 
+    </template>
+
+    <!-- Installed tab content -->
+    <template v-if="activeTab === 'installed'">
+      <!-- Installed search -->
+      <div class="search-bar">
+        <span class="search-icon"><IconSearch :size="16" /></span>
+        <input v-model="installedSearch" placeholder="搜索已安装技能..." class="search-input" />
+      </div>
+
+      <!-- Source filter -->
+      <div class="filter-bar">
+        <button :class="['filter-chip', { active: installedFilter === 'all' }]" @click="installedFilter = 'all'">全部</button>
+        <button :class="['filter-chip', { active: installedFilter === 'builtin' }]" @click="installedFilter = 'builtin'">内置</button>
+        <button :class="['filter-chip', { active: installedFilter === '2x' }]" @click="installedFilter = '2x'">商店安装</button>
+      </div>
+
+      <div v-if="installedLoading" class="loading-state">
+        <span class="spinner"></span>
+        <span>扫描已安装技能...</span>
+      </div>
+
+      <div v-else-if="filteredInstalled.length === 0" class="empty-state">
+        <span class="empty-icon">~</span>
+        <span v-if="installedSearch">未找到匹配的已安装技能</span>
+        <span v-else>暂无已安装技能</span>
+      </div>
+
+      <div v-else class="installed-list">
+        <div v-for="sk in filteredInstalled" :key="sk.slug + sk.category" class="installed-item">
+          <div class="installed-icon">
+            <IconStar :size="16" />
+          </div>
+          <div class="installed-info">
+            <div class="installed-name">{{ sk.name || sk.slug }}</div>
+            <div class="installed-meta">
+              <span class="meta-tag" v-if="sk.category">{{ sk.category }}</span>
+              <span class="source-badge" :class="sk.source">{{ sk.source === '2x' ? '商店' : '内置' }}</span>
+              <span v-if="sk.version" class="installed-ver">v{{ sk.version }}</span>
+              <span class="installed-files">{{ sk.files }} 文件</span>
+            </div>
+            <div class="installed-desc" v-if="sk.description">{{ sk.description }}</div>
+          </div>
+          <button class="uninstall-btn" @click="uninstallSkill(sk)" :title="'卸载 ' + sk.slug">
+            卸载
+          </button>
+        </div>
+      </div>
+    </template>
+
     <!-- Detail modal -->
     <div v-if="detailSkill" class="modal-overlay" @click.self="detailSkill = null">
       <div class="modal-panel">
@@ -200,6 +265,7 @@ import IconHeart from '../components/icons/IconHeart.vue'
 
 const router = useRouter()
 
+const activeTab = ref<'store' | 'installed'>('store')
 const searchQuery = ref('')
 const selectedCategory = ref('')
 const sortBy = ref('downloads')
@@ -217,6 +283,40 @@ const detailLoading = ref(false)
 
 const toastMsg = ref('')
 const toastType = ref<'success' | 'error' | 'warn'>('success')
+
+// 已安装技能
+interface InstalledSkill {
+  slug: string
+  name: string
+  category: string
+  source: string
+  version?: string
+  description?: string
+  author?: string
+  files: number
+  path: string
+}
+const installedSkills = ref<InstalledSkill[]>([])
+const installedLoading = ref(false)
+const installedSearch = ref('')
+const installedFilter = ref<'all' | 'builtin' | '2x'>('all')
+
+const filteredInstalled = computed(() => {
+  let list = installedSkills.value
+  if (installedFilter.value !== 'all') {
+    list = list.filter(s => s.source === installedFilter.value)
+  }
+  if (installedSearch.value) {
+    const q = installedSearch.value.toLowerCase()
+    list = list.filter(s =>
+      s.slug.toLowerCase().includes(q) ||
+      (s.name || '').toLowerCase().includes(q) ||
+      (s.description || '').toLowerCase().includes(q) ||
+      (s.category || '').toLowerCase().includes(q)
+    )
+  }
+  return list
+})
 
 const hasToken = computed(() => !!localStorage.getItem('2x_token'))
 
@@ -330,6 +430,8 @@ async function installSkill(skill: TwoXSkill) {
     const data = await r.json()
     if (data.success) {
       showToast(`${skill.name} 安装成功 (${data.files} 个文件)`, 'success')
+      // 刷新已安装列表
+      loadInstalled()
     } else {
       const errMsg = data.error || '未知错误'
       if (errMsg.includes('429') || errMsg.includes('401') || errMsg.includes('403')) {
@@ -341,6 +443,48 @@ async function installSkill(skill: TwoXSkill) {
     }
   } catch (e: any) {
     showToast(`安装失败: Agent 未启动或网络错误`, 'error')
+  }
+}
+
+async function loadInstalled() {
+  installedLoading.value = true
+  try {
+    const isDev = import.meta.env?.DEV ?? false
+    const agentUrl = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
+    const r = await fetch(`${agentUrl}/v1/agent/skills`)
+    const data = await r.json()
+    installedSkills.value = (data.skills || []).sort((a: any, b: any) => {
+      // 商店安装的排前面，然后按分类/名称排序
+      if (a.source !== b.source) return a.source === '2x' ? -1 : 1
+      if (a.category !== b.category) return (a.category || '').localeCompare(b.category || '')
+      return (a.name || a.slug).localeCompare(b.name || b.slug)
+    })
+  } catch {
+    showToast('无法获取已安装技能列表，请确认 Agent 已启动', 'error')
+  } finally {
+    installedLoading.value = false
+  }
+}
+
+async function uninstallSkill(sk: InstalledSkill) {
+  if (!confirm(`确定要卸载技能「${sk.name || sk.slug}」吗？`)) return
+  try {
+    const isDev = import.meta.env?.DEV ?? false
+    const agentUrl = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
+    const r = await fetch(`${agentUrl}/v1/agent/uninstall-skill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: sk.slug, category: sk.category }),
+    })
+    const data = await r.json()
+    if (data.success) {
+      showToast(`${sk.name || sk.slug} 已卸载`, 'success')
+      installedSkills.value = installedSkills.value.filter(s => !(s.slug === sk.slug && s.category === sk.category))
+    } else {
+      showToast(`卸载失败: ${data.error}`, 'error')
+    }
+  } catch {
+    showToast('卸载失败: Agent 未启动', 'error')
   }
 }
 
@@ -1001,6 +1145,167 @@ onMounted(() => {
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(-50%) translateY(10px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Main tabs */
+.main-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 16px;
+}
+
+.main-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-family);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.main-tab:hover { color: var(--color-text-primary); }
+
+.main-tab.active {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.tab-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--color-bg-input);
+  color: var(--color-text-tertiary);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.main-tab.active .tab-count {
+  background: var(--color-text-primary);
+  color: var(--color-bg-page);
+}
+
+/* Installed list */
+.installed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.installed-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--color-bg-card);
+  transition: background 0.1s;
+}
+
+.installed-item:hover {
+  background: var(--color-bg-input);
+}
+
+.installed-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-input);
+  border-radius: 6px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.installed-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.installed-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.installed-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.installed-ver {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+.installed-files {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+.installed-desc {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.source-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.source-badge.builtin {
+  background: var(--color-bg-input);
+  color: var(--color-text-tertiary);
+}
+
+.source-badge.2x {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.uninstall-btn {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: all 0.12s;
+  flex-shrink: 0;
+}
+
+.uninstall-btn:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 
 /* Scrollbar */
