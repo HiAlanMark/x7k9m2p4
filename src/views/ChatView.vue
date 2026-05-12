@@ -287,12 +287,15 @@ onMounted(async () => {
   flex-direction: column;
   height: 100%;
   background: var(--color-bg-page);
+  position: relative;
+  overflow: hidden;
 }
 
 .messages {
   flex: 1;
   overflow-y: auto;
   padding: 0;
+  padding-bottom: 60px; /* 给浮动 input-area 留出空间，但允许内容滚到渐变区 */
 }
 
 /* ===== Empty state - Terminal ===== */
@@ -828,8 +831,32 @@ onMounted(async () => {
 
 /* ===== Input ===== */
 .input-area {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   padding: 0 48px 16px;
-  background: var(--color-bg-page);
+  padding-top: 48px;
+  z-index: 10;
+  /* 底部实色 → 上方渐变透明 */
+  background: linear-gradient(to top,
+    var(--color-bg-page) 0%,
+    var(--color-bg-page) 40%,
+    rgba(250, 250, 250, 0.85) 60%,
+    rgba(250, 250, 250, 0.5) 80%,
+    rgba(250, 250, 250, 0) 100%
+  );
+}
+
+/* 暗色模式渐变 */
+[data-theme="dark"] .input-area {
+  background: linear-gradient(to top,
+    var(--color-bg-page) 0%,
+    var(--color-bg-page) 40%,
+    rgba(9, 9, 11, 0.85) 60%,
+    rgba(9, 9, 11, 0.5) 80%,
+    rgba(9, 9, 11, 0) 100%
+  );
 }
 
 .input-box {
