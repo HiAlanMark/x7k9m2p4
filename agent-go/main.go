@@ -29,6 +29,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	webview "github.com/abemedia/go-webview"
+	_ "github.com/abemedia/go-webview/embedded" // 内嵌原生库 (webview.dll/dylib/so)
 )
 
 // ============================================================
@@ -1964,21 +1965,22 @@ var _ = regexp.Compile
 
 // openDesktopWindow 打开原生桌面窗口
 func openDesktopWindow(url string) {
+	// recover 防止 webview panic 导致程序无声退出
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[Hi!XNS] 原生窗口异常: %v，打开浏览器...", r)
+			openBrowser(url)
+			// 保持进程不退出
+			select {}
+		}
+	}()
+
 	log.Printf("[Hi!XNS] 正在打开桌面窗口: %s", url)
 	w := webview.New(false)
 	if w == nil {
-		log.Printf("[Hi!XNS] 无法创建原生窗口，请手动打开浏览器访问: %s", url)
-		// fallback: 打开浏览器
-		var cmd *exec.Cmd
-		switch runtime.GOOS {
-		case "darwin":
-			cmd = exec.Command("open", url)
-		case "windows":
-			cmd = exec.Command("cmd", "/c", "start", url)
-		default:
-			cmd = exec.Command("xdg-open", url)
-		}
-		cmd.Start()
+		log.Printf("[Hi!XNS] 无法创建原生窗口，打开浏览器...")
+		openBrowser(url)
+		select {} // 保持进程不退出
 		return
 	}
 	defer w.Destroy()
@@ -1990,4 +1992,19 @@ func openDesktopWindow(url string) {
 	// 窗口关闭时退出程序
 	log.Println("[Hi!XNS] 窗口已关闭")
 	os.Exit(0)
+}
+
+func openBrowser(url string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	if err := cmd.Start(); err != nil {
+		log.Printf("[Hi!XNS] 请手动打开浏览器访问: %s", url)
+	}
 }
