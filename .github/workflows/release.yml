@@ -9,25 +9,83 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  # Step 1: Build Go agent binary for all platforms
+  build-agent:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: darwin
+            goarch: arm64
+            platform: macos-latest
+            suffix: '-darwin-arm64'
+          - goos: darwin
+            goarch: amd64
+            platform: macos-latest
+            suffix: '-darwin-amd64'
+          - goos: linux
+            goarch: amd64
+            platform: ubuntu-22.04
+            suffix: '-linux-amd64'
+          - goos: windows
+            goarch: amd64
+            platform: ubuntu-22.04
+            suffix: '.exe'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: agent-go/go.sum
+
+      - name: Build Go Agent
+        run: |
+          cd agent-go
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
+            go build -ldflags="-s -w" -o ../hixns-agent${{ matrix.suffix }} .
+          ls -lh ../hixns-agent${{ matrix.suffix }}
+
+      - name: Upload Go binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: hixns-agent${{ matrix.suffix }}
+
+  # Step 2: Build Tauri desktop app (bundles Go agent as sidecar)
+  build-tauri:
+    needs: build-agent
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
+            agent_artifact: 'agent-darwin-arm64'
+            agent_file: 'hixns-agent-darwin-arm64'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
+            agent_artifact: 'agent-darwin-amd64'
+            agent_file: 'hixns-agent-darwin-amd64'
           - platform: 'ubuntu-22.04'
             args: ''
+            agent_artifact: 'agent-linux-amd64'
+            agent_file: 'hixns-agent-linux-amd64'
           - platform: 'windows-latest'
             args: ''
+            agent_artifact: 'agent-windows-amd64'
+            agent_file: 'hixns-agent.exe'
 
     runs-on: ${{ matrix.platform }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -50,24 +108,23 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
+      - name: Download Go agent binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.agent_artifact }}
+          path: agent-go/bin/
+
+      - name: Place agent binary for bundling
+        run: |
+          chmod +x agent-go/bin/${{ matrix.agent_file }} 2>/dev/null || true
+          ls -lh agent-go/bin/
+        shell: bash
+
       - name: Install frontend dependencies
         run: npm install
 
       - name: Build Frontend
         run: npx vite build
-
-      - name: Cargo check (debug)
-        run: |
-          cd src-tauri
-          echo "=== Cargo.toml ==="
-          cat Cargo.toml
-          echo ""
-          echo "=== Running cargo check ==="
-          cargo check --message-format=short 2>&1 || true
-          echo ""
-          echo "=== Running cargo check (verbose) ==="
-          cargo check 2>&1
-        shell: bash
 
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
@@ -75,12 +132,25 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: '.'
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Hi!XNS ${{ github.ref_name }}'
+          releaseBody: |
+            Hi!XNS Desktop AI Agent ${{ github.ref_name }}
+            
+            内置 Hermes Agent 工具链，支持 30+ AI 工具、多轮对话、技能商店。
+            
+            **安装说明：**
+            - macOS: 下载 .dmg，拖入 Applications
+            - Windows: 下载 .msi 或 .exe 安装
+            - Linux: 下载 .deb 或 .AppImage
+          releaseDraft: false
+          prerelease: false
           args: ${{ matrix.args }}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: HermesDesktop-${{ matrix.platform }}-${{ github.run_id }}
+          name: HiXNS-${{ matrix.platform }}-${{ github.run_id }}
           path: |
             src-tauri/target/release/bundle/**/*.dmg
             src-tauri/target/release/bundle/**/*.exe

@@ -180,7 +180,7 @@
           rows="1"
           ref="textareaRef"
         ></textarea>
-        <button @click="sendMessage" :disabled="!inputText.trim() || isStreaming" class="send-btn" v-if="!isStreaming">
+        <button @click="sendMessage" :disabled="!inputText.trim()" class="send-btn">
           <span class="send-key">发送</span>
           <span class="send-arrow">↩</span>
         </button>
@@ -276,7 +276,14 @@ function quickAsk(text: string) {
 
 async function sendMessage() {
   const text = inputText.value.trim()
-  if (!text || isStreaming.value) return
+  if (!text) return
+
+  // 如果正在生成，先取消当前任务再发送新消息（支持中途打断/补充）
+  if (isStreaming.value) {
+    try { await hermesCancel() } catch { /* ignore */ }
+    chatStore.finishResponse()
+  }
+
   inputText.value = ''
   chatStore.addUserMessage(text)
 
