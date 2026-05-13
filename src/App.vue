@@ -81,11 +81,24 @@
 
         <!-- Model selector for gfw mode -->
         <div v-if="chatStore.providerMode !== 'custom'" class="model-select-wrap">
-          <select v-model="selectedModel" class="model-select">
-            <option disabled value="">选择模型...</option>
-            <option v-for="m in featuredModels" :key="m.id" :value="m.id">{{ m.name }}</option>
-            <option v-if="!featuredModels.length && selectedModel" :value="selectedModel">{{ selectedModel }}</option>
-          </select>
+          <div class="model-dropdown" :class="{ open: modelDropdownOpen }">
+            <button class="model-dropdown-trigger" @click.stop="modelDropdownOpen = !modelDropdownOpen">
+              <span class="model-dropdown-value">{{ selectedModelDisplay }}</span>
+              <svg class="model-dropdown-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div v-if="modelDropdownOpen" class="model-dropdown-panel" @click.stop>
+              <div
+                v-for="m in dropdownModels"
+                :key="m.model_code"
+                :class="['model-dropdown-item', { active: selectedModel === m.model_code }]"
+                @click="selectedModel = m.model_code; modelDropdownOpen = false"
+              >
+                <span class="model-item-name">{{ m.model_name }}</span>
+                <svg v-if="selectedModel === m.model_code" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5L20 7"/></svg>
+              </div>
+              <div v-if="!dropdownModels.length" class="model-dropdown-empty">暂无模型</div>
+            </div>
+          </div>
         </div>
 
         <!-- Theme toggle -->
@@ -103,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGfwStore } from './stores/gfw'
 import { useChatStore } from './stores/chat'
@@ -124,6 +137,21 @@ const router = useRouter()
 const { balance, featuredModels } = storeToRefs(gfwStore)
 const { selectedModel } = storeToRefs(chatStore)
 const confirmDeleteId = ref('')
+const modelDropdownOpen = ref(false)
+
+const selectedModelDisplay = computed(() => {
+  const m = featuredModels.value.find(m => m.model_code === selectedModel.value)
+  return m?.model_name || selectedModel.value || '选择模型...'
+})
+
+const dropdownModels = computed(() => {
+  if (featuredModels.value.length > 0) return featuredModels.value
+  if (selectedModel.value) return [{ model_code: selectedModel.value, model_name: selectedModel.value }]
+  return []
+})
+
+// 点击外部关闭下拉
+function handleGlobalClick() { modelDropdownOpen.value = false }
 
 const activeModelDisplay = computed(() => {
   if (chatStore.providerMode === 'custom' && chatStore.customProvider.model) {
@@ -133,12 +161,17 @@ const activeModelDisplay = computed(() => {
 })
 
 onMounted(async () => {
+  document.addEventListener('click', handleGlobalClick)
   try {
     await gfwStore.fetchUserInfo()
     await gfwStore.fetchModels()
   } catch {
     // User not logged in yet
   }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleGlobalClick)
 })
 </script>
 
@@ -609,11 +642,19 @@ body {
 
 .model-select-wrap {
   margin-bottom: 10px;
+  position: relative;
 }
 
-.model-select {
+.model-dropdown {
+  position: relative;
+}
+
+.model-dropdown-trigger {
   width: 100%;
-  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
   background: var(--color-bg-input);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
@@ -621,17 +662,90 @@ body {
   font-family: var(--font-mono);
   font-size: 11px;
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23A1A1AA' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  padding-right: 24px;
   transition: border-color 0.15s;
 }
 
-.model-select:hover { border-color: var(--color-text-tertiary); }
-.model-select:focus { outline: none; border-color: var(--color-primary); }
+.model-dropdown-trigger:hover { border-color: var(--color-text-tertiary); }
+.model-dropdown.open .model-dropdown-trigger { border-color: var(--color-primary); }
+
+.model-dropdown-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
+}
+
+.model-dropdown-arrow {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  transition: transform 0.15s;
+}
+
+.model-dropdown.open .model-dropdown-arrow { transform: rotate(180deg); }
+
+.model-dropdown-panel {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--color-bg-card-solid);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-btn);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  z-index: 100;
+  padding: 4px;
+  animation: dropUp 0.12s ease;
+}
+
+@keyframes dropUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.model-dropdown-panel::-webkit-scrollbar { width: 3px; }
+.model-dropdown-panel::-webkit-scrollbar-track { background: transparent; }
+.model-dropdown-panel::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+
+.model-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.model-dropdown-item:hover {
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+}
+
+.model-dropdown-item.active {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.model-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.model-dropdown-empty {
+  padding: 12px 8px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
 
 .theme-btn {
   display: flex;
