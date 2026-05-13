@@ -254,9 +254,23 @@ export const useChatStore = defineStore('chat', () => {
     const session = currentSession.value
     if (session) {
       session.messages = []
+      session.hermesSessionId = undefined
       session.updatedAt = new Date().toISOString()
       persist()
     }
+  }
+
+  // hermes session_id 管理（用于上下文续接）
+  function setHermesSessionId(sid: string) {
+    const session = currentSession.value
+    if (session && sid) {
+      session.hermesSessionId = sid
+      persist()
+    }
+  }
+
+  function getHermesSessionId(): string {
+    return currentSession.value?.hermesSessionId || ''
   }
 
   // 会话列表（按更新时间倒序）
@@ -276,5 +290,6 @@ export const useChatStore = defineStore('chat', () => {
     // 消息操作
     addUserMessage, addSystemMessage, startAssistantResponse, appendToResponse,
     addToolCall, completeToolCall, finishResponse, clearMessages,
+    setHermesSessionId, getHermesSessionId,
   }
 })

@@ -258,4 +258,5 @@ export interface ChatSession {
   messages: ChatMessage[]
   createdAt: string
   updatedAt: string
+  hermesSessionId?: string  // hermes agent 会话 ID，用于上下文续接
 }

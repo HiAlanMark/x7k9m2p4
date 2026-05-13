@@ -737,11 +737,12 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Content  string           `json:"content"`
-		Messages []map[string]any `json:"messages"`
-		APIBase  string           `json:"api_base"`
-		APIKey   string           `json:"api_key"`
-		Model    string           `json:"model"`
+		Content   string           `json:"content"`
+		Messages  []map[string]any `json:"messages"`
+		APIBase   string           `json:"api_base"`
+		APIKey    string           `json:"api_key"`
+		Model     string           `json:"model"`
+		SessionID string           `json:"session_id"` // hermes session_id，用于会话续接
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, `{"error":"无效的 JSON"}`, 400)
@@ -768,7 +769,7 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	// === 优先委托给 Hermes Agent ===
 	if hermesState.Available {
 		log.Printf("[handleChat] 委托给 Hermes Agent: %s", hermesState.Path)
-		hermesChat(sse, body.Content, body.APIBase, body.APIKey, body.Model, body.Messages)
+		hermesChat(sse, body.Content, body.APIBase, body.APIKey, body.Model, body.Messages, body.SessionID)
 	} else {
 		// Fallback: 内置简易 Agent Loop
 		log.Printf("[handleChat] Hermes 不可用，使用内置 agentLoop")
@@ -785,15 +786,19 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 }
 
 // hermesChat 委托给 Hermes Agent 子进程处理对话
-func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history []map[string]any) {
+func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history []map[string]any, sessionID string) {
 	hermesPath := hermesState.Path
 
 	// 不再覆写全局 config.yaml（避免并发请求互相覆盖配置）
 	// 通过 -m 指定模型，通过环境变量传递 base_url 和 api_key
-	log.Printf("[hermesChat] 模型配置: model=%s base_url=%s", model, apiBase)
+	log.Printf("[hermesChat] 模型配置: model=%s base_url=%s sessionID=%s", model, apiBase, sessionID)
 
 	// 构建 hermes 命令: -m 指定模型, -Q 安静模式(无 banner/spinner)
 	args := []string{"chat", "-q", content, "-m", model, "-Q"}
+	// 如果有 sessionID，使用 --resume 续接会话（保持上下文连贯）
+	if sessionID != "" {
+		args = append(args, "--resume", sessionID)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -838,25 +843,29 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 
 	// 实时读取 stdout 并转发为 SSE text_delta
 	var fullText strings.Builder
+	// 从 stderr 捕获 session_id（hermes chat -Q 把 session_id 输出到 stderr）
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
-			log.Printf("[hermes-stderr] %s", scanner.Text())
+			line := scanner.Text()
+			if strings.HasPrefix(line, "session_id:") {
+				sid := strings.TrimSpace(strings.TrimPrefix(line, "session_id:"))
+				log.Printf("[hermesChat] session_id: %s", sid)
+				sse.send(map[string]any{"type": "session_id", "session_id": sid})
+			} else {
+				log.Printf("[hermes-stderr] %s", line)
+			}
 		}
 	}()
 
 	scanner := bufio.NewScanner(stdout)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	firstLine := true
 	for scanner.Scan() {
 		line := scanner.Text()
-		// hermes chat -Q 第一行输出 "session_id: xxx"，需过滤掉不发给前端
-		if firstLine {
-			firstLine = false
-			if strings.HasPrefix(line, "session_id:") {
-				log.Printf("[hermesChat] %s", line)
-				continue
-			}
+		// 过滤 hermes 的 resume 提示行（不需要显示给用户）
+		if strings.HasPrefix(line, "↻ Resumed session") || strings.HasPrefix(line, "\u21bb Resumed session") {
+			log.Printf("[hermesChat] %s", line)
+			continue
 		}
 		fullText.WriteString(line)
 		fullText.WriteString("\n")

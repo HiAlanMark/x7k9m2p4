@@ -485,13 +485,15 @@ export async function browserChat(
   history?: Array<{ role: string; content: string }>,
   onStatus?: (message: string, iteration: number, maxIterations: number) => void,
   onApproval?: (id: string, tool: string, command: string, reason: string) => void,
+  sessionId?: string,
+  onSessionId?: (sid: string) => void,
 ) {
   // 优先尝试 Agent Server（本地 9800 端口）
   const agentUrl = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
   const agentAvailable = await checkAgentHealth(agentUrl)
 
   if (agentAvailable) {
-    return agentChat(content, model, onChunk, onDone, onError, customConfig, onToolCall, onToolResult, agentUrl, history, onStatus, onApproval)
+    return agentChat(content, model, onChunk, onDone, onError, customConfig, onToolCall, onToolResult, agentUrl, history, onStatus, onApproval, sessionId, onSessionId)
   }
 
   // Fallback: 直接调 LLM API（纯聊天，无工具能力）
@@ -520,6 +522,8 @@ async function agentChat(
   history?: Array<{ role: string; content: string }>,
   onStatus?: (message: string, iteration: number, maxIterations: number) => void,
   onApproval?: (id: string, tool: string, command: string, reason: string) => void,
+  sessionId?: string,
+  onSessionId?: (sid: string) => void,
 ) {
   const baseUrl = customConfig?.baseUrl || GFW_AI
   const key = customConfig?.apiKey || gfwApiKey || localStorage.getItem('gfw_api_key')
@@ -548,6 +552,7 @@ async function agentChat(
         api_key: key,
         model: activeModel,
         messages: history || [],
+        session_id: sessionId || '',
       }),
     })
 
@@ -602,6 +607,9 @@ async function agentChat(
               break
             case 'tool_result':
               onToolResult?.(evt.tool, evt.result || '', evt.duration || 0)
+              break
+            case 'session_id':
+              onSessionId?.(evt.session_id || '')
               break
             case 'usage':
               usage = evt

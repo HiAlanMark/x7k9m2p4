@@ -336,6 +336,10 @@ async function sendMessage() {
       (id, tool, command, reason) => {
         pendingApproval.value = { id, tool, command, reason }
       },
+      // sessionId — 续接 hermes 会话
+      chatStore.getHermesSessionId(),
+      // onSessionId — 保存 hermes 返回的 session_id
+      (sid) => { chatStore.setHermesSessionId(sid) },
     )
   } else {
     try { await api.agentSendMessage(text, selectedModel.value) }
