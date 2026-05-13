@@ -770,6 +770,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useGfwStore } from '../stores/gfw'
 import { useChatStore } from '../stores/chat'
 import { storeToRefs } from 'pinia'
+import { hermesConfigSet, hermesToolsList, hermesToolsEnable, hermesToolsDisable, hermesMemoryGet, hermesMemoryEdit } from '../api'
 import IconUser from '../components/icons/IconUser.vue'
 import IconSettings from '../components/icons/IconSettings.vue'
 import IconStar from '../components/icons/IconStar.vue'
@@ -1065,26 +1066,32 @@ function saveSettings() {
 // ===== Hermes Agent Settings =====
 const agentSaveOk = ref(false)
 const agentSettings = ref({
-  maxTurns: Number(localStorage.getItem('hermes_max_turns') || 90),
-  systemPrompt: localStorage.getItem('hermes_system_prompt') || '',
-  compressionEnabled: localStorage.getItem('hermes_compression_enabled') !== 'false',
-  compressionThreshold: Number(localStorage.getItem('hermes_compression_threshold') || 0.50),
-  compressionTarget: Number(localStorage.getItem('hermes_compression_target') || 0.20),
-  memoryEnabled: localStorage.getItem('hermes_memory_enabled') !== 'false',
-  userProfileEnabled: localStorage.getItem('hermes_user_profile_enabled') !== 'false',
+  maxTurns: 90,
+  systemPrompt: '',
+  compressionEnabled: true,
+  compressionThreshold: 0.50,
+  compressionTarget: 0.20,
+  memoryEnabled: true,
+  userProfileEnabled: true,
 })
 
-function saveAgentSettings() {
+async function saveAgentSettings() {
   const s = agentSettings.value
-  localStorage.setItem('hermes_max_turns', String(s.maxTurns))
-  localStorage.setItem('hermes_system_prompt', s.systemPrompt)
-  localStorage.setItem('hermes_compression_enabled', String(s.compressionEnabled))
-  localStorage.setItem('hermes_compression_threshold', String(s.compressionThreshold))
-  localStorage.setItem('hermes_compression_target', String(s.compressionTarget))
-  localStorage.setItem('hermes_memory_enabled', String(s.memoryEnabled))
-  localStorage.setItem('hermes_user_profile_enabled', String(s.userProfileEnabled))
-  agentSaveOk.value = true
-  setTimeout(() => { agentSaveOk.value = false }, 2000)
+  try {
+    await Promise.all([
+      hermesConfigSet('agent.max_turns', String(s.maxTurns)),
+      hermesConfigSet('compression.enabled', String(s.compressionEnabled)),
+      hermesConfigSet('compression.threshold', String(s.compressionThreshold)),
+      hermesConfigSet('compression.target_ratio', String(s.compressionTarget)),
+      hermesConfigSet('memory.memory_enabled', String(s.memoryEnabled)),
+      hermesConfigSet('memory.user_profile_enabled', String(s.userProfileEnabled)),
+    ])
+    if (s.systemPrompt) {
+      await hermesConfigSet('agent.system_prompt', s.systemPrompt)
+    }
+    agentSaveOk.value = true
+    setTimeout(() => { agentSaveOk.value = false }, 2000)
+  } catch (e) { console.error('保存 Agent 设置失败:', e) }
 }
 
 // ===== Terminal Settings =====
@@ -1101,19 +1108,18 @@ const terminalSettings = ref({
   dockerMount: localStorage.getItem('hermes_docker_mount') || '',
 })
 
-function saveTerminalSettings() {
+async function saveTerminalSettings() {
   const s = terminalSettings.value
-  localStorage.setItem('hermes_terminal_backend', s.backend)
-  localStorage.setItem('hermes_terminal_cwd', s.cwd)
-  localStorage.setItem('hermes_terminal_timeout', String(s.timeout))
-  localStorage.setItem('hermes_approval_mode', s.approvalMode)
-  localStorage.setItem('hermes_ssh_host', s.sshHost)
-  localStorage.setItem('hermes_ssh_port', String(s.sshPort))
-  localStorage.setItem('hermes_ssh_key', s.sshKey)
-  localStorage.setItem('hermes_docker_image', s.dockerImage)
-  localStorage.setItem('hermes_docker_mount', s.dockerMount)
-  terminalSaveOk.value = true
-  setTimeout(() => { terminalSaveOk.value = false }, 2000)
+  try {
+    await Promise.all([
+      hermesConfigSet('terminal.backend', s.backend),
+      hermesConfigSet('terminal.timeout', String(s.timeout)),
+      hermesConfigSet('approvals.mode', s.approvalMode),
+    ])
+    if (s.cwd) await hermesConfigSet('terminal.cwd', s.cwd)
+    terminalSaveOk.value = true
+    setTimeout(() => { terminalSaveOk.value = false }, 2000)
+  } catch (e) { console.error('保存终端设置失败:', e) }
 }
 
 // ===== Display Settings =====
@@ -1126,15 +1132,17 @@ const displaySettings = ref({
   syntaxHighlight: localStorage.getItem('hermes_syntax_highlight') !== 'false',
 })
 
-function saveDisplaySettings() {
+async function saveDisplaySettings() {
   const s = displaySettings.value
-  localStorage.setItem('hermes_show_tool_progress', String(s.showToolProgress))
-  localStorage.setItem('hermes_show_reasoning', s.showReasoning)
-  localStorage.setItem('hermes_show_cost', String(s.showCost))
-  localStorage.setItem('hermes_render_markdown', String(s.renderMarkdown))
-  localStorage.setItem('hermes_syntax_highlight', String(s.syntaxHighlight))
-  displaySaveOk.value = true
-  setTimeout(() => { displaySaveOk.value = false }, 2000)
+  try {
+    await Promise.all([
+      hermesConfigSet('display.tool_progress', String(s.showToolProgress)),
+      hermesConfigSet('display.show_reasoning', s.showReasoning),
+      hermesConfigSet('display.show_cost', String(s.showCost)),
+    ])
+    displaySaveOk.value = true
+    setTimeout(() => { displaySaveOk.value = false }, 2000)
+  } catch (e) { console.error('保存显示设置失败:', e) }
 }
 
 // ===== Voice Settings =====
@@ -1147,15 +1155,18 @@ const voiceSettings = ref({
   ttsApiKey: localStorage.getItem('hermes_tts_api_key') || '',
 })
 
-function saveVoiceSettings() {
+async function saveVoiceSettings() {
   const s = voiceSettings.value
-  localStorage.setItem('hermes_stt_enabled', String(s.sttEnabled))
-  localStorage.setItem('hermes_stt_provider', s.sttProvider)
-  localStorage.setItem('hermes_whisper_model', s.whisperModel)
-  localStorage.setItem('hermes_tts_provider', s.ttsProvider)
-  localStorage.setItem('hermes_tts_api_key', s.ttsApiKey)
-  voiceSaveOk.value = true
-  setTimeout(() => { voiceSaveOk.value = false }, 2000)
+  try {
+    await Promise.all([
+      hermesConfigSet('stt.enabled', String(s.sttEnabled)),
+      hermesConfigSet('stt.provider', s.sttProvider),
+      hermesConfigSet('tts.provider', s.ttsProvider),
+    ])
+    if (s.sttProvider === 'local') await hermesConfigSet('stt.local.model', s.whisperModel)
+    voiceSaveOk.value = true
+    setTimeout(() => { voiceSaveOk.value = false }, 2000)
+  } catch (e) { console.error('保存语音设置失败:', e) }
 }
 
 // ===== Security Settings =====
@@ -1190,17 +1201,38 @@ try {
   }
 } catch { /* ignore */ }
 
-function saveSecuritySettings() {
+async function saveSecuritySettings() {
   const s = securitySettings.value
-  localStorage.setItem('hermes_redact_secrets', String(s.redactSecrets))
-  localStorage.setItem('hermes_redact_pii', String(s.redactPii))
-  localStorage.setItem('hermes_website_blocklist', s.blocklist)
-  // 保存 toolset 开关
-  const map: Record<string, boolean> = {}
-  toolsetList.value.forEach(t => { map[t.id] = t.enabled })
-  localStorage.setItem('hermes_toolsets', JSON.stringify(map))
-  securitySaveOk.value = true
-  setTimeout(() => { securitySaveOk.value = false }, 2000)
+  try {
+    await Promise.all([
+      hermesConfigSet('security.redact_secrets', String(s.redactSecrets)),
+      hermesConfigSet('privacy.redact_pii', String(s.redactPii)),
+    ])
+    // 保存 toolset 开关 — 调用真实 hermes tools enable/disable
+    for (const t of toolsetList.value) {
+      if (t.enabled) {
+        await hermesToolsEnable(t.id)
+      } else {
+        await hermesToolsDisable(t.id)
+      }
+    }
+    securitySaveOk.value = true
+    setTimeout(() => { securitySaveOk.value = false }, 2000)
+  } catch (e) { console.error('保存安全设置失败:', e) }
+}
+
+// 从真实 Hermes API 加载 toolset 开关状态
+async function loadToolsets() {
+  try {
+    const data = await hermesToolsList()
+    if (data.tools && Array.isArray(data.tools)) {
+      toolsetList.value = data.tools.map((t: any) => ({
+        id: t.name,
+        label: t.description || t.name,
+        enabled: t.enabled,
+      }))
+    }
+  } catch { /* agent not running */ }
 }
 
 onMounted(async () => {
@@ -1211,6 +1243,7 @@ onMounted(async () => {
     await gfwStore.fetchDailyUsage()
     await gfwStore.fetchRechargePackages()
   }
+  loadToolsets()
 })
 </script>
 

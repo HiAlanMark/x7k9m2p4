@@ -379,6 +379,93 @@ export async function configGetAll() {
 }
 
 // ============================================================
+// Hermes Agent API — 真实对接 Go Server → Hermes CLI
+// ============================================================
+
+const AGENT_BASE = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
+
+async function agentFetch(path: string, opts?: RequestInit) {
+  const r = await fetch(`${AGENT_BASE}${path}`, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(opts?.headers as Record<string, string> || {}) },
+  })
+  return r
+}
+
+async function agentJson(path: string, opts?: RequestInit) {
+  const r = await agentFetch(path, opts)
+  return r.json()
+}
+
+async function agentPost(path: string, body: Record<string, unknown>) {
+  return agentJson(path, { method: 'POST', body: JSON.stringify(body) })
+}
+
+// --- Config ---
+export async function hermesConfigGet(): Promise<string> {
+  const r = await agentFetch('/v1/agent/config')
+  return r.text()
+}
+export async function hermesConfigSet(key: string, value: string) {
+  return agentPost('/v1/agent/config/set', { key, value })
+}
+
+// --- Cron ---
+export async function hermesCronList() {
+  return agentJson('/v1/agent/cron/list')
+}
+export async function hermesCronCreate(schedule: string, prompt: string, name?: string) {
+  return agentPost('/v1/agent/cron/create', { schedule, prompt, name })
+}
+export async function hermesCronPause(id: string) {
+  return agentPost('/v1/agent/cron/pause', { id })
+}
+export async function hermesCronResume(id: string) {
+  return agentPost('/v1/agent/cron/resume', { id })
+}
+export async function hermesCronRemove(id: string) {
+  return agentPost('/v1/agent/cron/remove', { id })
+}
+export async function hermesCronRun(id: string) {
+  return agentPost('/v1/agent/cron/run', { id })
+}
+
+// --- Sessions ---
+export async function hermesSessionsList() {
+  return agentJson('/v1/agent/sessions/list')
+}
+export async function hermesSessionsDelete(id: string) {
+  return agentPost('/v1/agent/sessions/delete', { id })
+}
+export async function hermesSessionsRename(id: string, title: string) {
+  return agentPost('/v1/agent/sessions/rename', { id, title })
+}
+
+// --- Memory ---
+export async function hermesMemoryGet() {
+  return agentJson('/v1/agent/memory')
+}
+export async function hermesMemoryEdit(target: 'memory' | 'user', content: string) {
+  return agentPost('/v1/agent/memory/edit', { target, content })
+}
+
+// --- Tools ---
+export async function hermesToolsList() {
+  return agentJson('/v1/agent/tools/list')
+}
+export async function hermesToolsEnable(name: string) {
+  return agentPost('/v1/agent/tools/enable', { name })
+}
+export async function hermesToolsDisable(name: string) {
+  return agentPost('/v1/agent/tools/disable', { name })
+}
+
+// --- Cancel ---
+export async function hermesCancel() {
+  return agentPost('/v1/agent/cancel', {})
+}
+
+// ============================================================
 // 浏览器模式专用：直接调用 gfw.net 进行对话
 // ============================================================
 

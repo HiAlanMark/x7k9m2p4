@@ -180,9 +180,13 @@
           rows="1"
           ref="textareaRef"
         ></textarea>
-        <button @click="sendMessage" :disabled="!inputText.trim() || isStreaming" class="send-btn">
+        <button @click="sendMessage" :disabled="!inputText.trim() || isStreaming" class="send-btn" v-if="!isStreaming">
           <span class="send-key">发送</span>
           <span class="send-arrow">↩</span>
+        </button>
+        <button @click="cancelExecution" class="cancel-btn" v-if="isStreaming">
+          <span>停止</span>
+          <span class="cancel-icon">■</span>
         </button>
       </div>
       <div class="input-status">
@@ -205,7 +209,7 @@ import { storeToRefs } from 'pinia'
 import { marked, type Tokens } from 'marked'
 import hljs from 'highlight.js'
 import * as api from '../api'
-import { isBrowserMode, browserChat } from '../api'
+import { isBrowserMode, browserChat, hermesCancel } from '../api'
 import IconSend from '../components/icons/IconSend.vue'
 import IconStar from '../components/icons/IconStar.vue'
 import IconChat from '../components/icons/IconChat.vue'
@@ -354,6 +358,16 @@ function approveCommand() {
 function denyCommand() {
   pendingApproval.value = null
   chatStore.addSystemMessage('用户拒绝了命令执行')
+}
+
+async function cancelExecution() {
+  try {
+    await hermesCancel()
+    agentStatus.value = ''
+    pendingApproval.value = null
+    chatStore.finishResponse()
+    chatStore.addSystemMessage('已停止执行')
+  } catch { /* ignore */ }
 }
 
 onMounted(async () => {
@@ -1252,6 +1266,28 @@ textarea::placeholder {
 }
 
 .send-key { font-weight: 500; }
+
+.cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--color-error);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  transition: opacity 0.12s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.cancel-btn:hover { opacity: 0.85; }
+.cancel-icon { font-size: 9px; }
 .send-arrow { font-size: 12px; }
 
 .input-status {

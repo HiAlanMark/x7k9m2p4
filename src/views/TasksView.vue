@@ -145,7 +145,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { hermesCronList, hermesCronCreate, hermesCronPause, hermesCronResume, hermesCronRemove, hermesCronRun } from '../api'
 
 interface CronTask {
   id: string
@@ -181,98 +182,75 @@ const activeTab = ref<'cron' | 'running' | 'history'>('cron')
 const showCreate = ref(false)
 const newTask = ref({ name: '', schedule: '', prompt: '', skills: '' })
 
-// 从 localStorage 加载任务
-const cronTasks = ref<CronTask[]>(loadTasks())
+// 从真实 Hermes cron API 加载任务
+const cronTasks = ref<CronTask[]>([])
 const runningTasks = ref<RunningTask[]>([])
-const historyTasks = ref<HistoryTask[]>(loadHistory())
+const historyTasks = ref<HistoryTask[]>([])
+const loading = ref(false)
 
 const allTasks = computed(() => [...cronTasks.value, ...runningTasks.value])
 
-function loadTasks(): CronTask[] {
+async function loadTasks() {
+  loading.value = true
   try {
-    const raw = localStorage.getItem('hixns_cron_tasks')
-    return raw ? JSON.parse(raw) : []
-  } catch { return [] }
+    const data = await hermesCronList()
+    const jobs = Array.isArray(data.jobs) ? data.jobs : []
+    cronTasks.value = jobs.map((j: any) => ({
+      id: j.id || j.job_id || '',
+      name: j.name || j.prompt?.substring(0, 30) || '未命名',
+      schedule: j.schedule || '',
+      prompt: j.prompt || '',
+      skills: j.skills ? j.skills.join(', ') : '',
+      status: j.enabled === false ? 'paused' : 'active',
+      lastRun: j.last_run,
+      nextRun: j.next_run,
+      runCount: j.run_count || 0,
+    }))
+  } catch { /* agent not running */ }
+  loading.value = false
 }
 
-function loadHistory(): HistoryTask[] {
+async function createTask() {
+  if (!newTask.value.schedule || !newTask.value.prompt) return
   try {
-    const raw = localStorage.getItem('hixns_task_history')
-    return raw ? JSON.parse(raw) : []
-  } catch { return [] }
+    await hermesCronCreate(newTask.value.schedule, newTask.value.prompt, newTask.value.name || undefined)
+    newTask.value = { name: '', schedule: '', prompt: '', skills: '' }
+    showCreate.value = false
+    await loadTasks()
+  } catch (e) { console.error('创建任务失败:', e) }
 }
 
-function saveTasks() {
-  localStorage.setItem('hixns_cron_tasks', JSON.stringify(cronTasks.value))
+async function pauseTask(task: CronTask) {
+  await hermesCronPause(task.id)
+  await loadTasks()
 }
 
-function saveHistory() {
-  localStorage.setItem('hixns_task_history', JSON.stringify(historyTasks.value.slice(0, 100)))
+async function resumeTask(task: CronTask) {
+  await hermesCronResume(task.id)
+  await loadTasks()
 }
 
-function createTask() {
-  if (!newTask.value.name || !newTask.value.schedule || !newTask.value.prompt) return
-  const task: CronTask = {
-    id: 'cron-' + Date.now(),
-    name: newTask.value.name,
-    schedule: newTask.value.schedule,
-    prompt: newTask.value.prompt,
-    skills: newTask.value.skills || undefined,
-    status: 'active',
-    runCount: 0,
-  }
-  cronTasks.value.unshift(task)
-  saveTasks()
-  newTask.value = { name: '', schedule: '', prompt: '', skills: '' }
-  showCreate.value = false
-}
-
-function pauseTask(task: CronTask) {
-  task.status = 'paused'
-  saveTasks()
-}
-
-function resumeTask(task: CronTask) {
-  task.status = 'active'
-  saveTasks()
-}
-
-function runTask(task: CronTask) {
-  const running: RunningTask = {
-    id: 'run-' + Date.now(),
-    name: task.name,
-    prompt: task.prompt,
-    startedAt: new Date().toISOString(),
-  }
-  runningTasks.value.unshift(running)
-  task.runCount = (task.runCount || 0) + 1
-  task.lastRun = new Date().toISOString()
-  saveTasks()
-
-  // 模拟执行完成（实际应通过 Agent API）
-  setTimeout(() => {
-    const idx = runningTasks.value.findIndex(r => r.id === running.id)
-    if (idx >= 0) runningTasks.value.splice(idx, 1)
+async function runTask(task: CronTask) {
+  try {
+    await hermesCronRun(task.id)
     historyTasks.value.unshift({
-      id: running.id,
+      id: 'run-' + Date.now(),
       name: task.name,
       finishedAt: new Date().toISOString(),
       result: 'success',
-      output: '任务已提交到 Agent 执行',
-      duration: '0s',
+      output: '已触发执行',
       trigger: '手动触发',
     })
-    saveHistory()
-  }, 2000)
+    await loadTasks()
+  } catch (e) { console.error('执行失败:', e) }
 }
 
-function deleteTask(task: CronTask) {
-  const idx = cronTasks.value.findIndex(t => t.id === task.id)
-  if (idx >= 0) {
-    cronTasks.value.splice(idx, 1)
-    saveTasks()
-  }
+async function deleteTask(task: CronTask) {
+  await hermesCronRemove(task.id)
+  await loadTasks()
 }
+
+onMounted(() => { loadTasks() })
 
 function statusLabel(status: string): string {
   switch (status) {
