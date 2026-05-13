@@ -1097,15 +1097,15 @@ async function saveAgentSettings() {
 // ===== Terminal Settings =====
 const terminalSaveOk = ref(false)
 const terminalSettings = ref({
-  backend: localStorage.getItem('hermes_terminal_backend') || 'local',
-  cwd: localStorage.getItem('hermes_terminal_cwd') || '',
-  timeout: Number(localStorage.getItem('hermes_terminal_timeout') || 180),
-  approvalMode: localStorage.getItem('hermes_approval_mode') || 'manual',
-  sshHost: localStorage.getItem('hermes_ssh_host') || '',
-  sshPort: Number(localStorage.getItem('hermes_ssh_port') || 22),
-  sshKey: localStorage.getItem('hermes_ssh_key') || '',
-  dockerImage: localStorage.getItem('hermes_docker_image') || '',
-  dockerMount: localStorage.getItem('hermes_docker_mount') || '',
+  backend: 'local',
+  cwd: '',
+  timeout: 180,
+  approvalMode: 'manual',
+  sshHost: '',
+  sshPort: 22,
+  sshKey: '',
+  dockerImage: '',
+  dockerMount: '',
 })
 
 async function saveTerminalSettings() {
@@ -1125,11 +1125,11 @@ async function saveTerminalSettings() {
 // ===== Display Settings =====
 const displaySaveOk = ref(false)
 const displaySettings = ref({
-  showToolProgress: localStorage.getItem('hermes_show_tool_progress') !== 'false',
-  showReasoning: localStorage.getItem('hermes_show_reasoning') || 'hide',
-  showCost: localStorage.getItem('hermes_show_cost') === 'true',
-  renderMarkdown: localStorage.getItem('hermes_render_markdown') !== 'false',
-  syntaxHighlight: localStorage.getItem('hermes_syntax_highlight') !== 'false',
+  showToolProgress: true,
+  showReasoning: 'hide',
+  showCost: false,
+  renderMarkdown: true,
+  syntaxHighlight: true,
 })
 
 async function saveDisplaySettings() {
@@ -1148,11 +1148,11 @@ async function saveDisplaySettings() {
 // ===== Voice Settings =====
 const voiceSaveOk = ref(false)
 const voiceSettings = ref({
-  sttEnabled: localStorage.getItem('hermes_stt_enabled') === 'true',
-  sttProvider: localStorage.getItem('hermes_stt_provider') || 'local',
-  whisperModel: localStorage.getItem('hermes_whisper_model') || 'base',
-  ttsProvider: localStorage.getItem('hermes_tts_provider') || 'edge',
-  ttsApiKey: localStorage.getItem('hermes_tts_api_key') || '',
+  sttEnabled: false,
+  sttProvider: 'local',
+  whisperModel: 'base',
+  ttsProvider: 'edge',
+  ttsApiKey: '',
 })
 
 async function saveVoiceSettings() {
@@ -1172,9 +1172,9 @@ async function saveVoiceSettings() {
 // ===== Security Settings =====
 const securitySaveOk = ref(false)
 const securitySettings = ref({
-  redactSecrets: localStorage.getItem('hermes_redact_secrets') === 'true',
-  redactPii: localStorage.getItem('hermes_redact_pii') === 'true',
-  blocklist: localStorage.getItem('hermes_website_blocklist') || '',
+  redactSecrets: false,
+  redactPii: false,
+  blocklist: '',
 })
 
 const toolsetList = ref([
@@ -1192,14 +1192,7 @@ const toolsetList = ref([
   { id: 'cronjob', label: '定时任务', enabled: true },
 ])
 
-// 从 localStorage 恢复 toolset 开关状态
-try {
-  const saved = localStorage.getItem('hermes_toolsets')
-  if (saved) {
-    const map = JSON.parse(saved) as Record<string, boolean>
-    toolsetList.value.forEach(t => { if (map[t.id] !== undefined) t.enabled = map[t.id] })
-  }
-} catch { /* ignore */ }
+// toolset 开关状态从真实 Hermes API 加载 (见 loadToolsets)
 
 async function saveSecuritySettings() {
   const s = securitySettings.value
