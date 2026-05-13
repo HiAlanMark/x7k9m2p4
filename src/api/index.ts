@@ -395,17 +395,18 @@ export async function browserChat(
   customConfig?: { baseUrl: string; apiKey: string; model: string },
   onToolCall?: (tool: string, args: Record<string, unknown>) => void,
   onToolResult?: (tool: string, result: string, duration: number) => void,
+  history?: Array<{ role: string; content: string }>,
 ) {
   // 优先尝试 Agent Server（本地 9800 端口）
   const agentUrl = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
   const agentAvailable = await checkAgentHealth(agentUrl)
 
   if (agentAvailable) {
-    return agentChat(content, model, onChunk, onDone, onError, customConfig, onToolCall, onToolResult, agentUrl)
+    return agentChat(content, model, onChunk, onDone, onError, customConfig, onToolCall, onToolResult, agentUrl, history)
   }
 
   // Fallback: 直接调 LLM API（纯聊天，无工具能力）
-  return directChat(content, model, onChunk, onDone, onError, customConfig)
+  return directChat(content, model, onChunk, onDone, onError, customConfig, history)
 }
 
 async function checkAgentHealth(agentUrl: string): Promise<boolean> {
@@ -427,6 +428,7 @@ async function agentChat(
   onToolCall?: (tool: string, args: Record<string, unknown>) => void,
   onToolResult?: (tool: string, result: string, duration: number) => void,
   agentUrl?: string,
+  history?: Array<{ role: string; content: string }>,
 ) {
   const baseUrl = customConfig?.baseUrl || GFW_AI
   const key = customConfig?.apiKey || gfwApiKey || localStorage.getItem('gfw_api_key')
@@ -454,7 +456,7 @@ async function agentChat(
         api_base: llmBase,
         api_key: key,
         model: activeModel,
-        messages: [],
+        messages: history || [],
       }),
     })
 
@@ -526,6 +528,7 @@ async function directChat(
   onDone: (fullText: string, usage: Record<string, number>) => void,
   onError: (err: string) => void,
   customConfig?: { baseUrl: string; apiKey: string; model: string },
+  history?: Array<{ role: string; content: string }>,
 ) {
   // 优先使用传入的自定义配置，否则用 gfw 默认
   // 开发模式下所有外部 API 都走 Vite 代理避免 CORS
@@ -557,7 +560,7 @@ async function directChat(
       headers,
       body: JSON.stringify({
         model: activeModel,
-        messages: [{ role: 'user', content }],
+        messages: [...(history || []), { role: 'user', content }],
         stream: true,
       }),
     })

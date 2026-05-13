@@ -265,6 +265,11 @@ async function sendMessage() {
 
   if (isBrowserMode()) {
     const config = chatStore.getActiveConfig()
+    // 构造对话历史（不含当前消息，当前消息通过 content 参数传递）
+    const history = messages.value
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .slice(0, -1)  // 排除刚添加的当前用户消息
+      .map(m => ({ role: m.role, content: m.content }))
     await browserChat(
       text, selectedModel.value,
       (chunk) => chatStore.appendToResponse(chunk),
@@ -278,6 +283,7 @@ async function sendMessage() {
         const idx = chatStore.currentToolCalls.findIndex(tc => tc.tool === tool && tc.status === 'running')
         if (idx >= 0) chatStore.completeToolCall(idx, result.substring(0, 500), 'completed')
       },
+      history,
     )
   } else {
     try { await api.agentSendMessage(text, selectedModel.value) }
