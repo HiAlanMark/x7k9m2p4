@@ -472,15 +472,20 @@ async function agentChat(
     const decoder = new TextDecoder()
     let fullText = ''
     let usage: Record<string, number> = {}
+    let buffer = ''
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
 
-      const chunk = decoder.decode(value, { stream: true })
-      for (const line of chunk.split('\n')) {
-        if (!line.startsWith('data: ')) continue
-        const data = line.slice(6).trim()
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''  // 最后一个可能是不完整的行，留到下次
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data: ')) continue
+        const data = trimmed.slice(6).trim()
         if (data === '[DONE]') {
           onDone(fullText, usage)
           return
@@ -510,8 +515,20 @@ async function agentChat(
               return
           }
         } catch {
-          // ignore
+          // JSON parse error — likely incomplete data, will retry next chunk
         }
+      }
+    }
+
+    // 处理 buffer 里剩余的数据
+    if (buffer.trim().startsWith('data: ')) {
+      const data = buffer.trim().slice(6).trim()
+      if (data && data !== '[DONE]') {
+        try {
+          const evt = JSON.parse(data)
+          if (evt.type === 'text') { fullText += evt.content; onChunk(evt.content) }
+          else if (evt.type === 'done') { fullText = evt.content || fullText }
+        } catch { /* ignore */ }
       }
     }
 
@@ -576,15 +593,20 @@ async function directChat(
 
     const decoder = new TextDecoder()
     let fullText = ''
+    let buffer = ''
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
 
-      const chunk = decoder.decode(value, { stream: true })
-      for (const line of chunk.split('\n')) {
-        if (!line.startsWith('data: ')) continue
-        const data = line.slice(6).trim()
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data: ')) continue
+        const data = trimmed.slice(6).trim()
         if (data === '[DONE]') {
           onDone(fullText, {})
           return
@@ -596,14 +618,25 @@ async function directChat(
             fullText += delta
             onChunk(delta)
           }
-          // 检查 usage
           if (parsed.usage) {
             onDone(fullText, parsed.usage)
             return
           }
         } catch {
-          // ignore parse errors
+          // incomplete JSON, will retry next chunk
         }
+      }
+    }
+
+    // 处理 buffer 残留
+    if (buffer.trim().startsWith('data: ')) {
+      const data = buffer.trim().slice(6).trim()
+      if (data && data !== '[DONE]') {
+        try {
+          const parsed = JSON.parse(data)
+          const delta = parsed.choices?.[0]?.delta?.content
+          if (delta) { fullText += delta; onChunk(delta) }
+        } catch { /* ignore */ }
       }
     }
 
