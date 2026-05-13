@@ -390,7 +390,7 @@ onMounted(async () => {
   flex: 1;
   overflow-y: auto;
   padding: 0;
-  padding-bottom: 60px; /* 给浮动 input-area 留出空间，但允许内容滚到渐变区 */
+  padding-bottom: 140px; /* 给浮动 input-area 留出足够空间（input-area padding-top 48px + 输入框 ~60px + 底部 16px + 余量） */
 }
 
 /* ===== Empty state - Terminal ===== */
