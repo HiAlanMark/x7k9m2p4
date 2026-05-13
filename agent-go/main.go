@@ -794,7 +794,9 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 	log.Printf("[hermesChat] 模型配置: model=%s base_url=%s sessionID=%s", model, apiBase, sessionID)
 
 	// 构建 hermes 命令: -m 指定模型, -Q 安静模式(无 banner/spinner)
-	args := []string{"chat", "-q", content, "-m", model, "-Q"}
+	// --yolo 跳过危险命令确认（桌面应用无 TTY 交互）
+	// -t 排除 clarify 工具（桌面模式下用户无法回复 hermes 的追问）
+	args := []string{"chat", "-q", content, "-m", model, "-Q", "--yolo"}
 	// 如果有 sessionID，使用 --resume 续接会话（保持上下文连贯）
 	if sessionID != "" {
 		args = append(args, "--resume", sessionID)
