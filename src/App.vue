@@ -19,10 +19,15 @@
           <span class="nav-label">技能商店</span>
           <kbd class="nav-shortcut">2</kbd>
         </router-link>
+        <router-link to="/tasks" class="nav-item" :class="{ active: $route.path === '/tasks' }">
+          <span class="nav-icon"><IconStar :size="18" /></span>
+          <span class="nav-label">任务</span>
+          <kbd class="nav-shortcut">3</kbd>
+        </router-link>
         <router-link to="/settings" class="nav-item" :class="{ active: $route.path === '/settings' }">
           <span class="nav-icon"><IconSettings :size="18" /></span>
           <span class="nav-label">设置</span>
-          <kbd class="nav-shortcut">3</kbd>
+          <kbd class="nav-shortcut">4</kbd>
         </router-link>
       </nav>
 
