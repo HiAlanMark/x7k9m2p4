@@ -29,6 +29,8 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	webview "github.com/abemedia/go-webview"
 )
 
 // ============================================================
@@ -1936,24 +1938,10 @@ func main() {
 	log.Printf("[Hi!XNS Agent] 工具: %s", strings.Join(tools, ", "))
 	log.Printf("[Hi!XNS Agent] 监听: http://%s", addr)
 
-	// 自动打开浏览器（桌面应用体验）
+	// 自动打开原生桌面窗口
 	go func() {
-		time.Sleep(500 * time.Millisecond) // 等服务器就绪
-		url := "http://" + addr
-		var cmd *exec.Cmd
-		switch runtime.GOOS {
-		case "darwin":
-			cmd = exec.Command("open", url)
-		case "windows":
-			cmd = exec.Command("cmd", "/c", "start", url)
-		default:
-			cmd = exec.Command("xdg-open", url)
-		}
-		if err := cmd.Start(); err != nil {
-			log.Printf("[Hi!XNS] 请手动打开浏览器访问: %s", url)
-		} else {
-			log.Printf("[Hi!XNS] 已在浏览器中打开: %s", url)
-		}
+		time.Sleep(300 * time.Millisecond) // 等服务器就绪
+		openDesktopWindow("http://" + addr)
 	}()
 
 	server := &http.Server{Addr: addr, Handler: mux}
@@ -1977,3 +1965,33 @@ func main() {
 
 // Regex for search
 var _ = regexp.Compile
+
+// openDesktopWindow 打开原生桌面窗口
+func openDesktopWindow(url string) {
+	log.Printf("[Hi!XNS] 正在打开桌面窗口: %s", url)
+	w := webview.New(false)
+	if w == nil {
+		log.Printf("[Hi!XNS] 无法创建原生窗口，请手动打开浏览器访问: %s", url)
+		// fallback: 打开浏览器
+		var cmd *exec.Cmd
+		switch runtime.GOOS {
+		case "darwin":
+			cmd = exec.Command("open", url)
+		case "windows":
+			cmd = exec.Command("cmd", "/c", "start", url)
+		default:
+			cmd = exec.Command("xdg-open", url)
+		}
+		cmd.Start()
+		return
+	}
+	defer w.Destroy()
+	w.SetTitle("Hi!XNS")
+	w.SetSize(1280, 860, webview.HintNone)
+	w.SetSize(900, 600, webview.HintMin)
+	w.Navigate(url)
+	w.Run()
+	// 窗口关闭时退出程序
+	log.Println("[Hi!XNS] 窗口已关闭")
+	os.Exit(0)
+}
