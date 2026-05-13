@@ -227,13 +227,16 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  function finishResponse(tokenUsage?: Record<string, number>, model?: string, durationMs?: number) {
+  function finishResponse(tokenUsage?: Record<string, number>, model?: string, durationMs?: number, finalContent?: string) {
     const session = currentSession.value
     if (!session) return
+    // finalContent 优先（Agent done 事件的完整响应），否则用流式累积的 currentResponse
+    const content = finalContent || currentResponse.value
+    if (finalContent) currentResponse.value = finalContent  // 更新流式预览
     session.messages.push({
       id: generateMsgId(),
       role: 'assistant',
-      content: currentResponse.value,
+      content,
       timestamp: new Date().toISOString(),
       tool_calls: currentToolCalls.value.length > 0 ? [...currentToolCalls.value] : undefined,
       token_usage: tokenUsage,

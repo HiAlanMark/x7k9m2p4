@@ -55,7 +55,7 @@
           <span class="sys-text">{{ msg.content }}</span>
         </div>
 
-        <div v-else-if="msg.role === 'user' || (msg.content && msg.content.trim())" class="msg" :class="msg.role">
+        <div v-else-if="msg.role === 'user' || msg.role === 'assistant' || (msg.content && msg.content.trim())" class="msg" :class="msg.role">
           <div class="msg-header">
             <span class="msg-author" :class="msg.role">{{ msg.role === 'user' ? '我' : 'Hi!XNS' }}</span>
             <span class="msg-time">{{ formatTime(msg.timestamp) }}</span>
@@ -251,7 +251,7 @@ async function sendMessage() {
     await browserChat(
       text, selectedModel.value,
       (chunk) => chatStore.appendToResponse(chunk),
-      (fullText, usage) => chatStore.finishResponse(usage, config.model),
+      (fullText, usage) => chatStore.finishResponse(usage, config.model, undefined, fullText),
       (err) => { chatStore.finishResponse(); chatStore.addSystemMessage(`Error: ${err}`) },
       config,
       // onToolCall
