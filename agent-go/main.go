@@ -761,17 +761,101 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 
 	sse := &sseWriter{w: w, flusher: flusher}
 
-	// 构建消息
-	messages := []map[string]any{{"role": "system", "content": systemPrompt}}
-	messages = append(messages, body.Messages...)
-	if body.Content != "" {
-		messages = append(messages, map[string]any{"role": "user", "content": body.Content})
+	// === 优先委托给 Hermes Agent ===
+	if hermesState.Available {
+		log.Printf("[handleChat] 委托给 Hermes Agent: %s", hermesState.Path)
+		hermesChat(sse, body.Content, body.APIBase, body.APIKey, body.Model, body.Messages)
+	} else {
+		// Fallback: 内置简易 Agent Loop
+		log.Printf("[handleChat] Hermes 不可用，使用内置 agentLoop")
+		messages := []map[string]any{{"role": "system", "content": systemPrompt}}
+		messages = append(messages, body.Messages...)
+		if body.Content != "" {
+			messages = append(messages, map[string]any{"role": "user", "content": body.Content})
+		}
+		agentLoop(sse, messages, body.APIBase, body.APIKey, body.Model)
 	}
-
-	agentLoop(sse, messages, body.APIBase, body.APIKey, body.Model)
 
 	fmt.Fprint(w, "data: [DONE]\n\n")
 	flusher.Flush()
+}
+
+// hermesChat 委托给 Hermes Agent 子进程处理对话
+func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history []map[string]any) {
+	hermesPath := hermesState.Path
+
+	// 构建 hermes 命令
+	args := []string{"chat", "-q", content, "-m", model, "-Q"}
+
+	// 设置环境变量传递 API 配置
+	env := os.Environ()
+	// 根据 apiBase 判断 provider
+	env = append(env,
+		"HERMES_MODEL_BASE_URL="+apiBase,
+		"HERMES_MODEL_API_KEY="+apiKey,
+		"HERMES_MODEL_DEFAULT="+model,
+	)
+
+	// 构建 hermes 子进程
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, hermesPath, args...)
+	cmd.Env = env
+
+	// 捕获 stdout 和 stderr
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		sse.send(map[string]any{"type": "error", "message": "无法启动 Hermes: " + err.Error()})
+		return
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		sse.send(map[string]any{"type": "error", "message": "无法启动 Hermes: " + err.Error()})
+		return
+	}
+
+	sse.send(map[string]any{"type": "status", "iteration": 1, "max_iterations": 1, "message": "Hermes Agent 处理中..."})
+
+	if err := cmd.Start(); err != nil {
+		sse.send(map[string]any{"type": "error", "message": "Hermes 启动失败: " + err.Error()})
+		return
+	}
+
+	// 实时读取 stdout 并转发为 SSE text_delta
+	var fullText strings.Builder
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			log.Printf("[hermes-stderr] %s", scanner.Text())
+		}
+	}()
+
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fullText.WriteString(line)
+		fullText.WriteString("\n")
+		sse.send(map[string]any{"type": "text_delta", "content": line + "\n"})
+	}
+
+	err = cmd.Wait()
+	text := strings.TrimSpace(fullText.String())
+
+	if err != nil {
+		log.Printf("[hermes] 退出错误: %v", err)
+		if text == "" {
+			sse.send(map[string]any{"type": "error", "message": "Hermes 执行失败: " + err.Error()})
+			return
+		}
+	}
+
+	// 推送完整文本
+	if text != "" {
+		sse.send(map[string]any{"type": "text", "content": text})
+	}
+	sse.send(map[string]any{"type": "done", "content": text})
 }
 
 // ============================================================
