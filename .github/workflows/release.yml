@@ -9,6 +9,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     strategy:
@@ -29,7 +32,7 @@ jobs:
             ldflags: '-s -w'
           - goos: windows
             goarch: amd64
-            platform: windows-latest
+            platform: ubuntu-22.04
             name: 'HiXNS-Windows-amd64'
             ext: '.exe'
             ldflags: '-s -w -H windowsgui'
@@ -52,7 +55,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.25'
           cache-dependency-path: agent-go/go.sum
 
       - name: Build Frontend
@@ -62,92 +65,44 @@ jobs:
 
       - name: Copy frontend to Go embed directory
         run: cp -r dist agent-go/dist
-        shell: bash
 
       - name: Build Go binary
         run: |
           cd agent-go
-          go build -ldflags="${{ matrix.ldflags }}" -o ../HiXNS${{ matrix.ext }} .
-        shell: bash
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: '0'
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
+            go build -ldflags="${{ matrix.ldflags }}" -o ../HiXNS${{ matrix.ext }} .
+          ls -lh ../HiXNS${{ matrix.ext }}
 
-      - name: Create Windows installer (NSIS)
-        if: matrix.goos == 'windows'
-        shell: pwsh
+      - name: Create macOS .app bundle
+        if: matrix.goos == 'darwin'
         run: |
-          # Create NSIS script
-          @"
-          !include "MUI2.nsh"
-          Name "Hi!XNS"
-          OutFile "HiXNS-Setup.exe"
-          InstallDir "`$PROGRAMFILES64\HiXNS"
-          RequestExecutionLevel admin
-
-          !insertmacro MUI_PAGE_DIRECTORY
-          !insertmacro MUI_PAGE_INSTFILES
-          !insertmacro MUI_LANGUAGE "SimpChinese"
-
-          Section "Install"
-            SetOutPath `$INSTDIR
-            File "HiXNS.exe"
-            CreateShortcut "`$DESKTOP\Hi!XNS.lnk" "`$INSTDIR\HiXNS.exe"
-            CreateDirectory "`$SMPROGRAMS\Hi!XNS"
-            CreateShortcut "`$SMPROGRAMS\Hi!XNS\Hi!XNS.lnk" "`$INSTDIR\HiXNS.exe"
-            CreateShortcut "`$SMPROGRAMS\Hi!XNS\卸载.lnk" "`$INSTDIR\uninstall.exe"
-            WriteUninstaller "`$INSTDIR\uninstall.exe"
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "DisplayName" "Hi!XNS"
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "UninstallString" "`$INSTDIR\uninstall.exe"
-          SectionEnd
-
-          Section "Uninstall"
-            Delete "`$INSTDIR\HiXNS.exe"
-            Delete "`$INSTDIR\uninstall.exe"
-            Delete "`$DESKTOP\Hi!XNS.lnk"
-            RMDir /r "`$SMPROGRAMS\Hi!XNS"
-            RMDir "`$INSTDIR"
-            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS"
-          SectionEnd
-          "@ | Out-File -FilePath installer.nsi -Encoding utf8
-
-          choco install nsis -y --no-progress
-          makensis installer.nsi
-
-      - name: Create release archive
-        run: |
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            # zip the exe for direct download too
-            7z a ${{ matrix.name }}.zip HiXNS.exe 2>/dev/null || zip ${{ matrix.name }}.zip HiXNS.exe
-          elif [ "${{ matrix.goos }}" = "darwin" ]; then
-            chmod +x HiXNS
-            # Create macOS .app bundle
-            mkdir -p "Hi!XNS.app/Contents/MacOS"
-            mkdir -p "Hi!XNS.app/Contents/Resources"
-            cp HiXNS "Hi!XNS.app/Contents/MacOS/HiXNS"
-            cat > "Hi!XNS.app/Contents/Info.plist" << 'PLIST'
+          mkdir -p "HiXNS.app/Contents/MacOS" "HiXNS.app/Contents/Resources"
+          cp HiXNS "HiXNS.app/Contents/MacOS/HiXNS"
+          chmod +x "HiXNS.app/Contents/MacOS/HiXNS"
+          cat > "HiXNS.app/Contents/Info.plist" << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>CFBundleName</key><string>Hi!XNS</string>
+          <plist version="1.0"><dict>
+            <key>CFBundleName</key><string>HiXNS</string>
             <key>CFBundleDisplayName</key><string>Hi!XNS</string>
             <key>CFBundleIdentifier</key><string>com.hixns.desktop</string>
             <key>CFBundleVersion</key><string>0.1.0</string>
             <key>CFBundleExecutable</key><string>HiXNS</string>
             <key>CFBundlePackageType</key><string>APPL</string>
-            <key>LSMinimumSystemVersion</key><string>12.0</string>
             <key>NSHighResolutionCapable</key><true/>
-          </dict>
-          </plist>
-          PLIST
-            tar czf ${{ matrix.name }}.tar.gz "Hi!XNS.app"
-          else
-            chmod +x HiXNS
-            tar czf ${{ matrix.name }}.tar.gz HiXNS
-          fi
-        shell: bash
+          </dict></plist>
+          EOF
+          tar czf ${{ matrix.name }}.tar.gz HiXNS.app
+
+      - name: Create archive (Linux)
+        if: matrix.goos == 'linux'
+        run: |
+          chmod +x HiXNS
+          tar czf ${{ matrix.name }}.tar.gz HiXNS
+
+      - name: Create archive (Windows)
+        if: matrix.goos == 'windows'
+        run: zip ${{ matrix.name }}.zip HiXNS.exe
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
@@ -160,14 +115,13 @@ jobs:
             单文件桌面 AI 应用，原生窗口，内置 30+ 工具、多轮对话、技能商店。
 
             ### 安装
-            - **Windows**: 下载 `HiXNS-Setup.exe` 安装，桌面快捷方式启动
-            - **macOS**: 下载 `.tar.gz`，解压后将 `Hi!XNS.app` 拖入 Applications
-            - **Linux**: 下载 `.tar.gz`，解压后运行 `./HiXNS`
+            - **Windows**: 下载 `.zip` 解压，双击 `HiXNS.exe` 运行
+            - **macOS**: 下载 `.tar.gz` 解压，将 `HiXNS.app` 拖入 Applications
+            - **Linux**: 下载 `.tar.gz` 解压，`chmod +x HiXNS && ./HiXNS`
 
             > macOS 首次运行：系统设置 → 隐私与安全性 → 仍要打开
           draft: false
           prerelease: false
           files: |
-            HiXNS-Setup.exe
             ${{ matrix.name }}.zip
             ${{ matrix.name }}.tar.gz
