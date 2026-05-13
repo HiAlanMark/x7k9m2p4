@@ -6,15 +6,11 @@ on:
       - 'v*'
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 permissions:
   contents: write
 
 jobs:
-  # Step 1: Build Go agent binary for all platforms
-  build-agent:
+  build:
     strategy:
       fail-fast: false
       matrix:
@@ -22,66 +18,23 @@ jobs:
           - goos: darwin
             goarch: arm64
             platform: macos-latest
-            suffix: '-darwin-arm64'
+            name: 'HiXNS-macOS-arm64'
+            ext: ''
           - goos: darwin
             goarch: amd64
             platform: macos-latest
-            suffix: '-darwin-amd64'
-          - goos: linux
-            goarch: amd64
-            platform: ubuntu-22.04
-            suffix: '-linux-amd64'
+            name: 'HiXNS-macOS-amd64'
+            ext: ''
           - goos: windows
             goarch: amd64
             platform: ubuntu-22.04
-            suffix: '.exe'
-
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-          cache-dependency-path: agent-go/go.sum
-
-      - name: Build Go Agent
-        run: |
-          cd agent-go
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
-            go build -ldflags="-s -w" -o ../hixns-agent${{ matrix.suffix }} .
-          ls -lh ../hixns-agent${{ matrix.suffix }}
-
-      - name: Upload Go binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: agent-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: hixns-agent${{ matrix.suffix }}
-
-  # Step 2: Build Tauri desktop app (bundles Go agent as sidecar)
-  build-tauri:
-    needs: build-agent
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-            agent_artifact: 'agent-darwin-arm64'
-            agent_file: 'hixns-agent-darwin-arm64'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
-            agent_artifact: 'agent-darwin-amd64'
-            agent_file: 'hixns-agent-darwin-amd64'
-          - platform: 'ubuntu-22.04'
-            args: ''
-            agent_artifact: 'agent-linux-amd64'
-            agent_file: 'hixns-agent-linux-amd64'
-          - platform: 'windows-latest'
-            args: ''
-            agent_artifact: 'agent-windows-amd64'
-            agent_file: 'hixns-agent.exe'
+            name: 'HiXNS-Windows-amd64'
+            ext: '.exe'
+          - goos: linux
+            goarch: amd64
+            platform: ubuntu-22.04
+            name: 'HiXNS-Linux-amd64'
+            ext: ''
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -92,68 +45,67 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
-      - name: Install dependencies (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
-
-      - name: Download Go agent binary
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ matrix.agent_artifact }}
-          path: agent-go/bin/
-
-      - name: Place agent binary for bundling
-        run: |
-          chmod +x agent-go/bin/${{ matrix.agent_file }} 2>/dev/null || true
-          ls -lh agent-go/bin/
-        shell: bash
-
-      - name: Install frontend dependencies
-        run: npm install
+          go-version: '1.23'
+          cache-dependency-path: agent-go/go.sum
 
       - name: Build Frontend
-        run: npx vite build
+        run: |
+          npm install
+          npx vite build
 
-      - name: Build Tauri App
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Copy frontend to Go embed directory
+        run: cp -r dist agent-go/dist
+
+      - name: Build Go binary (with embedded frontend)
+        run: |
+          cd agent-go
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
+            go build -ldflags="-s -w" -o ../hixns-agent${{ matrix.ext }} .
+          ls -lh ../hixns-agent${{ matrix.ext }}
+
+      - name: Create release archive
+        run: |
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip ${{ matrix.name }}.zip hixns-agent${{ matrix.ext }}
+          else
+            chmod +x hixns-agent${{ matrix.ext }}
+            tar czf ${{ matrix.name }}.tar.gz hixns-agent${{ matrix.ext }}
+          fi
+        shell: bash
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          projectPath: '.'
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Hi!XNS ${{ github.ref_name }}'
-          releaseBody: |
-            Hi!XNS Desktop AI Agent ${{ github.ref_name }}
+          name: 'Hi!XNS ${{ github.ref_name }}'
+          body: |
+            ## Hi!XNS Desktop AI Agent ${{ github.ref_name }}
             
-            内置 Hermes Agent 工具链，支持 30+ AI 工具、多轮对话、技能商店。
+            单文件桌面 AI 应用，内置 30+ 工具、多轮对话、技能商店。
             
-            **安装说明：**
-            - macOS: 下载 .dmg，拖入 Applications
-            - Windows: 下载 .msi 或 .exe 安装
-            - Linux: 下载 .deb 或 .AppImage
-          releaseDraft: false
+            ### 使用方法
+            1. 下载对应平台的文件
+            2. 解压后双击运行 `hixns-agent`
+            3. 自动打开浏览器，即可使用
+            
+            ### 平台说明
+            - **macOS arm64**: Apple Silicon (M1/M2/M3/M4)
+            - **macOS amd64**: Intel Mac
+            - **Windows**: 64位 Windows
+            - **Linux**: 64位 Linux
+            
+            > 首次运行 macOS 可能需要：右键 → 打开 → 信任
+          draft: false
           prerelease: false
-          args: ${{ matrix.args }}
+          files: |
+            ${{ matrix.name }}.zip
+            ${{ matrix.name }}.tar.gz
 
-      - name: Upload Artifacts
+      - name: Upload Artifacts (backup)
         uses: actions/upload-artifact@v4
         with:
-          name: HiXNS-${{ matrix.platform }}-${{ github.run_id }}
-          path: |
-            src-tauri/target/release/bundle/**/*.dmg
-            src-tauri/target/release/bundle/**/*.exe
-            src-tauri/target/release/bundle/**/*.msi
-            src-tauri/target/release/bundle/**/*.deb
-            src-tauri/target/release/bundle/**/*.AppImage
+          name: ${{ matrix.name }}
+          path: hixns-agent${{ matrix.ext }}

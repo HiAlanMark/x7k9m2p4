@@ -9,9 +9,11 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -1835,6 +1837,13 @@ func detectHermes() hermesInfo {
 var hermesState hermesInfo
 
 // ============================================================
+// 内嵌前端静态文件 (go:embed)
+// ============================================================
+
+//go:embed dist/*
+var distFS embed.FS
+
+// ============================================================
 // Main
 // ============================================================
 
@@ -1880,6 +1889,28 @@ func main() {
 	mux.HandleFunc("/v1/agent/tools/enable", handleToolsEnable)
 	mux.HandleFunc("/v1/agent/tools/disable", handleToolsDisable)
 
+	// 内嵌前端 — 从 go:embed 的 dist/ 目录提供 SPA 静态文件
+	frontendFS, _ := fs.Sub(distFS, "dist")
+	fileServer := http.FileServer(http.FS(frontendFS))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		setCORS(w)
+		// API 路径不走前端
+		if strings.HasPrefix(r.URL.Path, "/v1/") {
+			http.NotFound(w, r)
+			return
+		}
+		// 尝试提供静态文件，不存在则返回 index.html (SPA fallback)
+		path := r.URL.Path
+		if path == "/" {
+			path = "/index.html"
+		}
+		if _, err := fs.Stat(frontendFS, strings.TrimPrefix(path, "/")); err != nil {
+			// 文件不存在 → SPA fallback 到 index.html
+			r.URL.Path = "/"
+		}
+		fileServer.ServeHTTP(w, r)
+	})
+
 	addr := host + ":" + port
 
 	// 检测 Hermes Agent
@@ -1904,6 +1935,26 @@ func main() {
 	log.Printf("[Hi!XNS Agent] Go %s | %s %s", runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	log.Printf("[Hi!XNS Agent] 工具: %s", strings.Join(tools, ", "))
 	log.Printf("[Hi!XNS Agent] 监听: http://%s", addr)
+
+	// 自动打开浏览器（桌面应用体验）
+	go func() {
+		time.Sleep(500 * time.Millisecond) // 等服务器就绪
+		url := "http://" + addr
+		var cmd *exec.Cmd
+		switch runtime.GOOS {
+		case "darwin":
+			cmd = exec.Command("open", url)
+		case "windows":
+			cmd = exec.Command("cmd", "/c", "start", url)
+		default:
+			cmd = exec.Command("xdg-open", url)
+		}
+		if err := cmd.Start(); err != nil {
+			log.Printf("[Hi!XNS] 请手动打开浏览器访问: %s", url)
+		} else {
+			log.Printf("[Hi!XNS] 已在浏览器中打开: %s", url)
+		}
+	}()
 
 	server := &http.Server{Addr: addr, Handler: mux}
 

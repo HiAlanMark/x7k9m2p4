@@ -382,7 +382,7 @@ export async function configGetAll() {
 // Hermes Agent API — 真实对接 Go Server → Hermes CLI
 // ============================================================
 
-const AGENT_BASE = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
+const AGENT_BASE = isDev ? '/proxy/agent' : ''  // 生产模式下前端与 Go 服务同源，使用相对路径
 
 async function agentFetch(path: string, opts?: RequestInit) {
   const r = await fetch(`${AGENT_BASE}${path}`, {
@@ -488,8 +488,8 @@ export async function browserChat(
   sessionId?: string,
   onSessionId?: (sid: string) => void,
 ) {
-  // 优先尝试 Agent Server（本地 9800 端口）
-  const agentUrl = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
+  // 优先尝试 Agent Server（同源或本地端口）
+  const agentUrl = isDev ? '/proxy/agent' : ''
   const agentAvailable = await checkAgentHealth(agentUrl)
 
   if (agentAvailable) {
