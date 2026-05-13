@@ -390,11 +390,15 @@ onMounted(async () => {
   padding: 9px 12px;
   cursor: pointer;
   border-radius: var(--radius-btn);
-  transition: background 0.12s;
+  border: 1px solid transparent;
+  transition: all 0.15s;
 }
 
 .quick-item:hover {
-  background: var(--color-bg-input);
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .qa-icon {
@@ -855,11 +859,11 @@ onMounted(async () => {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 10px 14px;
   gap: 8px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.08), 0 0 0 1px var(--glass-border);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 

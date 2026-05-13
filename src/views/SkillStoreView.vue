@@ -866,8 +866,9 @@ onMounted(() => {
   font-size: 10px;
   background: var(--color-bg-input);
   color: var(--color-text-tertiary);
-  padding: 2px 7px;
-  border-radius: 3px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
 }
 
 .tag.cap {
@@ -885,9 +886,9 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   padding: 5px 12px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
   font-size: 11px;
   font-family: var(--font-mono);
   color: var(--color-text-secondary);

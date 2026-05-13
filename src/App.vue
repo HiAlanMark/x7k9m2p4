@@ -82,6 +82,7 @@
         <!-- Model selector for gfw mode -->
         <div v-if="chatStore.providerMode !== 'custom'" class="model-select-wrap">
           <select v-model="selectedModel" class="model-select">
+            <option disabled value="">选择模型...</option>
             <option v-for="m in featuredModels" :key="m.id" :value="m.id">{{ m.name }}</option>
             <option v-if="!featuredModels.length && selectedModel" :value="selectedModel">{{ selectedModel }}</option>
           </select>

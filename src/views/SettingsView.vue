@@ -1235,6 +1235,7 @@ onMounted(async () => {
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-right: 1px solid var(--glass-border);
   padding: 20px 0;
+  overflow-y: auto;
 }
 
 .settings-nav-title {
@@ -1353,8 +1354,8 @@ onMounted(async () => {
 .form-select {
   width: 100%;
   padding: 7px 28px 7px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
   font-size: 12px;
   font-family: var(--font-mono);
   color: var(--color-text-primary);
@@ -1388,19 +1389,20 @@ onMounted(async () => {
 /* ===== Buttons ===== */
 .btn-primary {
   padding: 6px 16px;
-  background: var(--color-text-primary);
+  background: var(--color-primary);
   border: none;
-  border-radius: 4px;
-  color: var(--color-bg-page);
+  border-radius: 8px;
+  color: #fff;
   font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono);
   cursor: pointer;
-  transition: opacity 0.12s;
+  transition: all 0.15s;
 }
 
 .btn-primary:hover {
-  opacity: 0.85;
+  filter: brightness(1.1);
+  box-shadow: 0 2px 8px rgba(10,132,255,0.25);
 }
 
 .btn-primary:disabled {
