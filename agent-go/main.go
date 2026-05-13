@@ -819,7 +819,7 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 		return
 	}
 
-	sse.send(map[string]any{"type": "status", "iteration": 1, "max_iterations": 1, "message": "Hermes Agent 处理中..."})
+	sse.send(map[string]any{"type": "status", "iteration": 1, "max_iterations": 1, "message": "Agent 正在处理中..."})
 
 	if err := cmd.Start(); err != nil {
 		sse.send(map[string]any{"type": "error", "message": "Hermes 启动失败: " + err.Error()})
