@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -822,6 +823,16 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 		return
 	}
 
+	// 注册 activeCmd 以支持取消
+	activeCmdMu.Lock()
+	activeCmd = cmd
+	activeCmdMu.Unlock()
+	defer func() {
+		activeCmdMu.Lock()
+		activeCmd = nil
+		activeCmdMu.Unlock()
+	}()
+
 	// 实时读取 stdout 并转发为 SSE text_delta
 	var fullText strings.Builder
 	go func() {
@@ -856,6 +867,326 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 		sse.send(map[string]any{"type": "text", "content": text})
 	}
 	sse.send(map[string]any{"type": "done", "content": text})
+}
+
+// ============================================================
+// Hermes CLI Helper — runs hermes subcommand and returns output
+// ============================================================
+
+// runHermes executes a hermes CLI command and returns stdout
+func runHermes(args ...string) (string, error) {
+	hermesPath := hermesState.Path
+	if hermesPath == "" {
+		return "", fmt.Errorf("Hermes Agent 未安装")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, hermesPath, args...)
+	cmd.Env = append(os.Environ(), "NO_COLOR=1", "TERM=dumb")
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// jsonResponse writes a JSON response
+func jsonResponse(w http.ResponseWriter, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
+}
+
+// jsonError writes a JSON error
+func jsonError(w http.ResponseWriter, msg string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(map[string]any{"error": msg})
+}
+
+// ============================================================
+// Cancel running chat
+// ============================================================
+
+var activeCmd *exec.Cmd
+var activeCmdMu sync.Mutex
+
+func handleCancel(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	activeCmdMu.Lock()
+	cmd := activeCmd
+	activeCmdMu.Unlock()
+	if cmd != nil && cmd.Process != nil {
+		cmd.Process.Kill()
+		jsonResponse(w, map[string]any{"ok": true, "message": "已取消执行"})
+	} else {
+		jsonResponse(w, map[string]any{"ok": false, "message": "没有正在执行的任务"})
+	}
+}
+
+// ============================================================
+// Hermes Config API
+// ============================================================
+
+func handleConfig(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	// 直接读取 config.yaml
+	configPath := filepath.Join(getHome(), ".hermes", "config.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		jsonError(w, "无法读取配置: "+err.Error(), 500)
+		return
+	}
+	w.Header().Set("Content-Type", "text/yaml")
+	w.Write(data)
+}
+
+func handleConfigSet(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	var body struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "无效 JSON", 400)
+		return
+	}
+	if body.Key == "" {
+		jsonError(w, "key 不能为空", 400)
+		return
+	}
+	out, err := runHermes("config", "set", body.Key, body.Value)
+	if err != nil {
+		jsonError(w, "设置失败: "+out, 500)
+		return
+	}
+	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
+}
+
+// ============================================================
+// Hermes Cron API
+// ============================================================
+
+func handleCronList(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	// 直接读取 cron jobs.json
+	jobsPath := filepath.Join(getHome(), ".hermes", "cron", "jobs.json")
+	data, err := os.ReadFile(jobsPath)
+	if err != nil {
+		jsonResponse(w, map[string]any{"jobs": []any{}})
+		return
+	}
+	var jobs any
+	if err := json.Unmarshal(data, &jobs); err != nil {
+		jsonResponse(w, map[string]any{"jobs": []any{}})
+		return
+	}
+	jsonResponse(w, map[string]any{"jobs": jobs})
+}
+
+func handleCronCreate(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	var body struct {
+		Schedule string `json:"schedule"`
+		Prompt   string `json:"prompt"`
+		Name     string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "无效 JSON", 400)
+		return
+	}
+	args := []string{"cron", "create", body.Schedule, "--prompt", body.Prompt}
+	if body.Name != "" {
+		args = append(args, "--name", body.Name)
+	}
+	out, err := runHermes(args...)
+	if err != nil {
+		jsonError(w, "创建失败: "+out, 500)
+		return
+	}
+	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
+}
+
+func handleCronPause(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	var body struct{ ID string `json:"id"` }
+	json.NewDecoder(r.Body).Decode(&body)
+	out, _ := runHermes("cron", "pause", body.ID)
+	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
+}
+
+func handleCronResume(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	var body struct{ ID string `json:"id"` }
+	json.NewDecoder(r.Body).Decode(&body)
+	out, _ := runHermes("cron", "resume", body.ID)
+	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
+}
+
+func handleCronRemove(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	var body struct{ ID string `json:"id"` }
+	json.NewDecoder(r.Body).Decode(&body)
+	out, _ := runHermes("cron", "remove", body.ID)
+	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
+}
+
+func handleCronRun(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	var body struct{ ID string `json:"id"` }
+	json.NewDecoder(r.Body).Decode(&body)
+	out, _ := runHermes("cron", "run", body.ID)
+	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
+}
+
+// ============================================================
+// Hermes Sessions API
+// ============================================================
+
+func handleSessionsList(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	// 读取 sessions 目录
+	sessDir := filepath.Join(getHome(), ".hermes", "sessions")
+	entries, err := os.ReadDir(sessDir)
+	if err != nil {
+		jsonResponse(w, map[string]any{"sessions": []any{}})
+		return
+	}
+
+	var sessions []map[string]any
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") && !strings.HasPrefix(e.Name(), "request_dump") {
+			info, _ := e.Info()
+			sessions = append(sessions, map[string]any{
+				"id":          strings.TrimSuffix(e.Name(), ".json"),
+				"filename":    e.Name(),
+				"modified_at": info.ModTime().Format(time.RFC3339),
+				"size":        info.Size(),
+			})
+		}
+	}
+	jsonResponse(w, map[string]any{"sessions": sessions})
+}
+
+func handleSessionsDelete(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	var body struct{ ID string `json:"id"` }
+	json.NewDecoder(r.Body).Decode(&body)
+	out, _ := runHermes("sessions", "delete", body.ID)
+	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
+}
+
+func handleSessionsRename(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	var body struct {
+		ID    string `json:"id"`
+		Title string `json:"title"`
+	}
+	json.NewDecoder(r.Body).Decode(&body)
+	out, _ := runHermes("sessions", "rename", body.ID, body.Title)
+	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
+}
+
+// ============================================================
+// Hermes Memory API
+// ============================================================
+
+func handleMemory(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	memDir := filepath.Join(getHome(), ".hermes", "memories")
+	memoryMd, _ := os.ReadFile(filepath.Join(memDir, "MEMORY.md"))
+	userMd, _ := os.ReadFile(filepath.Join(memDir, "USER.md"))
+
+	jsonResponse(w, map[string]any{
+		"memory":  string(memoryMd),
+		"user":    string(userMd),
+	})
+}
+
+func handleMemoryEdit(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	var body struct {
+		Target  string `json:"target"`  // "memory" or "user"
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "无效 JSON", 400)
+		return
+	}
+
+	memDir := filepath.Join(getHome(), ".hermes", "memories")
+	os.MkdirAll(memDir, 0755)
+
+	filename := "MEMORY.md"
+	if body.Target == "user" {
+		filename = "USER.md"
+	}
+	err := os.WriteFile(filepath.Join(memDir, filename), []byte(body.Content), 0644)
+	if err != nil {
+		jsonError(w, "写入失败: "+err.Error(), 500)
+		return
+	}
+	jsonResponse(w, map[string]any{"ok": true})
+}
+
+// ============================================================
+// Hermes Tools API
+// ============================================================
+
+func handleToolsList(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	out, _ := runHermes("tools", "list")
+	// Parse the output into structured data
+	var tools []map[string]any
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "✓ enabled") || strings.HasPrefix(line, "✗ disabled") {
+			enabled := strings.HasPrefix(line, "✓")
+			parts := strings.Fields(line)
+			if len(parts) >= 3 {
+				name := parts[2]
+				desc := strings.Join(parts[3:], " ")
+				tools = append(tools, map[string]any{"name": name, "enabled": enabled, "description": desc})
+			}
+		}
+	}
+	jsonResponse(w, map[string]any{"tools": tools})
+}
+
+func handleToolsEnable(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	var body struct{ Name string `json:"name"` }
+	json.NewDecoder(r.Body).Decode(&body)
+	out, _ := runHermes("tools", "enable", body.Name)
+	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
+}
+
+func handleToolsDisable(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	var body struct{ Name string `json:"name"` }
+	json.NewDecoder(r.Body).Decode(&body)
+	out, _ := runHermes("tools", "disable", body.Name)
+	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
 }
 
 // ============================================================
@@ -1391,9 +1722,31 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/agent/health", handleHealth)
 	mux.HandleFunc("/v1/agent/chat", handleChat)
+	mux.HandleFunc("/v1/agent/cancel", handleCancel)
 	mux.HandleFunc("/v1/agent/install-skill", handleInstallSkill)
 	mux.HandleFunc("/v1/agent/skills", handleListSkills)
 	mux.HandleFunc("/v1/agent/uninstall-skill", handleUninstallSkill)
+	// Hermes config
+	mux.HandleFunc("/v1/agent/config", handleConfig)
+	mux.HandleFunc("/v1/agent/config/set", handleConfigSet)
+	// Hermes cron
+	mux.HandleFunc("/v1/agent/cron/list", handleCronList)
+	mux.HandleFunc("/v1/agent/cron/create", handleCronCreate)
+	mux.HandleFunc("/v1/agent/cron/pause", handleCronPause)
+	mux.HandleFunc("/v1/agent/cron/resume", handleCronResume)
+	mux.HandleFunc("/v1/agent/cron/remove", handleCronRemove)
+	mux.HandleFunc("/v1/agent/cron/run", handleCronRun)
+	// Hermes sessions
+	mux.HandleFunc("/v1/agent/sessions/list", handleSessionsList)
+	mux.HandleFunc("/v1/agent/sessions/delete", handleSessionsDelete)
+	mux.HandleFunc("/v1/agent/sessions/rename", handleSessionsRename)
+	// Hermes memory
+	mux.HandleFunc("/v1/agent/memory", handleMemory)
+	mux.HandleFunc("/v1/agent/memory/edit", handleMemoryEdit)
+	// Hermes tools
+	mux.HandleFunc("/v1/agent/tools/list", handleToolsList)
+	mux.HandleFunc("/v1/agent/tools/enable", handleToolsEnable)
+	mux.HandleFunc("/v1/agent/tools/disable", handleToolsDisable)
 
 	addr := host + ":" + port
 
