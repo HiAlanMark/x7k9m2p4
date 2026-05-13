@@ -785,24 +785,19 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history []map[string]any) {
 	hermesPath := hermesState.Path
 
-	// 构建 hermes 命令
+	// 先把模型配置写入 Hermes config.yaml（hermes 从 config 读取，不读环境变量）
+	exec.Command(hermesPath, "config", "set", "model.default", model).Run()
+	exec.Command(hermesPath, "config", "set", "model.base_url", apiBase).Run()
+	exec.Command(hermesPath, "config", "set", "model.api_key", apiKey).Run()
+	log.Printf("[hermesChat] 已设置模型配置: model=%s base_url=%s", model, apiBase)
+
+	// 构建 hermes 命令: -m 指定模型, -Q 安静模式(无 banner/spinner)
 	args := []string{"chat", "-q", content, "-m", model, "-Q"}
 
-	// 设置环境变量传递 API 配置
-	env := os.Environ()
-	// 根据 apiBase 判断 provider
-	env = append(env,
-		"HERMES_MODEL_BASE_URL="+apiBase,
-		"HERMES_MODEL_API_KEY="+apiKey,
-		"HERMES_MODEL_DEFAULT="+model,
-	)
-
-	// 构建 hermes 子进程
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, hermesPath, args...)
-	cmd.Env = env
 
 	// 捕获 stdout 和 stderr
 	stdout, err := cmd.StdoutPipe()

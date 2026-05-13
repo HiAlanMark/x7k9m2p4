@@ -1228,6 +1228,29 @@ async function loadToolsets() {
   } catch { /* agent not running */ }
 }
 
+// 从 Hermes config.yaml 加载设置初始值
+async function loadConfigValues() {
+  try {
+    const yaml = await hermesConfigGet()
+    const get = (key: string, fallback: string) => {
+      const re = new RegExp(`^\\s*${key.replace('.', '\\s*.*?')}:\\s*(.+)`, 'm')
+      const m = yaml.match(re)
+      return m ? m[1].trim().replace(/^['"]|['"]$/g, '') : fallback
+    }
+    // Agent
+    const mt = get('max_turns', '90')
+    if (mt) agentSettings.value.maxTurns = Number(mt) || 90
+    // Terminal
+    const backend = get('backend', '')
+    if (backend && ['local','docker','ssh'].includes(backend)) terminalSettings.value.backend = backend
+    const timeout = get('timeout', '180')
+    if (timeout) terminalSettings.value.timeout = Number(timeout) || 180
+    // Approvals
+    const mode = get('mode', '')
+    if (mode && ['manual','smart','off'].includes(mode)) terminalSettings.value.approvalMode = mode
+  } catch { /* agent not running */ }
+}
+
 onMounted(async () => {
   if (isLoggedIn.value) {
     await gfwStore.fetchUserInfo()
@@ -1237,6 +1260,7 @@ onMounted(async () => {
     await gfwStore.fetchRechargePackages()
   }
   loadToolsets()
+  loadConfigValues()
 })
 </script>
 
