@@ -11,37 +11,141 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  HERMES_REPO: 'https://github.com/NousResearch/hermes-agent.git'
 
 jobs:
-  # macOS + Linux: cross-compile on ubuntu/macos
-  build-unix:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.25', cache-dependency-path: agent-go/go.sum }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - name: Build Frontend
+        run: npm install && npx vite build
+
+      - name: Build Go binary
+        shell: bash
+        run: |
+          cp -r dist agent-go/dist
+          cd agent-go
+          CGO_ENABLED=0 go build -ldflags="-s -w -H windowsgui" -o ../HiXNS.exe .
+
+      - name: Bundle Hermes Agent
+        shell: bash
+        run: |
+          echo "=== Cloning Hermes Agent ==="
+          git clone --depth 1 $HERMES_REPO hermes-src
+
+          echo "=== Creating Python venv ==="
+          python -m venv hermes-venv
+          hermes-venv/Scripts/pip install --no-cache-dir \
+            openai anthropic python-dotenv fire "httpx[socks]" rich tenacity \
+            pyyaml ruamel.yaml requests jinja2 pydantic prompt_toolkit \
+            exa-py firecrawl-py parallel-web fal-client 2>&1 | tail -5
+
+          echo "=== Installing hermes-agent ==="
+          hermes-venv/Scripts/pip install --no-cache-dir -e hermes-src 2>&1 | tail -3
+
+          echo "=== Creating bundled directory ==="
+          mkdir -p bundled/hermes-agent
+          # Copy hermes source
+          for d in agent tools hermes_cli gateway plugins cron skills acp_adapter tui_gateway; do
+            [ -d "hermes-src/$d" ] && cp -r "hermes-src/$d" "bundled/hermes-agent/$d"
+          done
+          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py pyproject.toml; do
+            [ -f "hermes-src/$f" ] && cp "hermes-src/$f" "bundled/hermes-agent/$f"
+          done
+          # Copy venv
+          cp -r hermes-venv bundled/hermes-agent/venv
+          # Clean up
+          find bundled/hermes-agent -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+          find bundled/hermes-agent -name '*.pyc' -delete 2>/dev/null || true
+          rm -rf bundled/hermes-agent/venv/Lib/site-packages/pip 2>/dev/null || true
+
+          echo "=== Verify hermes ==="
+          bundled/hermes-agent/venv/Scripts/hermes.exe --version || echo "hermes not in venv path"
+          du -sh bundled/hermes-agent/
+
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
+      - name: Create NSIS installer
+        shell: pwsh
+        run: |
+          $nsis = @'
+          !include "MUI2.nsh"
+          Name "Hi!XNS"
+          OutFile "HiXNS-Setup.exe"
+          InstallDir "$PROGRAMFILES64\HiXNS"
+          RequestExecutionLevel admin
+          !insertmacro MUI_PAGE_DIRECTORY
+          !insertmacro MUI_PAGE_INSTFILES
+          !insertmacro MUI_LANGUAGE "SimpChinese"
+          Section "Install"
+            SetOutPath $INSTDIR
+            File "HiXNS.exe"
+            SetOutPath $INSTDIR\bundled\hermes-agent
+            File /r "bundled\hermes-agent\*.*"
+            CreateShortcut "$DESKTOP\Hi!XNS.lnk" "$INSTDIR\HiXNS.exe"
+            CreateDirectory "$SMPROGRAMS\Hi!XNS"
+            CreateShortcut "$SMPROGRAMS\Hi!XNS\Hi!XNS.lnk" "$INSTDIR\HiXNS.exe"
+            CreateShortcut "$SMPROGRAMS\Hi!XNS\卸载.lnk" "$INSTDIR\uninstall.exe"
+            WriteUninstaller "$INSTDIR\uninstall.exe"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "DisplayName" "Hi!XNS"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "UninstallString" "$INSTDIR\uninstall.exe"
+          SectionEnd
+          Section "Uninstall"
+            RMDir /r "$INSTDIR"
+            Delete "$DESKTOP\Hi!XNS.lnk"
+            RMDir /r "$SMPROGRAMS\Hi!XNS"
+            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS"
+          SectionEnd
+          '@
+          $nsis | Out-File -FilePath installer.nsi -Encoding ASCII
+          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: 'Hi!XNS ${{ github.ref_name }}'
+          body: |
+            ## Hi!XNS Desktop AI Agent ${{ github.ref_name }}
+            完整桌面 AI 应用，内置 Hermes Agent（30+ 工具）、多轮对话、技能商店。
+            ### Windows
+            下载 `HiXNS-Setup.exe` 安装，桌面快捷方式启动。
+            ### macOS
+            解压 `.tar.gz`，将 `HiXNS.app` 拖入 Applications。
+            ### Linux
+            解压 `.tar.gz`，运行 `./HiXNS`。需要系统安装 hermes-agent。
+          draft: false
+          prerelease: false
+          files: |
+            HiXNS-Setup.exe
+            HiXNS.exe
+
+  build-macos:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - goos: darwin
-            goarch: arm64
-            platform: macos-latest
+          - goarch: arm64
             name: 'HiXNS-macOS-arm64'
-          - goos: darwin
-            goarch: amd64
-            platform: macos-latest
+          - goarch: amd64
             name: 'HiXNS-macOS-amd64'
-          - goos: linux
-            goarch: amd64
-            platform: ubuntu-22.04
-            name: 'HiXNS-Linux-amd64'
-
-    runs-on: ${{ matrix.platform }}
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+        with: { node-version: '22' }
       - uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-          cache-dependency-path: agent-go/go.sum
+        with: { go-version: '1.25', cache-dependency-path: agent-go/go.sum }
 
       - name: Build Frontend
         run: npm install && npx vite build
@@ -50,11 +154,10 @@ jobs:
         run: |
           cp -r dist agent-go/dist
           cd agent-go
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
+          GOOS=darwin GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
             go build -ldflags="-s -w" -o ../HiXNS .
 
-      - name: Package macOS .app
-        if: matrix.goos == 'darwin'
+      - name: Package .app
         run: |
           mkdir -p HiXNS.app/Contents/MacOS HiXNS.app/Contents/Resources
           cp HiXNS HiXNS.app/Contents/MacOS/ && chmod +x HiXNS.app/Contents/MacOS/HiXNS
@@ -73,94 +176,35 @@ jobs:
           EOF
           tar czf ${{ matrix.name }}.tar.gz HiXNS.app
 
-      - name: Package Linux
-        if: matrix.goos == 'linux'
-        run: chmod +x HiXNS && tar czf ${{ matrix.name }}.tar.gz HiXNS
-
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           name: 'Hi!XNS ${{ github.ref_name }}'
-          body: |
-            ## Hi!XNS Desktop AI Agent ${{ github.ref_name }}
-            单文件桌面 AI 应用，原生窗口，内置 30+ 工具、多轮对话、技能商店。
-            ### 安装
-            - **Windows**: 运行 `HiXNS-Setup.exe` 安装（含桌面快捷方式）
-            - **macOS**: 解压后将 `HiXNS.app` 拖入 Applications
-            - **Linux**: 解压后 `chmod +x HiXNS && ./HiXNS`
           draft: false
           prerelease: false
           files: ${{ matrix.name }}.tar.gz
 
-  # Windows: native build + NSIS installer
-  build-windows:
-    runs-on: windows-latest
+  build-linux:
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+        with: { node-version: '22' }
       - uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-          cache-dependency-path: agent-go/go.sum
+        with: { go-version: '1.25', cache-dependency-path: agent-go/go.sum }
 
       - name: Build Frontend
         run: npm install && npx vite build
 
       - name: Build Go binary
-        shell: bash
         run: |
           cp -r dist agent-go/dist
           cd agent-go
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
-            go build -ldflags="-s -w -H windowsgui" -o ../HiXNS.exe .
-          ls -lh ../HiXNS.exe
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o ../HiXNS .
 
-      - name: Install NSIS
-        shell: pwsh
-        run: choco install nsis -y --no-progress
-
-      - name: Create NSIS installer script
-        shell: pwsh
-        run: |
-          $nsis = @'
-          !include "MUI2.nsh"
-          Name "Hi!XNS"
-          OutFile "HiXNS-Setup.exe"
-          InstallDir "$PROGRAMFILES64\HiXNS"
-          RequestExecutionLevel admin
-          !insertmacro MUI_PAGE_DIRECTORY
-          !insertmacro MUI_PAGE_INSTFILES
-          !insertmacro MUI_LANGUAGE "SimpChinese"
-          Section "Install"
-            SetOutPath $INSTDIR
-            File "HiXNS.exe"
-            CreateShortcut "$DESKTOP\Hi!XNS.lnk" "$INSTDIR\HiXNS.exe"
-            CreateDirectory "$SMPROGRAMS\Hi!XNS"
-            CreateShortcut "$SMPROGRAMS\Hi!XNS\Hi!XNS.lnk" "$INSTDIR\HiXNS.exe"
-            CreateShortcut "$SMPROGRAMS\Hi!XNS\卸载.lnk" "$INSTDIR\uninstall.exe"
-            WriteUninstaller "$INSTDIR\uninstall.exe"
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "DisplayName" "Hi!XNS"
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "UninstallString" "$INSTDIR\uninstall.exe"
-          SectionEnd
-          Section "Uninstall"
-            Delete "$INSTDIR\HiXNS.exe"
-            Delete "$INSTDIR\uninstall.exe"
-            Delete "$DESKTOP\Hi!XNS.lnk"
-            RMDir /r "$SMPROGRAMS\Hi!XNS"
-            RMDir "$INSTDIR"
-            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS"
-          SectionEnd
-          '@
-          $nsis | Out-File -FilePath installer.nsi -Encoding ASCII
-
-      - name: Build NSIS installer
-        shell: pwsh
-        run: |
-          $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
-          & $nsisPath installer.nsi
+      - name: Package
+        run: chmod +x HiXNS && tar czf HiXNS-Linux-amd64.tar.gz HiXNS
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
@@ -169,6 +213,4 @@ jobs:
           name: 'Hi!XNS ${{ github.ref_name }}'
           draft: false
           prerelease: false
-          files: |
-            HiXNS-Setup.exe
-            HiXNS.exe
+          files: HiXNS-Linux-amd64.tar.gz
