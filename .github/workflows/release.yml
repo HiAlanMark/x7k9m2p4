@@ -13,7 +13,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build:
+  # macOS + Linux: cross-compile on ubuntu/macos
+  build-unix:
     strategy:
       fail-fast: false
       matrix:
@@ -22,64 +23,42 @@ jobs:
             goarch: arm64
             platform: macos-latest
             name: 'HiXNS-macOS-arm64'
-            ext: ''
-            ldflags: '-s -w'
           - goos: darwin
             goarch: amd64
             platform: macos-latest
             name: 'HiXNS-macOS-amd64'
-            ext: ''
-            ldflags: '-s -w'
-          - goos: windows
-            goarch: amd64
-            platform: ubuntu-22.04
-            name: 'HiXNS-Windows-amd64'
-            ext: '.exe'
-            ldflags: '-s -w -H windowsgui'
           - goos: linux
             goarch: amd64
             platform: ubuntu-22.04
             name: 'HiXNS-Linux-amd64'
-            ext: ''
-            ldflags: '-s -w'
 
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
           cache-dependency-path: agent-go/go.sum
 
       - name: Build Frontend
-        run: |
-          npm install
-          npx vite build
-
-      - name: Copy frontend to Go embed directory
-        run: cp -r dist agent-go/dist
+        run: npm install && npx vite build
 
       - name: Build Go binary
         run: |
+          cp -r dist agent-go/dist
           cd agent-go
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
-            go build -ldflags="${{ matrix.ldflags }}" -o ../HiXNS${{ matrix.ext }} .
-          ls -lh ../HiXNS${{ matrix.ext }}
+            go build -ldflags="-s -w" -o ../HiXNS .
 
-      - name: Create macOS .app bundle
+      - name: Package macOS .app
         if: matrix.goos == 'darwin'
         run: |
-          mkdir -p "HiXNS.app/Contents/MacOS" "HiXNS.app/Contents/Resources"
-          cp HiXNS "HiXNS.app/Contents/MacOS/HiXNS"
-          chmod +x "HiXNS.app/Contents/MacOS/HiXNS"
-          cat > "HiXNS.app/Contents/Info.plist" << 'EOF'
+          mkdir -p HiXNS.app/Contents/MacOS HiXNS.app/Contents/Resources
+          cp HiXNS HiXNS.app/Contents/MacOS/ && chmod +x HiXNS.app/Contents/MacOS/HiXNS
+          cat > HiXNS.app/Contents/Info.plist << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict>
@@ -94,15 +73,9 @@ jobs:
           EOF
           tar czf ${{ matrix.name }}.tar.gz HiXNS.app
 
-      - name: Create archive (Linux)
+      - name: Package Linux
         if: matrix.goos == 'linux'
-        run: |
-          chmod +x HiXNS
-          tar czf ${{ matrix.name }}.tar.gz HiXNS
-
-      - name: Create archive (Windows)
-        if: matrix.goos == 'windows'
-        run: zip ${{ matrix.name }}.zip HiXNS.exe
+        run: chmod +x HiXNS && tar czf ${{ matrix.name }}.tar.gz HiXNS
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
@@ -111,17 +84,91 @@ jobs:
           name: 'Hi!XNS ${{ github.ref_name }}'
           body: |
             ## Hi!XNS Desktop AI Agent ${{ github.ref_name }}
-
             单文件桌面 AI 应用，原生窗口，内置 30+ 工具、多轮对话、技能商店。
-
             ### 安装
-            - **Windows**: 下载 `.zip` 解压，双击 `HiXNS.exe` 运行
-            - **macOS**: 下载 `.tar.gz` 解压，将 `HiXNS.app` 拖入 Applications
-            - **Linux**: 下载 `.tar.gz` 解压，`chmod +x HiXNS && ./HiXNS`
+            - **Windows**: 运行 `HiXNS-Setup.exe` 安装（含桌面快捷方式）
+            - **macOS**: 解压后将 `HiXNS.app` 拖入 Applications
+            - **Linux**: 解压后 `chmod +x HiXNS && ./HiXNS`
+          draft: false
+          prerelease: false
+          files: ${{ matrix.name }}.tar.gz
 
-            > macOS 首次运行：系统设置 → 隐私与安全性 → 仍要打开
+  # Windows: native build + NSIS installer
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: agent-go/go.sum
+
+      - name: Build Frontend
+        run: npm install && npx vite build
+
+      - name: Build Go binary
+        shell: bash
+        run: |
+          cp -r dist agent-go/dist
+          cd agent-go
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
+            go build -ldflags="-s -w -H windowsgui" -o ../HiXNS.exe .
+          ls -lh ../HiXNS.exe
+
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
+      - name: Create NSIS installer script
+        shell: pwsh
+        run: |
+          $nsis = @'
+          !include "MUI2.nsh"
+          Name "Hi!XNS"
+          OutFile "HiXNS-Setup.exe"
+          InstallDir "$PROGRAMFILES64\HiXNS"
+          RequestExecutionLevel admin
+          !insertmacro MUI_PAGE_DIRECTORY
+          !insertmacro MUI_PAGE_INSTFILES
+          !insertmacro MUI_LANGUAGE "SimpChinese"
+          Section "Install"
+            SetOutPath $INSTDIR
+            File "HiXNS.exe"
+            CreateShortcut "$DESKTOP\Hi!XNS.lnk" "$INSTDIR\HiXNS.exe"
+            CreateDirectory "$SMPROGRAMS\Hi!XNS"
+            CreateShortcut "$SMPROGRAMS\Hi!XNS\Hi!XNS.lnk" "$INSTDIR\HiXNS.exe"
+            CreateShortcut "$SMPROGRAMS\Hi!XNS\卸载.lnk" "$INSTDIR\uninstall.exe"
+            WriteUninstaller "$INSTDIR\uninstall.exe"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "DisplayName" "Hi!XNS"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "UninstallString" "$INSTDIR\uninstall.exe"
+          SectionEnd
+          Section "Uninstall"
+            Delete "$INSTDIR\HiXNS.exe"
+            Delete "$INSTDIR\uninstall.exe"
+            Delete "$DESKTOP\Hi!XNS.lnk"
+            RMDir /r "$SMPROGRAMS\Hi!XNS"
+            RMDir "$INSTDIR"
+            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS"
+          SectionEnd
+          '@
+          $nsis | Out-File -FilePath installer.nsi -Encoding ASCII
+
+      - name: Build NSIS installer
+        shell: pwsh
+        run: |
+          $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+          & $nsisPath installer.nsi
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: 'Hi!XNS ${{ github.ref_name }}'
           draft: false
           prerelease: false
           files: |
-            ${{ matrix.name }}.zip
-            ${{ matrix.name }}.tar.gz
+            HiXNS-Setup.exe
+            HiXNS.exe
