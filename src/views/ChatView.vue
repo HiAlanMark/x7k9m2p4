@@ -108,20 +108,37 @@
           <span class="msg-author assistant">Hi!XNS</span>
           <span class="msg-time">现在</span>
         </div>
-        <div class="msg-content ai-content markdown-body" v-html="renderMarkdown(currentResponse || '')"></div>
-        <span class="block-cursor">█</span>
-        <div v-if="currentToolCalls.length" class="tool-section">
+
+        <!-- 等待响应：无文字且无工具调用时显示思考动画 -->
+        <div v-if="!currentResponse && !currentToolCalls.length" class="thinking-state">
+          <div class="thinking-dots">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <span class="thinking-text">思考中</span>
+        </div>
+
+        <!-- 有文字内容时显示 -->
+        <template v-if="currentResponse">
+          <div class="msg-content ai-content markdown-body" v-html="renderMarkdown(currentResponse)"></div>
+          <span class="block-cursor">█</span>
+        </template>
+
+        <!-- 工具调用 -->
+        <div v-if="currentToolCalls.length" class="tool-section streaming-tools">
           <div v-for="(tc, i) in currentToolCalls" :key="i" class="tool-row compact">
-            <span :class="['tool-indicator', tc.status]"></span>
+            <span v-if="tc.status === 'running'" class="tool-spinner"></span>
+            <span v-else :class="['tool-indicator', tc.status]"></span>
             <span class="tool-fn">{{ tc.tool }}</span>
-            <span class="tool-st">{{ tc.status === 'completed' ? '完成' : '运行中' }}</span>
+            <span :class="['tool-st', tc.status]">{{ tc.status === 'completed' ? '完成' : tc.status === 'failed' ? '失败' : '执行中...' }}</span>
           </div>
         </div>
       </div>
 
       <!-- Connecting -->
       <div v-if="isConnecting" class="connecting">
-        <span class="connecting-spinner"></span>
+        <div class="connecting-dots">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        </div>
         <span>连接中</span>
       </div>
     </div>
@@ -785,6 +802,85 @@ onMounted(async () => {
 }
 
 /* ===== Streaming ===== */
+
+/* Thinking state — waiting for first response */
+.thinking-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.thinking-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.thinking-dots .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: dotBounce 1.4s ease-in-out infinite;
+}
+
+.thinking-dots .dot:nth-child(2) { animation-delay: 0.16s; }
+.thinking-dots .dot:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes dotBounce {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1.1); }
+}
+
+.thinking-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  animation: fadeInOut 2s ease infinite;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Tool spinner — rotating ring for running tools */
+.tool-spinner {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.streaming-tools .tool-row.compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.tool-st.running {
+  color: var(--color-primary);
+}
+
+.tool-st.completed {
+  color: var(--color-success);
+}
+
+.tool-st.failed {
+  color: var(--color-error);
+}
+
 .block-cursor {
   font-family: var(--font-mono);
   color: var(--color-primary);
@@ -796,6 +892,34 @@ onMounted(async () => {
 .streaming .msg-author {
   position: relative;
 }
+
+/* Connecting dots */
+.connecting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 48px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.connecting-dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.connecting-dots .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+  animation: dotBounce 1.4s ease-in-out infinite;
+}
+
+.connecting-dots .dot:nth-child(2) { animation-delay: 0.16s; }
+.connecting-dots .dot:nth-child(3) { animation-delay: 0.32s; }
 
 /* ===== Meta ===== */
 .msg-meta {
@@ -952,30 +1076,6 @@ textarea::placeholder {
 .status-item.active { color: var(--color-primary); opacity: 1; }
 .status-sep { padding: 0 2px; opacity: 0.3; }
 
-/* ===== Loading ===== */
-.connecting {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 20px;
-  color: var(--color-text-tertiary);
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.connecting-spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--color-border);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 
 /* ===== Scrollbar ===== */
 .messages::-webkit-scrollbar { width: 6px; }
