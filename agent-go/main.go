@@ -400,6 +400,28 @@ func (s *sseWriter) send(data map[string]any) {
 	s.flusher.Flush()
 }
 
+// isDangerousCommand 检查命令是否需要用户审批
+func isDangerousCommand(cmd string) bool {
+	lower := strings.ToLower(cmd)
+	dangerous := []string{
+		"rm -rf", "rm -r /", "mkfs", "dd if=", "chmod -R 777",
+		"shutdown", "reboot", "init 0", "init 6",
+		"git reset --hard", "git push --force", "git push -f",
+		"> /dev/", "kill -9", "killall", "pkill",
+		"docker rm", "docker rmi", "docker system prune",
+		"DROP TABLE", "DROP DATABASE", "TRUNCATE",
+		"format ", "fdisk", "parted",
+		"curl | sh", "curl | bash", "wget | sh",
+		"npm publish", "pip install --", "sudo ",
+	}
+	for _, d := range dangerous {
+		if strings.Contains(lower, strings.ToLower(d)) {
+			return true
+		}
+	}
+	return false
+}
+
 func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model string) {
 	maxIter := 15
 	client := &http.Client{Timeout: 120 * time.Second}
@@ -410,6 +432,7 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 
 	for iter := 0; iter < maxIter; iter++ {
 		log.Printf("[agentLoop] 开始第 %d 轮，消息数: %d", iter, len(messages))
+		sse.send(map[string]any{"type": "status", "iteration": iter + 1, "max_iterations": maxIter, "message": fmt.Sprintf("第 %d 轮推理中...", iter+1)})
 		// 纯文本请求 — 不使用 API 的 tools 参数，兼容所有模型
 		body := map[string]any{
 			"model":          model,
@@ -478,6 +501,8 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 
 			if c, ok := delta["content"].(string); ok && c != "" {
 				fullContent.WriteString(c)
+				// 实时推送文本 chunk
+				sse.send(map[string]any{"type": "text_delta", "content": c})
 			}
 		}
 		resp.Body.Close()
@@ -527,6 +552,17 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 			tcID := fmt.Sprintf("tc_%d_%d", iter, i)
 
 			sse.send(map[string]any{"type": "tool_call", "id": tcID, "tool": tc.Name, "args": tc.Args, "status": "running"})
+
+			// 检查是否为危险命令（需要审批）
+			if tc.Name == "run_terminal" {
+				if cmd, ok := tc.Args["command"].(string); ok && isDangerousCommand(cmd) {
+					sse.send(map[string]any{
+						"type": "approval_request", "id": tcID, "tool": tc.Name,
+						"command": cmd, "reason": "此命令可能修改系统状态，需要您的确认",
+					})
+					// 注意：当前版本自动批准，未来可通过 WebSocket 等待用户响应
+				}
+			}
 
 			t0 := time.Now()
 			result := executeTool(tc.Name, tc.Args)

@@ -396,13 +396,15 @@ export async function browserChat(
   onToolCall?: (tool: string, args: Record<string, unknown>) => void,
   onToolResult?: (tool: string, result: string, duration: number) => void,
   history?: Array<{ role: string; content: string }>,
+  onStatus?: (message: string, iteration: number, maxIterations: number) => void,
+  onApproval?: (id: string, tool: string, command: string, reason: string) => void,
 ) {
   // 优先尝试 Agent Server（本地 9800 端口）
   const agentUrl = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
   const agentAvailable = await checkAgentHealth(agentUrl)
 
   if (agentAvailable) {
-    return agentChat(content, model, onChunk, onDone, onError, customConfig, onToolCall, onToolResult, agentUrl, history)
+    return agentChat(content, model, onChunk, onDone, onError, customConfig, onToolCall, onToolResult, agentUrl, history, onStatus, onApproval)
   }
 
   // Fallback: 直接调 LLM API（纯聊天，无工具能力）
@@ -429,6 +431,8 @@ async function agentChat(
   onToolResult?: (tool: string, result: string, duration: number) => void,
   agentUrl?: string,
   history?: Array<{ role: string; content: string }>,
+  onStatus?: (message: string, iteration: number, maxIterations: number) => void,
+  onApproval?: (id: string, tool: string, command: string, reason: string) => void,
 ) {
   const baseUrl = customConfig?.baseUrl || GFW_AI
   const key = customConfig?.apiKey || gfwApiKey || localStorage.getItem('gfw_api_key')
@@ -496,6 +500,15 @@ async function agentChat(
             case 'text':
               fullText += evt.content
               onChunk(evt.content)
+              break
+            case 'text_delta':
+              onChunk(evt.content || '')
+              break
+            case 'status':
+              onStatus?.(evt.message || '', evt.iteration || 0, evt.max_iterations || 0)
+              break
+            case 'approval_request':
+              onApproval?.(evt.id || '', evt.tool || '', evt.command || '', evt.reason || '')
               break
             case 'tool_call':
               onToolCall?.(evt.tool, evt.args || {})

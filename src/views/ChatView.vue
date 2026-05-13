@@ -107,14 +107,38 @@
         <div class="msg-header">
           <span class="msg-author assistant">Hi!XNS</span>
           <span class="msg-time">现在</span>
+          <span v-if="agentIteration > 0" class="iteration-badge">轮次 {{ agentIteration }}/{{ agentMaxIter }}</span>
         </div>
 
-        <!-- 等待响应：无文字且无工具调用时显示思考动画 -->
-        <div v-if="!currentResponse && !currentToolCalls.length" class="thinking-state">
-          <div class="thinking-dots">
-            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          </div>
+        <!-- Agent 状态 -->
+        <div v-if="agentStatus && !currentResponse && !currentToolCalls.length" class="agent-status-bar">
+          <div class="thinking-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          <span class="status-text">{{ agentStatus }}</span>
+        </div>
+
+        <!-- 等待响应：无文字且无工具调用且无状态 -->
+        <div v-if="!currentResponse && !currentToolCalls.length && !agentStatus" class="thinking-state">
+          <div class="thinking-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
           <span class="thinking-text">思考中</span>
+        </div>
+
+        <!-- 权限审批弹窗 -->
+        <div v-if="pendingApproval" class="approval-card">
+          <div class="approval-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            <span>需要您的授权</span>
+          </div>
+          <div class="approval-body">
+            <div class="approval-cmd">
+              <span class="approval-label">命令</span>
+              <code>{{ pendingApproval.command }}</code>
+            </div>
+            <div class="approval-reason">{{ pendingApproval.reason }}</div>
+          </div>
+          <div class="approval-actions">
+            <button class="approve-btn" @click="approveCommand">允许执行</button>
+            <button class="deny-btn" @click="denyCommand">拒绝</button>
+          </div>
         </div>
 
         <!-- 有文字内容时显示 -->
@@ -199,6 +223,10 @@ const { messages, isStreaming, currentResponse, currentToolCalls, selectedModel 
 const inputText = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const agentStatus = ref('')
+const agentIteration = ref(0)
+const agentMaxIter = ref(0)
+const pendingApproval = ref<{ id: string; tool: string; command: string; reason: string } | null>(null)
 const isConnecting = ref(false)
 const inputFocused = ref(false)
 
@@ -273,8 +301,18 @@ async function sendMessage() {
     await browserChat(
       text, selectedModel.value,
       (chunk) => chatStore.appendToResponse(chunk),
-      (fullText, usage) => chatStore.finishResponse(usage, config.model, undefined, fullText),
-      (err) => { chatStore.finishResponse(); chatStore.addSystemMessage(`Error: ${err}`) },
+      (fullText, usage) => {
+        agentStatus.value = ''
+        agentIteration.value = 0
+        pendingApproval.value = null
+        chatStore.finishResponse(usage, config.model, undefined, fullText)
+      },
+      (err) => {
+        agentStatus.value = ''
+        pendingApproval.value = null
+        chatStore.finishResponse()
+        chatStore.addSystemMessage(`Error: ${err}`)
+      },
       config,
       // onToolCall
       (tool, args) => { chatStore.addToolCall(tool, args) },
@@ -284,6 +322,16 @@ async function sendMessage() {
         if (idx >= 0) chatStore.completeToolCall(idx, result.substring(0, 500), 'completed')
       },
       history,
+      // onStatus
+      (message, iteration, maxIterations) => {
+        agentStatus.value = message
+        agentIteration.value = iteration
+        agentMaxIter.value = maxIterations
+      },
+      // onApproval
+      (id, tool, command, reason) => {
+        pendingApproval.value = { id, tool, command, reason }
+      },
     )
   } else {
     try { await api.agentSendMessage(text, selectedModel.value) }
@@ -296,6 +344,16 @@ watch(() => currentResponse.value, async () => { await nextTick(); scrollToBotto
 
 function scrollToBottom() {
   if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+}
+
+function approveCommand() {
+  pendingApproval.value = null
+  // Currently auto-approved on server side; future: send approval via WebSocket
+}
+
+function denyCommand() {
+  pendingApproval.value = null
+  chatStore.addSystemMessage('用户拒绝了命令执行')
 }
 
 onMounted(async () => {
@@ -909,6 +967,135 @@ onMounted(async () => {
   font-size: 12px;
   color: var(--color-text-tertiary);
 }
+
+/* Agent status bar */
+.agent-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.agent-status-bar .status-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-primary);
+  animation: fadeInOut 2s ease infinite;
+}
+
+/* Iteration badge */
+.iteration-badge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+/* Approval card */
+.approval-card {
+  margin: 10px 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(16px) saturate(var(--glass-saturate));
+  border: 1px solid var(--color-warning);
+  border-radius: 10px;
+  overflow: hidden;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.approval-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(245, 158, 11, 0.08);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-warning);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.approval-body {
+  padding: 12px 14px;
+}
+
+.approval-cmd {
+  margin-bottom: 8px;
+}
+
+.approval-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.approval-cmd code {
+  display: block;
+  background: #0D1117;
+  color: #FF7B72;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.approval-reason {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.approve-btn {
+  padding: 5px 14px;
+  background: var(--color-success);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+
+.approve-btn:hover { opacity: 0.85; }
+
+.deny-btn {
+  padding: 5px 14px;
+  background: transparent;
+  border: 1px solid var(--color-error);
+  border-radius: 6px;
+  color: var(--color-error);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.deny-btn:hover { background: rgba(239, 68, 68, 0.08); }
 
 .connecting-dots {
   display: flex;
