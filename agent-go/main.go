@@ -400,6 +400,20 @@ func (s *sseWriter) send(data map[string]any) {
 	s.flusher.Flush()
 }
 
+// isPromptBasedModel 判断是否需要 prompt-based tool calling
+// DashScope/Qwen 系列用 <tool_call> XML 标签，其他用原生 function calling
+func isPromptBasedModel(model, apiBase string) bool {
+	lower := strings.ToLower(model)
+	base := strings.ToLower(apiBase)
+	if strings.Contains(base, "dashscope") {
+		return true
+	}
+	if strings.HasPrefix(lower, "qwen") {
+		return true
+	}
+	return false
+}
+
 // isDangerousCommand 检查命令是否需要用户审批
 func isDangerousCommand(cmd string) bool {
 	lower := strings.ToLower(cmd)
@@ -426,19 +440,27 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 	maxIter := 15
 	client := &http.Client{Timeout: 120 * time.Second}
 	toolCallRe := regexp.MustCompile(`(?s)<tool_call>\s*(\{.*?\})\s*</tool_call>`)
-	// 累计所有轮次的 token 用量
 	totalPrompt := 0
 	totalCompletion := 0
+
+	// 判断是否使用 prompt-based tool calling
+	// DashScope/Qwen 系列用 prompt-based，其他用原生 function calling
+	usePromptTools := isPromptBasedModel(model, apiBase)
+	log.Printf("[agentLoop] model=%s usePromptTools=%v", model, usePromptTools)
 
 	for iter := 0; iter < maxIter; iter++ {
 		log.Printf("[agentLoop] 开始第 %d 轮，消息数: %d", iter, len(messages))
 		sse.send(map[string]any{"type": "status", "iteration": iter + 1, "max_iterations": maxIter, "message": fmt.Sprintf("第 %d 轮推理中...", iter+1)})
-		// 纯文本请求 — 不使用 API 的 tools 参数，兼容所有模型
+
 		body := map[string]any{
 			"model":          model,
 			"messages":       messages,
 			"stream":         true,
 			"stream_options": map[string]any{"include_usage": true},
+		}
+		// 原生 function calling: 传 tools 参数
+		if !usePromptTools {
+			body["tools"] = toolDefs
 		}
 		bodyBytes, _ := json.Marshal(body)
 
@@ -465,8 +487,13 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 
 		// 流式读取完整内容
 		var fullContent strings.Builder
+		// 原生 function calling: 累积 tool_calls
+		var nativeToolCalls []struct {
+			ID   string
+			Name string
+			Args string
+		}
 		scanner := bufio.NewScanner(resp.Body)
-		// 增大 scanner buffer 以处理大行
 		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -485,7 +512,6 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 
 			choices, _ := parsed["choices"].([]any)
 
-			// 先提取 usage（可能在 choices 为空的独立 chunk 中）
 			if usage, ok := parsed["usage"].(map[string]any); ok {
 				pt := int(floatVal(usage, "prompt_tokens", 0))
 				ct := int(floatVal(usage, "completion_tokens", 0))
@@ -501,15 +527,103 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 
 			if c, ok := delta["content"].(string); ok && c != "" {
 				fullContent.WriteString(c)
-				// 实时推送文本 chunk
 				sse.send(map[string]any{"type": "text_delta", "content": c})
+			}
+
+			// 原生 function calling: 解析 delta.tool_calls
+			if tcs, ok := delta["tool_calls"].([]any); ok && !usePromptTools {
+				for _, tcRaw := range tcs {
+					tc, _ := tcRaw.(map[string]any)
+					idx := int(floatVal(tc, "index", 0))
+					fn, _ := tc["function"].(map[string]any)
+
+					// 扩展 slice
+					for len(nativeToolCalls) <= idx {
+						nativeToolCalls = append(nativeToolCalls, struct{ ID, Name, Args string }{})
+					}
+
+					if id, ok := tc["id"].(string); ok && id != "" {
+						nativeToolCalls[idx].ID = id
+					}
+					if name, ok := fn["name"].(string); ok && name != "" {
+						nativeToolCalls[idx].Name = name
+					}
+					if args, ok := fn["arguments"].(string); ok {
+						nativeToolCalls[idx].Args += args
+					}
+				}
 			}
 		}
 		resp.Body.Close()
 
 		text := fullContent.String()
 
-		// 检测是否包含 <tool_call> 标签
+		// === 原生 function calling 模式 ===
+		if !usePromptTools && len(nativeToolCalls) > 0 {
+			log.Printf("[agentLoop] iter=%d 原生 function calling: %d 个工具调用", iter, len(nativeToolCalls))
+
+			// 先推送文本
+			if text != "" {
+				sse.send(map[string]any{"type": "text", "content": text})
+			}
+
+			// 构造 assistant 消息（含 tool_calls）
+			var apiToolCalls []map[string]any
+			var toolResults strings.Builder
+			for i, ntc := range nativeToolCalls {
+				if ntc.Name == "" {
+					continue
+				}
+				tcID := ntc.ID
+				if tcID == "" {
+					tcID = fmt.Sprintf("call_%d_%d", iter, i)
+				}
+
+				// 解析参数
+				var args map[string]any
+				if err := json.Unmarshal([]byte(ntc.Args), &args); err != nil {
+					args = map[string]any{}
+				}
+
+				apiToolCalls = append(apiToolCalls, map[string]any{
+					"id": tcID, "type": "function",
+					"function": map[string]any{"name": ntc.Name, "arguments": ntc.Args},
+				})
+
+				sse.send(map[string]any{"type": "tool_call", "id": tcID, "tool": ntc.Name, "args": args, "status": "running"})
+
+				// 危险命令检测
+				if ntc.Name == "run_terminal" {
+					if cmd, ok := args["command"].(string); ok && isDangerousCommand(cmd) {
+						sse.send(map[string]any{
+							"type": "approval_request", "id": tcID, "tool": ntc.Name,
+							"command": cmd, "reason": "此命令可能修改系统状态，需要您的确认",
+						})
+					}
+				}
+
+				t0 := time.Now()
+				result := executeTool(ntc.Name, args)
+				duration := time.Since(t0).Seconds()
+
+				sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
+
+				toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: %s\n</tool_result>\n", ntc.Name, truncate(result, 3500)))
+
+				// 追加 tool 消息到对话
+				messages = append(messages, map[string]any{
+					"role": "assistant", "content": text,
+					"tool_calls": apiToolCalls,
+				})
+				messages = append(messages, map[string]any{
+					"role": "tool", "tool_call_id": tcID, "content": truncate(result, 3500),
+				})
+			}
+			// 清空以进入下一轮
+			continue
+		}
+
+		// === Prompt-based tool calling 模式 ===
 		matches := toolCallRe.FindAllStringSubmatch(text, -1)
 
 		if len(matches) == 0 {
