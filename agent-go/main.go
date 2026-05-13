@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,6 +25,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	_ "modernc.org/sqlite"
 )
 
 // ============================================================
@@ -785,11 +788,9 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history []map[string]any) {
 	hermesPath := hermesState.Path
 
-	// 先把模型配置写入 Hermes config.yaml（hermes 从 config 读取，不读环境变量）
-	exec.Command(hermesPath, "config", "set", "model.default", model).Run()
-	exec.Command(hermesPath, "config", "set", "model.base_url", apiBase).Run()
-	exec.Command(hermesPath, "config", "set", "model.api_key", apiKey).Run()
-	log.Printf("[hermesChat] 已设置模型配置: model=%s base_url=%s", model, apiBase)
+	// 不再覆写全局 config.yaml（避免并发请求互相覆盖配置）
+	// 通过 -m 指定模型，通过环境变量传递 base_url 和 api_key
+	log.Printf("[hermesChat] 模型配置: model=%s base_url=%s", model, apiBase)
 
 	// 构建 hermes 命令: -m 指定模型, -Q 安静模式(无 banner/spinner)
 	args := []string{"chat", "-q", content, "-m", model, "-Q"}
@@ -798,6 +799,13 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, hermesPath, args...)
+	// 通过环境变量覆盖模型配置，不修改 config.yaml（避免并发竞争）
+	cmd.Env = append(os.Environ(),
+		"NO_COLOR=1", "TERM=dumb",
+		"HERMES_MODEL="+model,
+		"HERMES_BASE_URL="+apiBase,
+		"HERMES_API_KEY="+apiKey,
+	)
 
 	// 捕获 stdout 和 stderr
 	stdout, err := cmd.StdoutPipe()
@@ -839,8 +847,17 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 
 	scanner := bufio.NewScanner(stdout)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	firstLine := true
 	for scanner.Scan() {
 		line := scanner.Text()
+		// hermes chat -Q 第一行输出 "session_id: xxx"，需过滤掉不发给前端
+		if firstLine {
+			firstLine = false
+			if strings.HasPrefix(line, "session_id:") {
+				log.Printf("[hermesChat] %s", line)
+				continue
+			}
+		}
 		fullText.WriteString(line)
 		fullText.WriteString("\n")
 		sse.send(map[string]any{"type": "text_delta", "content": line + "\n"})
@@ -974,12 +991,24 @@ func handleCronList(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, map[string]any{"jobs": []any{}})
 		return
 	}
-	var jobs any
-	if err := json.Unmarshal(data, &jobs); err != nil {
+	// jobs.json 格式: {"jobs": [...]}，提取内部数组避免双重包装
+	var wrapper struct {
+		Jobs []json.RawMessage `json:"jobs"`
+	}
+	if err := json.Unmarshal(data, &wrapper); err != nil {
 		jsonResponse(w, map[string]any{"jobs": []any{}})
 		return
 	}
-	jsonResponse(w, map[string]any{"jobs": jobs})
+	var jobsList []any
+	for _, raw := range wrapper.Jobs {
+		var job any
+		json.Unmarshal(raw, &job)
+		jobsList = append(jobsList, job)
+	}
+	if jobsList == nil {
+		jobsList = []any{}
+	}
+	jsonResponse(w, map[string]any{"jobs": jobsList})
 }
 
 func handleCronCreate(w http.ResponseWriter, r *http.Request) {
@@ -995,7 +1024,8 @@ func handleCronCreate(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "无效 JSON", 400)
 		return
 	}
-	args := []string{"cron", "create", body.Schedule, "--prompt", body.Prompt}
+	// hermes cron create 的 prompt 是位置参数，不是 --prompt 标志
+	args := []string{"cron", "create", body.Schedule, body.Prompt}
 	if body.Name != "" {
 		args = append(args, "--name", body.Name)
 	}
@@ -1011,8 +1041,15 @@ func handleCronPause(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
 	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
 	var body struct{ ID string `json:"id"` }
-	json.NewDecoder(r.Body).Decode(&body)
-	out, _ := runHermes("cron", "pause", body.ID)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
+		jsonError(w, "无效请求: 需要 id 字段", 400)
+		return
+	}
+	out, err := runHermes("cron", "pause", body.ID)
+	if err != nil {
+		jsonError(w, "操作失败: "+strings.TrimSpace(out), 500)
+		return
+	}
 	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
 }
 
@@ -1020,8 +1057,15 @@ func handleCronResume(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
 	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
 	var body struct{ ID string `json:"id"` }
-	json.NewDecoder(r.Body).Decode(&body)
-	out, _ := runHermes("cron", "resume", body.ID)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
+		jsonError(w, "无效请求: 需要 id 字段", 400)
+		return
+	}
+	out, err := runHermes("cron", "resume", body.ID)
+	if err != nil {
+		jsonError(w, "操作失败: "+strings.TrimSpace(out), 500)
+		return
+	}
 	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
 }
 
@@ -1029,8 +1073,15 @@ func handleCronRemove(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
 	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
 	var body struct{ ID string `json:"id"` }
-	json.NewDecoder(r.Body).Decode(&body)
-	out, _ := runHermes("cron", "remove", body.ID)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
+		jsonError(w, "无效请求: 需要 id 字段", 400)
+		return
+	}
+	out, err := runHermes("cron", "remove", body.ID)
+	if err != nil {
+		jsonError(w, "操作失败: "+strings.TrimSpace(out), 500)
+		return
+	}
 	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
 }
 
@@ -1038,8 +1089,15 @@ func handleCronRun(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
 	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
 	var body struct{ ID string `json:"id"` }
-	json.NewDecoder(r.Body).Decode(&body)
-	out, _ := runHermes("cron", "run", body.ID)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
+		jsonError(w, "无效请求: 需要 id 字段", 400)
+		return
+	}
+	out, err := runHermes("cron", "run", body.ID)
+	if err != nil {
+		jsonError(w, "操作失败: "+strings.TrimSpace(out), 500)
+		return
+	}
 	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
 }
 
@@ -1051,25 +1109,54 @@ func handleSessionsList(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
 	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
 
-	// 读取 sessions 目录
-	sessDir := filepath.Join(getHome(), ".hermes", "sessions")
-	entries, err := os.ReadDir(sessDir)
+	// 从 SQLite state.db 读取会话列表（hermes 的真实数据源）
+	dbPath := filepath.Join(getHome(), ".hermes", "state.db")
+	db, err := sql.Open("sqlite", dbPath+"?mode=ro")
 	if err != nil {
+		log.Printf("[sessions] 无法打开 state.db: %v", err)
 		jsonResponse(w, map[string]any{"sessions": []any{}})
 		return
 	}
+	defer db.Close()
 
-	var sessions []map[string]any
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") && !strings.HasPrefix(e.Name(), "request_dump") {
-			info, _ := e.Info()
-			sessions = append(sessions, map[string]any{
-				"id":          strings.TrimSuffix(e.Name(), ".json"),
-				"filename":    e.Name(),
-				"modified_at": info.ModTime().Format(time.RFC3339),
-				"size":        info.Size(),
-			})
+	rows, err := db.Query(`
+		SELECT id, COALESCE(title, ''), COALESCE(source, ''), COALESCE(model, ''),
+		       started_at, COALESCE(ended_at, 0),
+		       message_count, tool_call_count,
+		       input_tokens, output_tokens
+		FROM sessions
+		ORDER BY started_at DESC
+		LIMIT 200
+	`)
+	if err != nil {
+		log.Printf("[sessions] 查询失败: %v", err)
+		jsonResponse(w, map[string]any{"sessions": []any{}})
+		return
+	}
+	defer rows.Close()
+
+	sessions := []map[string]any{}
+	for rows.Next() {
+		var id, title, source, model string
+		var startedAt, endedAt float64
+		var msgCount, toolCount, inTokens, outTokens int
+		if err := rows.Scan(&id, &title, &source, &model,
+			&startedAt, &endedAt, &msgCount, &toolCount,
+			&inTokens, &outTokens); err != nil {
+			continue
 		}
+		startTime := time.Unix(int64(startedAt), int64((startedAt-float64(int64(startedAt)))*1e9))
+		sessions = append(sessions, map[string]any{
+			"id":            id,
+			"title":         title,
+			"source":        source,
+			"model":         model,
+			"started_at":    startTime.Format(time.RFC3339),
+			"message_count": msgCount,
+			"tool_calls":    toolCount,
+			"input_tokens":  inTokens,
+			"output_tokens": outTokens,
+		})
 	}
 	jsonResponse(w, map[string]any{"sessions": sessions})
 }
@@ -1078,8 +1165,16 @@ func handleSessionsDelete(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
 	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
 	var body struct{ ID string `json:"id"` }
-	json.NewDecoder(r.Body).Decode(&body)
-	out, _ := runHermes("sessions", "delete", body.ID)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
+		jsonError(w, "无效请求: 需要 id 字段", 400)
+		return
+	}
+	// 必须传 --yes 跳过交互确认，否则命令会挂起等待 stdin
+	out, err := runHermes("sessions", "delete", body.ID, "--yes")
+	if err != nil {
+		jsonError(w, "删除失败: "+strings.TrimSpace(out), 500)
+		return
+	}
 	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
 }
 
@@ -1090,8 +1185,15 @@ func handleSessionsRename(w http.ResponseWriter, r *http.Request) {
 		ID    string `json:"id"`
 		Title string `json:"title"`
 	}
-	json.NewDecoder(r.Body).Decode(&body)
-	out, _ := runHermes("sessions", "rename", body.ID, body.Title)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
+		jsonError(w, "无效请求: 需要 id 和 title 字段", 400)
+		return
+	}
+	out, err := runHermes("sessions", "rename", body.ID, body.Title)
+	if err != nil {
+		jsonError(w, "重命名失败: "+strings.TrimSpace(out), 500)
+		return
+	}
 	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
 }
 
@@ -1150,7 +1252,9 @@ func handleToolsList(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
 	out, _ := runHermes("tools", "list")
 	// Parse the output into structured data
-	var tools []map[string]any
+	// 格式: "  ✓ enabled  name  🔍 Description Text"
+	// Fields: ["✓", "enabled", "name", "🔍", "Description", "Text"]
+	tools := []map[string]any{}
 	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "✓ enabled") || strings.HasPrefix(line, "✗ disabled") {
@@ -1158,7 +1262,15 @@ func handleToolsList(w http.ResponseWriter, r *http.Request) {
 			parts := strings.Fields(line)
 			if len(parts) >= 3 {
 				name := parts[2]
-				desc := strings.Join(parts[3:], " ")
+				descParts := parts[3:]
+				// 去掉描述开头的 emoji
+				if len(descParts) > 0 {
+					firstRunes := []rune(descParts[0])
+					if len(firstRunes) > 0 && firstRunes[0] > 0x2000 {
+						descParts = descParts[1:]
+					}
+				}
+				desc := strings.Join(descParts, " ")
 				tools = append(tools, map[string]any{"name": name, "enabled": enabled, "description": desc})
 			}
 		}
@@ -1170,8 +1282,15 @@ func handleToolsEnable(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
 	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
 	var body struct{ Name string `json:"name"` }
-	json.NewDecoder(r.Body).Decode(&body)
-	out, _ := runHermes("tools", "enable", body.Name)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
+		jsonError(w, "无效请求: 需要 name 字段", 400)
+		return
+	}
+	out, err := runHermes("tools", "enable", body.Name)
+	if err != nil {
+		jsonError(w, "启用失败: "+strings.TrimSpace(out), 500)
+		return
+	}
 	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
 }
 
@@ -1179,8 +1298,15 @@ func handleToolsDisable(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
 	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
 	var body struct{ Name string `json:"name"` }
-	json.NewDecoder(r.Body).Decode(&body)
-	out, _ := runHermes("tools", "disable", body.Name)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
+		jsonError(w, "无效请求: 需要 name 字段", 400)
+		return
+	}
+	out, err := runHermes("tools", "disable", body.Name)
+	if err != nil {
+		jsonError(w, "禁用失败: "+strings.TrimSpace(out), 500)
+		return
+	}
 	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
 }
 
