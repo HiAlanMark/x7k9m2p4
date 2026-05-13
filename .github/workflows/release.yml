@@ -20,21 +20,25 @@ jobs:
             platform: macos-latest
             name: 'HiXNS-macOS-arm64'
             ext: ''
+            ldflags: '-s -w'
           - goos: darwin
             goarch: amd64
             platform: macos-latest
             name: 'HiXNS-macOS-amd64'
             ext: ''
+            ldflags: '-s -w'
           - goos: windows
             goarch: amd64
-            platform: ubuntu-22.04
+            platform: windows-latest
             name: 'HiXNS-Windows-amd64'
             ext: '.exe'
+            ldflags: '-s -w -H windowsgui'
           - goos: linux
             goarch: amd64
             platform: ubuntu-22.04
             name: 'HiXNS-Linux-amd64'
             ext: ''
+            ldflags: '-s -w'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -58,21 +62,90 @@ jobs:
 
       - name: Copy frontend to Go embed directory
         run: cp -r dist agent-go/dist
+        shell: bash
 
-      - name: Build Go binary (with embedded frontend)
+      - name: Build Go binary
         run: |
           cd agent-go
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
-            go build -ldflags="-s -w" -o ../hixns-agent${{ matrix.ext }} .
-          ls -lh ../hixns-agent${{ matrix.ext }}
+          go build -ldflags="${{ matrix.ldflags }}" -o ../HiXNS${{ matrix.ext }} .
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+
+      - name: Create Windows installer (NSIS)
+        if: matrix.goos == 'windows'
+        shell: pwsh
+        run: |
+          # Create NSIS script
+          @"
+          !include "MUI2.nsh"
+          Name "Hi!XNS"
+          OutFile "HiXNS-Setup.exe"
+          InstallDir "`$PROGRAMFILES64\HiXNS"
+          RequestExecutionLevel admin
+
+          !insertmacro MUI_PAGE_DIRECTORY
+          !insertmacro MUI_PAGE_INSTFILES
+          !insertmacro MUI_LANGUAGE "SimpChinese"
+
+          Section "Install"
+            SetOutPath `$INSTDIR
+            File "HiXNS.exe"
+            CreateShortcut "`$DESKTOP\Hi!XNS.lnk" "`$INSTDIR\HiXNS.exe"
+            CreateDirectory "`$SMPROGRAMS\Hi!XNS"
+            CreateShortcut "`$SMPROGRAMS\Hi!XNS\Hi!XNS.lnk" "`$INSTDIR\HiXNS.exe"
+            CreateShortcut "`$SMPROGRAMS\Hi!XNS\卸载.lnk" "`$INSTDIR\uninstall.exe"
+            WriteUninstaller "`$INSTDIR\uninstall.exe"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "DisplayName" "Hi!XNS"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "UninstallString" "`$INSTDIR\uninstall.exe"
+          SectionEnd
+
+          Section "Uninstall"
+            Delete "`$INSTDIR\HiXNS.exe"
+            Delete "`$INSTDIR\uninstall.exe"
+            Delete "`$DESKTOP\Hi!XNS.lnk"
+            RMDir /r "`$SMPROGRAMS\Hi!XNS"
+            RMDir "`$INSTDIR"
+            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS"
+          SectionEnd
+          "@ | Out-File -FilePath installer.nsi -Encoding utf8
+
+          choco install nsis -y --no-progress
+          makensis installer.nsi
 
       - name: Create release archive
         run: |
           if [ "${{ matrix.goos }}" = "windows" ]; then
-            zip ${{ matrix.name }}.zip hixns-agent${{ matrix.ext }}
+            # zip the exe for direct download too
+            7z a ${{ matrix.name }}.zip HiXNS.exe 2>/dev/null || zip ${{ matrix.name }}.zip HiXNS.exe
+          elif [ "${{ matrix.goos }}" = "darwin" ]; then
+            chmod +x HiXNS
+            # Create macOS .app bundle
+            mkdir -p "Hi!XNS.app/Contents/MacOS"
+            mkdir -p "Hi!XNS.app/Contents/Resources"
+            cp HiXNS "Hi!XNS.app/Contents/MacOS/HiXNS"
+            cat > "Hi!XNS.app/Contents/Info.plist" << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>Hi!XNS</string>
+            <key>CFBundleDisplayName</key><string>Hi!XNS</string>
+            <key>CFBundleIdentifier</key><string>com.hixns.desktop</string>
+            <key>CFBundleVersion</key><string>0.1.0</string>
+            <key>CFBundleExecutable</key><string>HiXNS</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>LSMinimumSystemVersion</key><string>12.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+            tar czf ${{ matrix.name }}.tar.gz "Hi!XNS.app"
           else
-            chmod +x hixns-agent${{ matrix.ext }}
-            tar czf ${{ matrix.name }}.tar.gz hixns-agent${{ matrix.ext }}
+            chmod +x HiXNS
+            tar czf ${{ matrix.name }}.tar.gz HiXNS
           fi
         shell: bash
 
@@ -83,29 +156,18 @@ jobs:
           name: 'Hi!XNS ${{ github.ref_name }}'
           body: |
             ## Hi!XNS Desktop AI Agent ${{ github.ref_name }}
-            
-            单文件桌面 AI 应用，内置 30+ 工具、多轮对话、技能商店。
-            
-            ### 使用方法
-            1. 下载对应平台的文件
-            2. 解压后双击运行 `hixns-agent`
-            3. 自动打开浏览器，即可使用
-            
-            ### 平台说明
-            - **macOS arm64**: Apple Silicon (M1/M2/M3/M4)
-            - **macOS amd64**: Intel Mac
-            - **Windows**: 64位 Windows
-            - **Linux**: 64位 Linux
-            
-            > 首次运行 macOS 可能需要：右键 → 打开 → 信任
+
+            单文件桌面 AI 应用，原生窗口，内置 30+ 工具、多轮对话、技能商店。
+
+            ### 安装
+            - **Windows**: 下载 `HiXNS-Setup.exe` 安装，桌面快捷方式启动
+            - **macOS**: 下载 `.tar.gz`，解压后将 `Hi!XNS.app` 拖入 Applications
+            - **Linux**: 下载 `.tar.gz`，解压后运行 `./HiXNS`
+
+            > macOS 首次运行：系统设置 → 隐私与安全性 → 仍要打开
           draft: false
           prerelease: false
           files: |
+            HiXNS-Setup.exe
             ${{ matrix.name }}.zip
             ${{ matrix.name }}.tar.gz
-
-      - name: Upload Artifacts (backup)
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.name }}
-          path: hixns-agent${{ matrix.ext }}

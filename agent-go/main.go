@@ -18,14 +18,12 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -1938,28 +1936,26 @@ func main() {
 	log.Printf("[Hi!XNS Agent] 工具: %s", strings.Join(tools, ", "))
 	log.Printf("[Hi!XNS Agent] 监听: http://%s", addr)
 
-	// 自动打开原生桌面窗口
-	go func() {
-		time.Sleep(300 * time.Millisecond) // 等服务器就绪
-		openDesktopWindow("http://" + addr)
-	}()
-
 	server := &http.Server{Addr: addr, Handler: mux}
 
-	// 优雅关闭
+	// HTTP 服务器在后台 goroutine 运行
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		<-sigCh
-		log.Println("[Hi!XNS Agent] 正在关闭...")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		server.Shutdown(ctx)
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalf("[Hi!XNS Agent] 启动失败: %v", err)
+		}
 	}()
 
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatalf("[Hi!XNS Agent] 启动失败: %v", err)
-	}
+	// 等待服务器就绪
+	time.Sleep(300 * time.Millisecond)
+
+	// 在主线程打开原生桌面窗口（GUI 必须在主线程）
+	openDesktopWindow("http://" + addr)
+
+	// 窗口关闭后优雅退出
+	log.Println("[Hi!XNS Agent] 正在关闭...")
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	server.Shutdown(ctx)
 	log.Println("[Hi!XNS Agent] 已关闭")
 }
 
