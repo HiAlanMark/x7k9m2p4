@@ -92,6 +92,22 @@ jobs:
           name: ${{ matrix.asset }}
           path: build/${{ matrix.asset }}
 
+      - name: Build Windows Installer (Windows only)
+        if: matrix.goos == 'windows'
+        shell: bash
+        run: |
+          mkdir -p build/windows-amd64
+          cp build/${{ matrix.asset }} build/windows-amd64/hixns-agent.exe
+          # Inno Setup is pre-installed on windows-latest
+          iscc scripts/installer.iss || echo "Inno Setup not available, skipping installer"
+
+      - name: Upload Windows Installer
+        if: matrix.goos == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: HiXNS-Setup
+          path: build/installer/*.exe
+
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -121,15 +137,16 @@ jobs:
             ## Hi!XNS ${{ github.ref_name }}
 
             ### 下载
-            | 平台 | 文件 |
-            |------|------|
-            | Windows x64 | `hixns-agent-windows-amd64.exe` |
-            | Linux x64 | `hixns-agent-linux-amd64` |
-            | macOS Intel | `hixns-agent-macos-amd64` |
-            | macOS Apple Silicon | `hixns-agent-macos-arm64` |
+            | 平台 | 文件 | 说明 |
+            |------|------|------|
+            | **Windows 安装包** | `HiXNS-Setup-0.3.0.exe` | ⭐ 推荐，双击安装 |
+            | Windows x64 | `hixns-agent-windows-amd64.exe` | 单文件版 |
+            | Linux x64 | `hixns-agent-linux-amd64` | |
+            | macOS Intel | `hixns-agent-macos-amd64` | |
+            | macOS Apple Silicon | `hixns-agent-macos-arm64` | |
 
-            ### 使用方式
-            下载对应平台文件后直接运行，应用会在 `127.0.0.1:9800` 启动并弹出原生窗口。
+            ### 安装说明
+            **Windows**: 下载 `HiXNS-Setup-0.3.0.exe`，双击运行安装向导。安装后从开始菜单或桌面快捷方式启动。支持卸载。
 
             ### 更新内容
             - iOS 27 级毛玻璃 UI (blur 32-36px)

@@ -1,5 +1,10 @@
 <template>
-  <div class="app">
+  <!-- Splash Screen -->
+  <SplashScreen v-if="showSplash" @done="showSplash = false" />
+
+  <div v-show="!showSplash" class="app">
+    <!-- Custom Title Bar (no native frame) -->
+    <TitleBar />
     <!-- 全局极光背景 -->
     <SoftAurora
       :color1="appStore.isDark ? '#0A84FF' : '#3b82f6'"
@@ -146,6 +151,8 @@ import IconSun from './components/icons/IconSun.vue'
 import IconMoon from './components/icons/IconMoon.vue'
 import IconBrandLogo from './components/icons/IconBrandLogo.vue'
 import SoftAurora from './components/fx/SoftAurora.vue'
+import SplashScreen from './components/SplashScreen.vue'
+import TitleBar from './components/TitleBar.vue'
 
 const gfwStore = useGfwStore()
 const chatStore = useChatStore()
@@ -155,6 +162,7 @@ const { balance, featuredModels } = storeToRefs(gfwStore)
 const { selectedModel } = storeToRefs(chatStore)
 const confirmDeleteId = ref('')
 const modelDropdownOpen = ref(false)
+const showSplash = ref(true)
 
 const selectedModelDisplay = computed(() => {
   const m = featuredModels.value.find(m => m.model_code === selectedModel.value)

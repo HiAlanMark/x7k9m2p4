@@ -2019,6 +2019,26 @@ func openDesktopWindow(url string) {
 	w.SetTitle("Hi!XNS")
 	w.SetSize(1280, 860, webview.HintNone)
 	w.SetSize(900, 600, webview.HintMin)
+
+	// 绑定窗口控制函数供前端调用
+	w.Bind("windowClose", func() {
+		w.Terminate()
+	})
+	w.Bind("windowMinimize", func() {
+		// go-webview 没有原生 minimize API，注入 JS 无法实现
+		// 前端 TitleBar 的 minimize 通过 window.postMessage 处理
+		log.Println("[Hi!XNS] minimize requested")
+	})
+
+	// 注入 JS: 监听前端 postMessage 并调用绑定函数
+	w.Init(`
+		window.addEventListener('message', function(e) {
+			if (e.data && e.data.type === 'window-close') {
+				if (window.windowClose) window.windowClose();
+			}
+		});
+	`)
+
 	w.Navigate(url)
 	w.Run()
 	// 窗口关闭时退出程序
