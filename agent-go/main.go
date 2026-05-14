@@ -2034,9 +2034,15 @@ func openDesktopWindow(url string) {
 			toggleMaximizeWindow()
 		}
 	})
+	w.Bind("windowStartDrag", func() {
+		if runtime.GOOS == "windows" {
+			startDragWindow()
+		}
+	})
 
-	// 注入 JS: 监听前端 postMessage 并调用绑定函数
+	// 注入 JS: 窗口控制 + 右键菜单禁用 + 拖拽 + 暗色检测 + 白屏消除
 	w.Init(`
+		// === 窗口控制 ===
 		window.addEventListener('message', function(e) {
 			if (!e.data || !e.data.type) return;
 			switch(e.data.type) {
@@ -2044,6 +2050,104 @@ func openDesktopWindow(url string) {
 				case 'window-minimize': if(window.windowMinimize) window.windowMinimize(); break;
 				case 'window-maximize': if(window.windowMaximize) window.windowMaximize(); break;
 			}
+		});
+
+		// === 消除启动白屏 ===
+		document.documentElement.style.background = '#000';
+		document.body.style.background = '#000';
+
+		// === 自动检测系统暗色/亮色 ===
+		(function() {
+			var saved = localStorage.getItem('hixns_theme');
+			if (!saved) {
+				var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+				document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+				localStorage.setItem('hixns_theme', isDark ? 'dark' : 'light');
+			}
+			window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+				if (!localStorage.getItem('hixns_theme_manual')) {
+					document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+				}
+			});
+		})();
+
+		// === 禁用右键菜单(全局) + 输入框智能右键 ===
+		document.addEventListener('contextmenu', function(e) {
+			var el = e.target;
+			var isInput = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+			if (!isInput) {
+				e.preventDefault();
+				return;
+			}
+			// 输入框: 有选中文字 → 允许默认菜单(复制/剪切/粘贴)
+			var sel = window.getSelection();
+			var hasSelection = sel && sel.toString().length > 0;
+			if (hasSelection) {
+				// 允许浏览器默认右键(复制/剪切/粘贴)
+				return;
+			}
+			// 输入框无选中: 显示自定义菜单(全选/粘贴)
+			e.preventDefault();
+			showInputContextMenu(e, el);
+		}, true);
+
+		function showInputContextMenu(e, el) {
+			// 移除旧菜单
+			var old = document.getElementById('hixns-ctx-menu');
+			if (old) old.remove();
+
+			var menu = document.createElement('div');
+			menu.id = 'hixns-ctx-menu';
+			menu.style.cssText = 'position:fixed;z-index:999999;background:rgba(30,30,30,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:4px 0;min-width:120px;box-shadow:0 8px 32px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;font-size:13px;color:#e0e0e0;';
+			menu.style.left = e.clientX + 'px';
+			menu.style.top = e.clientY + 'px';
+
+			function addItem(label, fn) {
+				var item = document.createElement('div');
+				item.textContent = label;
+				item.style.cssText = 'padding:6px 16px;cursor:pointer;transition:background 0.1s;';
+				item.onmouseenter = function() { item.style.background = 'rgba(255,255,255,0.1)'; };
+				item.onmouseleave = function() { item.style.background = 'transparent'; };
+				item.onclick = function() { fn(); menu.remove(); };
+				menu.appendChild(item);
+			}
+
+			addItem('全选', function() {
+				el.focus();
+				el.select ? el.select() : document.execCommand('selectAll');
+			});
+			addItem('粘贴', function() {
+				el.focus();
+				navigator.clipboard.readText().then(function(t) {
+					document.execCommand('insertText', false, t);
+				});
+			});
+
+			document.body.appendChild(menu);
+
+			// 点击其他地方关闭
+			setTimeout(function() {
+				document.addEventListener('click', function close() {
+					menu.remove();
+					document.removeEventListener('click', close);
+				}, { once: true });
+			}, 10);
+		}
+
+		// === 禁用拖拽文件到窗口 ===
+		document.addEventListener('dragover', function(e) { e.preventDefault(); });
+		document.addEventListener('drop', function(e) { e.preventDefault(); });
+
+		// === 窗口拖拽(通过Win32 API) ===
+		document.addEventListener('mousedown', function(e) {
+			if (e.button !== 0) return; // 只响应左键
+			if (e.clientY > 40) return; // 只在顶部 40px 区域
+			if (e.clientX > window.innerWidth - 150) return; // 排除右上角按钮区
+			var el = e.target;
+			// 排除按钮、输入框等交互元素
+			if (el.tagName === 'BUTTON' || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ||
+				el.tagName === 'A' || el.tagName === 'SELECT' || el.closest('button,a,input,select')) return;
+			if (window.windowStartDrag) window.windowStartDrag();
 		});
 	`)
 

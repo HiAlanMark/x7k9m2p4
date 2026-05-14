@@ -9,10 +9,9 @@ export const useAppStore = defineStore('app', () => {
   const sidebarCollapsed = ref(false)
   const currentView = ref('chat')
 
-  // 主题管理
-  const themeMode = ref<ThemeMode>(
-    (localStorage.getItem('hermes_theme') as ThemeMode) || 'light'
-  )
+  // 主题管理 — 默认跟随系统
+  const savedTheme = localStorage.getItem('hermes_theme') as ThemeMode | null
+  const themeMode = ref<ThemeMode>(savedTheme || 'system')
   const isDark = ref(false)
 
   function resolveTheme() {
@@ -31,7 +30,9 @@ export const useAppStore = defineStore('app', () => {
   }
 
   function toggleTheme() {
-    setTheme(isDark.value ? 'light' : 'dark')
+    const next = isDark.value ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem('hixns_theme_manual', '1')  // 标记手动设置
   }
 
   // 监听系统主题变化
