@@ -2025,19 +2025,35 @@ func openDesktopWindow(url string) {
 		w.Terminate()
 	})
 	w.Bind("windowMinimize", func() {
-		// go-webview 没有原生 minimize API，注入 JS 无法实现
-		// 前端 TitleBar 的 minimize 通过 window.postMessage 处理
-		log.Println("[Hi!XNS] minimize requested")
+		if runtime.GOOS == "windows" {
+			minimizeWindow()
+		}
+	})
+	w.Bind("windowMaximize", func() {
+		if runtime.GOOS == "windows" {
+			toggleMaximizeWindow()
+		}
 	})
 
 	// 注入 JS: 监听前端 postMessage 并调用绑定函数
 	w.Init(`
 		window.addEventListener('message', function(e) {
-			if (e.data && e.data.type === 'window-close') {
-				if (window.windowClose) window.windowClose();
+			if (!e.data || !e.data.type) return;
+			switch(e.data.type) {
+				case 'window-close': if(window.windowClose) window.windowClose(); break;
+				case 'window-minimize': if(window.windowMinimize) window.windowMinimize(); break;
+				case 'window-maximize': if(window.windowMaximize) window.windowMaximize(); break;
 			}
 		});
 	`)
+
+	// Windows: 启动后去掉系统标题栏
+	if runtime.GOOS == "windows" {
+		go func() {
+			time.Sleep(500 * time.Millisecond) // 等窗口创建完成
+			removeWindowFrame()
+		}()
+	}
 
 	w.Navigate(url)
 	w.Run()

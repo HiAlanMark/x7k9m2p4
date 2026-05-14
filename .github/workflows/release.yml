@@ -94,12 +94,12 @@ jobs:
 
       - name: Build Windows Installer (Windows only)
         if: matrix.goos == 'windows'
-        shell: bash
+        shell: cmd
         run: |
-          mkdir -p build/windows-amd64
-          cp build/${{ matrix.asset }} build/windows-amd64/hixns-agent.exe
-          # Inno Setup is pre-installed on windows-latest
-          iscc scripts/installer.iss || echo "Inno Setup not available, skipping installer"
+          mkdir build\windows-amd64 2>nul
+          copy build\${{ matrix.asset }} build\windows-amd64\hixns-agent.exe
+          mkdir build\installer 2>nul
+          "C:\Program Files (x86)\Inno Setup 6\iscc.exe" scripts\installer.iss
 
       - name: Upload Windows Installer
         if: matrix.goos == 'windows'

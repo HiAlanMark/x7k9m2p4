@@ -58,8 +58,8 @@ Name: "startupicon"; Description: "开机自动启动"; GroupDescription: "{cm:A
 ; 主程序
 Source: "..\build\windows-amd64\hixns-agent.exe"; DestDir: "{app}"; Flags: ignoreversion
 
-; 内嵌 Hermes Agent (完整 venv)
-Source: "..\build\windows-amd64\bundled\hermes-agent\*"; DestDir: "{app}\bundled\hermes-agent"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "__pycache__,*.pyc"; Check: DirExists(ExpandConstant('{src}\..\build\windows-amd64\bundled\hermes-agent'))
+; 内嵌 Hermes Agent (完整 venv) — 仅当目录存在时打包
+Source: "..\build\windows-amd64\bundled\hermes-agent\*"; DestDir: "{app}\bundled\hermes-agent"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Excludes: "__pycache__,*.pyc"
 
 [Icons]
 ; 开始菜单
@@ -96,10 +96,4 @@ begin
     else
       Result := False;
   end;
-end;
-
-// 检查 bundled 目录是否存在
-function DirExists(Dir: String): Boolean;
-begin
-  Result := DirExists(Dir);
 end;
