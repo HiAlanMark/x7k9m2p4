@@ -1649,9 +1649,10 @@ func handleUninstallSkill(w http.ResponseWriter, r *http.Request) {
 }
 
 func setCORS(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	// 只允许同源和本地开发访问
+	w.Header().Set("Access-Control-Allow-Origin", "*") // webview 和 dev server 都需要
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Proxy-Target")
 }
 
 // ============================================================
@@ -1980,8 +1981,7 @@ func openDesktopWindow(url string) {
 	if w == nil {
 		log.Printf("[Hi!XNS] 无法创建原生窗口，打开浏览器...")
 		openBrowser(url)
-		select {} // 保持进程不退出
-		return
+		select {} // 保持进程不退出（不会执行到下面的代码）
 	}
 	defer w.Destroy()
 	w.SetTitle("Hi!XNS")

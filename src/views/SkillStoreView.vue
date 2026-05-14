@@ -421,7 +421,7 @@ async function installSkill(skill: TwoXSkill) {
   showToast(`正在安装 ${skill.name}...`, 'success')
   try {
     const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
+    const agentUrl = isDev ? '/proxy/agent' : ''
     const r = await fetch(`${agentUrl}/v1/agent/install-skill`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -450,7 +450,7 @@ async function loadInstalled() {
   installedLoading.value = true
   try {
     const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
+    const agentUrl = isDev ? '/proxy/agent' : ''
     const r = await fetch(`${agentUrl}/v1/agent/skills`)
     const data = await r.json()
     installedSkills.value = (data.skills || []).sort((a: any, b: any) => {
@@ -470,7 +470,7 @@ async function uninstallSkill(sk: InstalledSkill) {
   if (!confirm(`确定要卸载技能「${sk.name || sk.slug}」吗？`)) return
   try {
     const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'
+    const agentUrl = isDev ? '/proxy/agent' : ''
     const r = await fetch(`${agentUrl}/v1/agent/uninstall-skill`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

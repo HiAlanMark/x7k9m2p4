@@ -540,7 +540,7 @@ async function agentChat(
     // Agent server 自己会去调 LLM API，所以把原始 URL 传给它
   }
 
-  const url = agentUrl || (isDev ? '/proxy/agent' : 'http://127.0.0.1:9800')
+  const url = agentUrl || (isDev ? '/proxy/agent' : '')
 
   try {
     const r = await fetch(`${url}/v1/agent/chat`, {

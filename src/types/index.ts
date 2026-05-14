@@ -26,6 +26,8 @@ export interface GfwModel {
   is_featured: boolean
   rpm: number
   tpm: number
+  model_code: string   // GFW API 模型标识符 (如 "gpt-4o")
+  model_name: string   // 模型显示名 (如 "GPT-4o")
   supports_thinking: boolean
   supports_vision: boolean
   supports_function_call: boolean
