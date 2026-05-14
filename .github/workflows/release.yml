@@ -12,8 +12,12 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   HERMES_REPO: 'https://github.com/NousResearch/hermes-agent.git'
+  HERMES_CORE_DEPS: 'openai anthropic python-dotenv fire "httpx[socks]" rich tenacity pyyaml ruamel.yaml requests jinja2 pydantic prompt_toolkit exa-py firecrawl-py parallel-web fal-client'
 
 jobs:
+  # ============================================================
+  # Windows — Inno Setup installer (.exe)
+  # ============================================================
   build-windows:
     runs-on: windows-latest
     steps:
@@ -32,55 +36,67 @@ jobs:
         shell: bash
         run: |
           cp -r dist agent-go/dist
-          cd agent-go
-          CGO_ENABLED=0 go build -ldflags="-s -w -H windowsgui" -o ../HiXNS.exe .
+          cd agent-go && CGO_ENABLED=0 go build -ldflags="-s -w -H windowsgui" -o ../HiXNS.exe .
 
       - name: Bundle Hermes Agent
         shell: bash
         run: |
-          echo "=== Cloning Hermes Agent ==="
           git clone --depth 1 $HERMES_REPO hermes-src
-
-          echo "=== Creating Python venv ==="
           python -m venv hermes-venv
-          hermes-venv/Scripts/pip install --no-cache-dir \
-            openai anthropic python-dotenv fire "httpx[socks]" rich tenacity \
-            pyyaml ruamel.yaml requests jinja2 pydantic prompt_toolkit \
-            exa-py firecrawl-py parallel-web fal-client 2>&1 | tail -5
-
-          echo "=== Installing hermes-agent ==="
+          hermes-venv/Scripts/pip install --no-cache-dir $HERMES_CORE_DEPS 2>&1 | tail -3
           hermes-venv/Scripts/pip install --no-cache-dir -e hermes-src 2>&1 | tail -3
-
-          echo "=== Creating bundled directory ==="
           mkdir -p bundled/hermes-agent
-          # Copy hermes source
           for d in agent tools hermes_cli gateway plugins cron skills acp_adapter tui_gateway; do
             [ -d "hermes-src/$d" ] && cp -r "hermes-src/$d" "bundled/hermes-agent/$d"
           done
           for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py pyproject.toml; do
             [ -f "hermes-src/$f" ] && cp "hermes-src/$f" "bundled/hermes-agent/$f"
           done
-          # Copy venv
           cp -r hermes-venv bundled/hermes-agent/venv
-          # Clean up
           find bundled/hermes-agent -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
           find bundled/hermes-agent -name '*.pyc' -delete 2>/dev/null || true
           rm -rf bundled/hermes-agent/venv/Lib/site-packages/pip 2>/dev/null || true
-
-          echo "=== Verify hermes ==="
-          bundled/hermes-agent/venv/Scripts/hermes.exe --version || echo "hermes not in venv path"
+          echo "=== Hermes bundled ==="
           du -sh bundled/hermes-agent/
 
-      - name: Package Windows distribution
-        shell: bash
+      - name: Create Inno Setup script
+        shell: pwsh
         run: |
-          # Create distribution directory
-          mkdir -p HiXNS
-          cp HiXNS.exe HiXNS/
-          cp -r bundled HiXNS/
-          # Zip it
-          powershell -Command "Compress-Archive -Path 'HiXNS' -DestinationPath 'HiXNS-Windows-amd64.zip'"
-          ls -lh HiXNS-Windows-amd64.zip
+          @"
+          [Setup]
+          AppName=Hi!XNS
+          AppVersion=0.2.0
+          AppPublisher=Hi!XNS Team
+          DefaultDirName={autopf}\HiXNS
+          DefaultGroupName=Hi!XNS
+          OutputDir=.
+          OutputBaseFilename=HiXNS-Setup
+          Compression=lzma2/ultra64
+          SolidCompression=yes
+          SetupIconFile=
+          UninstallDisplayName=Hi!XNS
+          PrivilegesRequired=admin
+          ArchitecturesInstallIn64BitMode=x64compatible
+          WizardStyle=modern
+
+          [Files]
+          Source: "HiXNS.exe"; DestDir: "{app}"; Flags: ignoreversion
+          Source: "bundled\hermes-agent\*"; DestDir: "{app}\bundled\hermes-agent"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+          [Icons]
+          Name: "{autodesktop}\Hi!XNS"; Filename: "{app}\HiXNS.exe"
+          Name: "{group}\Hi!XNS"; Filename: "{app}\HiXNS.exe"
+          Name: "{group}\卸载 Hi!XNS"; Filename: "{uninstallexe}"
+
+          [Run]
+          Filename: "{app}\HiXNS.exe"; Description: "启动 Hi!XNS"; Flags: nowait postinstall skipifsilent
+          "@ | Out-File -FilePath setup.iss -Encoding UTF8
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" setup.iss
+          Get-ChildItem HiXNS-Setup.exe | Format-List Name, Length
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
@@ -90,16 +106,17 @@ jobs:
           body: |
             ## Hi!XNS Desktop AI Agent ${{ github.ref_name }}
             完整桌面 AI 应用，内置 Hermes Agent（30+ 工具）、多轮对话、技能商店。
-            ### Windows
-            下载 `HiXNS-Windows-amd64.zip`，解压后双击 `HiXNS\HiXNS.exe` 运行。
-            ### macOS
-            解压 `.tar.gz`，将 `HiXNS.app` 拖入 Applications。
-            ### Linux
-            解压 `.tar.gz`，运行 `./HiXNS`。
+            ### 安装
+            - **Windows**: 运行 `HiXNS-Setup.exe`，按提示安装，桌面快捷方式启动
+            - **macOS**: 解压 `.tar.gz`，将 `HiXNS.app` 拖入 Applications
+            - **Linux**: 解压 `.tar.gz`，运行 `./HiXNS`
           draft: false
           prerelease: false
-          files: HiXNS-Windows-amd64.zip
+          files: HiXNS-Setup.exe
 
+  # ============================================================
+  # macOS — .app bundle with Hermes
+  # ============================================================
   build-macos:
     strategy:
       fail-fast: false
@@ -116,6 +133,8 @@ jobs:
         with: { node-version: '22' }
       - uses: actions/setup-go@v5
         with: { go-version: '1.25', cache-dependency-path: agent-go/go.sum }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
 
       - name: Build Frontend
         run: npm install && npx vite build
@@ -123,14 +142,36 @@ jobs:
       - name: Build Go binary
         run: |
           cp -r dist agent-go/dist
-          cd agent-go
-          GOOS=darwin GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
+          cd agent-go && GOOS=darwin GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
             go build -ldflags="-s -w" -o ../HiXNS .
 
-      - name: Package .app
+      - name: Bundle Hermes Agent
+        run: |
+          git clone --depth 1 $HERMES_REPO hermes-src
+          python3 -m venv hermes-venv
+          hermes-venv/bin/pip install --no-cache-dir \
+            openai anthropic python-dotenv fire "httpx[socks]" rich tenacity \
+            pyyaml ruamel.yaml requests jinja2 pydantic prompt_toolkit \
+            exa-py firecrawl-py parallel-web fal-client 2>&1 | tail -3
+          hermes-venv/bin/pip install --no-cache-dir -e hermes-src 2>&1 | tail -3
+          mkdir -p bundled/hermes-agent
+          for d in agent tools hermes_cli gateway plugins cron skills acp_adapter tui_gateway; do
+            [ -d "hermes-src/$d" ] && cp -r "hermes-src/$d" "bundled/hermes-agent/$d"
+          done
+          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py pyproject.toml; do
+            [ -f "hermes-src/$f" ] && cp "hermes-src/$f" "bundled/hermes-agent/$f"
+          done
+          cp -r hermes-venv bundled/hermes-agent/venv
+          find bundled/hermes-agent -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+          find bundled/hermes-agent -name '*.pyc' -delete 2>/dev/null || true
+          rm -rf bundled/hermes-agent/venv/lib/python*/site-packages/pip 2>/dev/null || true
+          du -sh bundled/hermes-agent/
+
+      - name: Package .app bundle
         run: |
           mkdir -p HiXNS.app/Contents/MacOS HiXNS.app/Contents/Resources
           cp HiXNS HiXNS.app/Contents/MacOS/ && chmod +x HiXNS.app/Contents/MacOS/HiXNS
+          cp -r bundled HiXNS.app/Contents/Resources/
           cat > HiXNS.app/Contents/Info.plist << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -138,13 +179,14 @@ jobs:
             <key>CFBundleName</key><string>HiXNS</string>
             <key>CFBundleDisplayName</key><string>Hi!XNS</string>
             <key>CFBundleIdentifier</key><string>com.hixns.desktop</string>
-            <key>CFBundleVersion</key><string>0.1.0</string>
+            <key>CFBundleVersion</key><string>0.2.0</string>
             <key>CFBundleExecutable</key><string>HiXNS</string>
             <key>CFBundlePackageType</key><string>APPL</string>
             <key>NSHighResolutionCapable</key><true/>
           </dict></plist>
           EOF
           tar czf ${{ matrix.name }}.tar.gz HiXNS.app
+          ls -lh ${{ matrix.name }}.tar.gz
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
@@ -155,6 +197,9 @@ jobs:
           prerelease: false
           files: ${{ matrix.name }}.tar.gz
 
+  # ============================================================
+  # Linux — tar.gz with Hermes
+  # ============================================================
   build-linux:
     runs-on: ubuntu-22.04
     steps:
@@ -163,6 +208,8 @@ jobs:
         with: { node-version: '22' }
       - uses: actions/setup-go@v5
         with: { go-version: '1.25', cache-dependency-path: agent-go/go.sum }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
 
       - name: Build Frontend
         run: npm install && npx vite build
@@ -170,11 +217,37 @@ jobs:
       - name: Build Go binary
         run: |
           cp -r dist agent-go/dist
-          cd agent-go
-          CGO_ENABLED=0 go build -ldflags="-s -w" -o ../HiXNS .
+          cd agent-go && CGO_ENABLED=0 go build -ldflags="-s -w" -o ../HiXNS .
+
+      - name: Bundle Hermes Agent
+        run: |
+          git clone --depth 1 $HERMES_REPO hermes-src
+          python3 -m venv hermes-venv
+          hermes-venv/bin/pip install --no-cache-dir \
+            openai anthropic python-dotenv fire "httpx[socks]" rich tenacity \
+            pyyaml ruamel.yaml requests jinja2 pydantic prompt_toolkit \
+            exa-py firecrawl-py parallel-web fal-client 2>&1 | tail -3
+          hermes-venv/bin/pip install --no-cache-dir -e hermes-src 2>&1 | tail -3
+          mkdir -p bundled/hermes-agent
+          for d in agent tools hermes_cli gateway plugins cron skills acp_adapter tui_gateway; do
+            [ -d "hermes-src/$d" ] && cp -r "hermes-src/$d" "bundled/hermes-agent/$d"
+          done
+          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py pyproject.toml; do
+            [ -f "hermes-src/$f" ] && cp "hermes-src/$f" "bundled/hermes-agent/$f"
+          done
+          cp -r hermes-venv bundled/hermes-agent/venv
+          find bundled/hermes-agent -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+          find bundled/hermes-agent -name '*.pyc' -delete 2>/dev/null || true
+          rm -rf bundled/hermes-agent/venv/lib/python*/site-packages/pip 2>/dev/null || true
+          du -sh bundled/hermes-agent/
 
       - name: Package
-        run: chmod +x HiXNS && tar czf HiXNS-Linux-amd64.tar.gz HiXNS
+        run: |
+          mkdir -p HiXNS
+          cp HiXNS HiXNS/ && chmod +x HiXNS/HiXNS
+          cp -r bundled HiXNS/
+          tar czf HiXNS-Linux-amd64.tar.gz HiXNS/
+          ls -lh HiXNS-Linux-amd64.tar.gz
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
