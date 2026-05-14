@@ -789,9 +789,6 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 
 // hermesChat 委托给 Hermes Agent 子进程处理对话
 func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history []map[string]any, sessionID string) {
-	hermesPath := hermesState.Path
-
-	// 不再覆写全局 config.yaml（避免并发请求互相覆盖配置）
 	// 通过 -m 指定模型，通过环境变量传递 base_url 和 api_key
 	log.Printf("[hermesChat] 模型配置: model=%s base_url=%s sessionID=%s", model, apiBase, sessionID)
 
