@@ -20,71 +20,62 @@ var (
 )
 
 const (
-	GWL_STYLE = -16
+	// GWL_STYLE is -16, but Go uintptr is unsigned.
+	// Use two's complement: ^uintptr(15) == 0xFFFFFFFFFFFFFF0 on 64-bit
+	gwlStyle uintptr = ^uintptr(15) // -16 as uintptr
 
-	WS_CAPTION     = 0x00C00000
-	WS_THICKFRAME  = 0x00040000
-	WS_SYSMENU     = 0x00080000
-	WS_MINIMIZEBOX = 0x00020000
-	WS_MAXIMIZEBOX = 0x00010000
+	wsCaption     = 0x00C00000
+	wsSysMenu     = 0x00080000
+	wsThickFrame  = 0x00040000
+	wsMinimizeBox = 0x00020000
+	wsMaximizeBox = 0x00010000
 
-	SWP_FRAMECHANGED  = 0x0020
-	SWP_NOMOVE        = 0x0002
-	SWP_NOSIZE        = 0x0001
-	SWP_NOZORDER      = 0x0004
-	SWP_NOOWNERZORDER = 0x0200
+	swpFrameChanged  = 0x0020
+	swpNoMove        = 0x0002
+	swpNoSize        = 0x0001
+	swpNoZOrder      = 0x0004
+	swpNoOwnerZOrder = 0x0200
 
-	SW_MINIMIZE = 6
-	SW_MAXIMIZE = 3
-	SW_RESTORE  = 9
+	swMinimize = 6
+	swMaximize = 3
+	swRestore  = 9
 )
 
 func findHiXNSWindow() uintptr {
-	// 先尝试按标题查找
 	title, _ := syscall.UTF16PtrFromString("Hi!XNS")
 	hwnd, _, _ := procFindWindow.Call(0, uintptr(unsafe.Pointer(title)))
 	if hwnd != 0 {
 		return hwnd
 	}
-	// 回退: 使用前台窗口
 	hwnd, _, _ = procGetForegroundWindow.Call()
 	return hwnd
 }
 
-// removeWindowFrame 去掉系统标题栏，保留窗口阴影和圆角
 func removeWindowFrame() {
 	hwnd := findHiXNSWindow()
 	if hwnd == 0 {
-		log.Println("[Hi!XNS] 未找到窗口句柄，无法去除标题栏")
+		log.Println("[Hi!XNS] 未找到窗口句柄")
 		return
 	}
 
-	// 获取当前样式
-	style, _, _ := procGetWindowLong.Call(hwnd, uintptr(GWL_STYLE))
+	style, _, _ := procGetWindowLong.Call(hwnd, gwlStyle)
+	newStyle := style &^ wsCaption &^ wsSysMenu
+	newStyle = newStyle | wsThickFrame | wsMinimizeBox | wsMaximizeBox
 
-	// 去掉标题栏但保留边框（用于拖拽调整大小）
-	newStyle := style &^ WS_CAPTION &^ WS_SYSMENU
-	// 保留 THICKFRAME 用于窗口缩放
-	newStyle = newStyle | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX
-
-	procSetWindowLong.Call(hwnd, uintptr(GWL_STYLE), newStyle)
-
-	// 刷新窗口框架
+	procSetWindowLong.Call(hwnd, gwlStyle, newStyle)
 	procSetWindowPos.Call(hwnd, 0, 0, 0, 0, 0,
-		SWP_FRAMECHANGED|SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOOWNERZORDER)
+		swpFrameChanged|swpNoMove|swpNoSize|swpNoZOrder|swpNoOwnerZOrder)
 
 	log.Println("[Hi!XNS] 系统标题栏已移除")
 }
 
-// minimizeWindow 最小化窗口
 func minimizeWindow() {
 	hwnd := findHiXNSWindow()
 	if hwnd != 0 {
-		procShowWindow.Call(hwnd, SW_MINIMIZE)
+		procShowWindow.Call(hwnd, swMinimize)
 	}
 }
 
-// toggleMaximizeWindow 切换最大化/还原
 func toggleMaximizeWindow() {
 	hwnd := findHiXNSWindow()
 	if hwnd == 0 {
@@ -92,8 +83,8 @@ func toggleMaximizeWindow() {
 	}
 	isMax, _, _ := procIsZoomed.Call(hwnd)
 	if isMax != 0 {
-		procShowWindow.Call(hwnd, SW_RESTORE)
+		procShowWindow.Call(hwnd, swRestore)
 	} else {
-		procShowWindow.Call(hwnd, SW_MAXIMIZE)
+		procShowWindow.Call(hwnd, swMaximize)
 	}
 }

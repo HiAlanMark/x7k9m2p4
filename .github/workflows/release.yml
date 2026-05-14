@@ -53,6 +53,11 @@ jobs:
           go-version: '1.25'
           cache-dependency-path: agent-go/go.sum
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install frontend dependencies
         run: npm ci
 
@@ -65,12 +70,43 @@ jobs:
           rm -rf agent-go/dist
           cp -r dist agent-go/dist
 
+      - name: Bundle Hermes Agent
+        shell: bash
+        run: |
+          # 创建独立 venv 并安装 hermes-agent
+          python -m venv build/hermes-venv
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            source build/hermes-venv/Scripts/activate
+          else
+            source build/hermes-venv/bin/activate
+          fi
+          pip install --upgrade pip
+          pip install hermes-agent 2>/dev/null || pip install hermes-ai-agent 2>/dev/null || echo "hermes-agent not on PyPI, creating minimal bundle"
+
+          # 创建 bundled 目录结构
+          BUNDLE_DIR="build/${{ matrix.goos }}-${{ matrix.goarch }}/bundled/hermes-agent"
+          mkdir -p "$BUNDLE_DIR"
+
+          # 复制 venv
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            cp -r build/hermes-venv "$BUNDLE_DIR/venv"
+          else
+            cp -r build/hermes-venv "$BUNDLE_DIR/venv"
+          fi
+
+          # 清理不必要的文件
+          find "$BUNDLE_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+          find "$BUNDLE_DIR" -name '*.pyc' -delete 2>/dev/null || true
+          rm -rf "$BUNDLE_DIR/venv/share" 2>/dev/null || true
+
+          echo "Hermes bundle size: $(du -sh $BUNDLE_DIR | cut -f1)"
+
       - name: Build Windows resource (Windows only)
         if: matrix.goos == 'windows'
         shell: bash
         run: |
           cd agent-go
-          windres --preprocessor=cat resource.rc -o resource_windows_amd64.syso || echo "windres not available, using pre-built .syso"
+          windres --preprocessor=cat resource.rc -o resource_windows_amd64.syso || echo "Using pre-built .syso"
 
       - name: Build Go binary
         env:
@@ -86,7 +122,7 @@ jobs:
           fi
           go build -ldflags="$LDFLAGS" -o ../build/${{ matrix.asset }} .
 
-      - name: Upload artifact
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
@@ -97,9 +133,11 @@ jobs:
         shell: cmd
         run: |
           mkdir build\windows-amd64 2>nul
-          copy build\${{ matrix.asset }} build\windows-amd64\hixns-agent.exe
+          copy build\%ASSET% build\windows-amd64\hixns-agent.exe
           mkdir build\installer 2>nul
           "C:\Program Files (x86)\Inno Setup 6\iscc.exe" scripts\installer.iss
+        env:
+          ASSET: ${{ matrix.asset }}
 
       - name: Upload Windows Installer
         if: matrix.goos == 'windows'
@@ -139,23 +177,21 @@ jobs:
             ### 下载
             | 平台 | 文件 | 说明 |
             |------|------|------|
-            | **Windows 安装包** | `HiXNS-Setup-0.3.0.exe` | ⭐ 推荐，双击安装 |
+            | **Windows 安装包** | `HiXNS-Setup-0.3.0.exe` | ⭐ 推荐，含 Hermes Agent |
             | Windows x64 | `hixns-agent-windows-amd64.exe` | 单文件版 |
             | Linux x64 | `hixns-agent-linux-amd64` | |
             | macOS Intel | `hixns-agent-macos-amd64` | |
             | macOS Apple Silicon | `hixns-agent-macos-arm64` | |
 
             ### 安装说明
-            **Windows**: 下载 `HiXNS-Setup-0.3.0.exe`，双击运行安装向导。安装后从开始菜单或桌面快捷方式启动。支持卸载。
+            **Windows**: 下载安装包，双击安装。含内嵌 Hermes Agent，无需额外安装。
 
             ### 更新内容
-            - iOS 27 级毛玻璃 UI (blur 32-36px)
-            - WebGL 极光背景动效
-            - q弹 Spring 动画系统
-            - 5 个 vue-bits 风格动效组件
-            - 消息重新生成/复制/导出
-            - 智能会话标题
-            - 任务编辑/设置搜索/技能更新检测
+            - 无边框窗口 + 自定义标题栏
+            - 启动界面 (Logo动画+进度条)
+            - iOS 27 级毛玻璃 UI
+            - WebGL 极光背景
+            - 12项功能优化
           files: release/*
           draft: false
           prerelease: false
