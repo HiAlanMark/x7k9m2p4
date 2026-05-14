@@ -2,7 +2,8 @@
 
 package main
 
-func removeWindowFrame()    {}
-func minimizeWindow()       {}
-func toggleMaximizeWindow() {}
-func startDragWindow()      {}
+func removeWindowFrame()      {}
+func minimizeWindow()         {}
+func toggleMaximizeWindow()   {}
+func startDragWindow()        {}
+func setWindowBackgroundBlack() {}

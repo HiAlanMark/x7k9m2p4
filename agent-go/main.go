@@ -2139,23 +2139,33 @@ func openDesktopWindow(url string) {
 		document.addEventListener('drop', function(e) { e.preventDefault(); });
 
 		// === 窗口拖拽(通过Win32 API) ===
+		// 顶部区域 + sidebar brand 区域都可拖拽
 		document.addEventListener('mousedown', function(e) {
-			if (e.button !== 0) return; // 只响应左键
-			if (e.clientY > 40) return; // 只在顶部 40px 区域
-			if (e.clientX > window.innerWidth - 150) return; // 排除右上角按钮区
+			if (e.button !== 0) return;
 			var el = e.target;
-			// 排除按钮、输入框等交互元素
-			if (el.tagName === 'BUTTON' || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ||
-				el.tagName === 'A' || el.tagName === 'SELECT' || el.closest('button,a,input,select')) return;
-			if (window.windowStartDrag) window.windowStartDrag();
+			// 排除交互元素
+			if (el.closest('button,a,input,textarea,select,[role="button"],.nav-item,.session-item,.model-dropdown')) return;
+
+			// 方式1: 顶部 36px 区域（排除右侧按钮区）
+			var isTopBar = (e.clientY <= 36 && e.clientX < window.innerWidth - 150);
+			// 方式2: sidebar-brand 区域
+			var isBrand = !!el.closest('.sidebar-brand');
+			// 方式3: sidebar 头部空白区域
+			var isSidebarTop = !!el.closest('.sidebar') && e.clientY <= 60;
+
+			if (isTopBar || isBrand || isSidebarTop) {
+				e.preventDefault();
+				if (window.windowStartDrag) window.windowStartDrag();
+			}
 		});
 	`)
 
-	// Windows: 启动后去掉系统标题栏
+	// Windows: 创建后立即设置黑色背景 + 去掉标题栏（在 Navigate 之前！）
 	if runtime.GOOS == "windows" {
 		go func() {
-			time.Sleep(500 * time.Millisecond) // 等窗口创建完成
-			removeWindowFrame()
+			setWindowBackgroundBlack()  // 消除白屏
+			time.Sleep(100 * time.Millisecond)
+			removeWindowFrame()         // 去掉系统标题栏
 		}()
 	}
 
