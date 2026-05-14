@@ -53,7 +53,7 @@
               @click.stop="confirmDeleteId = s.id"
               title="删除会话"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <svg width="12" height="12" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/> <path d="M640 341.333333a42.666667 42.666667 0 0 0-30.165333 12.501334l-256 256a42.666667 42.666667 0 0 0 0 60.330666 42.666667 42.666667 0 0 0 60.330666 0l256-256a42.666667 42.666667 0 0 0 0-60.330666A42.666667 42.666667 0 0 0 640 341.333333z"/> <path d="M384 341.333333a42.666667 42.666667 0 0 0-30.165333 12.501334 42.666667 42.666667 0 0 0 0 60.330666l256 256a42.666667 42.666667 0 0 0 60.330666 0 42.666667 42.666667 0 0 0 0-60.330666l-256-256A42.666667 42.666667 0 0 0 384 341.333333z"/></svg>
             </button>
             <!-- 确认状态 -->
             <span v-if="confirmDeleteId === s.id" class="confirm-delete" @click.stop>
@@ -89,7 +89,7 @@
           <div class="model-dropdown" :class="{ open: modelDropdownOpen }">
             <button class="model-dropdown-trigger" @click.stop="modelDropdownOpen = !modelDropdownOpen">
               <span class="model-dropdown-value">{{ selectedModelDisplay }}</span>
-              <svg class="model-dropdown-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              <svg class="model-dropdown-arrow" width="10" height="10" viewBox="0 0 1024 1024" fill="currentColor"><path d="M256 341.333333a42.666667 42.666667 0 0 0-30.165333 12.501334 42.666667 42.666667 0 0 0 0 60.330666l256 256a42.666667 42.666667 0 0 0 60.330666 0l256-256a42.666667 42.666667 0 0 0 0-60.330666 42.666667 42.666667 0 0 0-60.330666 0L512 579.669333 286.165333 353.834667A42.666667 42.666667 0 0 0 256 341.333333z"/></svg>
             </button>
             <div v-if="modelDropdownOpen" class="model-dropdown-panel" @click.stop>
               <div
@@ -99,7 +99,7 @@
                 @click="selectedModel = m.model_code; modelDropdownOpen = false"
               >
                 <span class="model-item-name">{{ m.model_name }}</span>
-                <svg v-if="selectedModel === m.model_code" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5L20 7"/></svg>
+                <svg v-if="selectedModel === m.model_code" width="12" height="12" viewBox="0 0 1024 1024" fill="currentColor"><path d="M823.168 225.834667L384 665.002667l-183.168-183.168a42.666667 42.666667 0 0 0-60.330667 0 42.666667 42.666667 0 0 0 0 60.330666l213.333334 213.333334a42.666667 42.666667 0 0 0 60.330666 0l469.333334-469.333334a42.666667 42.666667 0 0 0 0-60.330666 42.666667 42.666667 0 0 0-60.330667 0z"/></svg>
               </div>
               <div v-if="!dropdownModels.length" class="model-dropdown-empty">暂无模型</div>
             </div>
