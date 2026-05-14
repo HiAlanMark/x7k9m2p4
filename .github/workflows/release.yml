@@ -71,50 +71,16 @@ jobs:
           bundled/hermes-agent/venv/Scripts/hermes.exe --version || echo "hermes not in venv path"
           du -sh bundled/hermes-agent/
 
-      - name: Install NSIS
-        shell: pwsh
+      - name: Package Windows distribution
+        shell: bash
         run: |
-          # Direct download instead of choco (avoids 504 timeout)
-          $url = "https://sourceforge.net/projects/nsis/files/NSIS%203/3.10/nsis-3.10-setup.exe/download"
-          Invoke-WebRequest -Uri $url -OutFile nsis-setup.exe -MaximumRetryCount 3
-          Start-Process -Wait -FilePath .\nsis-setup.exe -ArgumentList "/S"
-          # Verify
-          & "C:\Program Files (x86)\NSIS\makensis.exe" /VERSION
-
-      - name: Create NSIS installer
-        shell: pwsh
-        run: |
-          $nsis = @'
-          !include "MUI2.nsh"
-          Name "Hi!XNS"
-          OutFile "HiXNS-Setup.exe"
-          InstallDir "$PROGRAMFILES64\HiXNS"
-          RequestExecutionLevel admin
-          !insertmacro MUI_PAGE_DIRECTORY
-          !insertmacro MUI_PAGE_INSTFILES
-          !insertmacro MUI_LANGUAGE "SimpChinese"
-          Section "Install"
-            SetOutPath $INSTDIR
-            File "HiXNS.exe"
-            SetOutPath $INSTDIR\bundled\hermes-agent
-            File /r "bundled\hermes-agent\*.*"
-            CreateShortcut "$DESKTOP\Hi!XNS.lnk" "$INSTDIR\HiXNS.exe"
-            CreateDirectory "$SMPROGRAMS\Hi!XNS"
-            CreateShortcut "$SMPROGRAMS\Hi!XNS\Hi!XNS.lnk" "$INSTDIR\HiXNS.exe"
-            CreateShortcut "$SMPROGRAMS\Hi!XNS\卸载.lnk" "$INSTDIR\uninstall.exe"
-            WriteUninstaller "$INSTDIR\uninstall.exe"
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "DisplayName" "Hi!XNS"
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "UninstallString" "$INSTDIR\uninstall.exe"
-          SectionEnd
-          Section "Uninstall"
-            RMDir /r "$INSTDIR"
-            Delete "$DESKTOP\Hi!XNS.lnk"
-            RMDir /r "$SMPROGRAMS\Hi!XNS"
-            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS"
-          SectionEnd
-          '@
-          $nsis | Out-File -FilePath installer.nsi -Encoding ASCII
-          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+          # Create distribution directory
+          mkdir -p HiXNS
+          cp HiXNS.exe HiXNS/
+          cp -r bundled HiXNS/
+          # Zip it
+          powershell -Command "Compress-Archive -Path 'HiXNS' -DestinationPath 'HiXNS-Windows-amd64.zip'"
+          ls -lh HiXNS-Windows-amd64.zip
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
@@ -125,16 +91,14 @@ jobs:
             ## Hi!XNS Desktop AI Agent ${{ github.ref_name }}
             完整桌面 AI 应用，内置 Hermes Agent（30+ 工具）、多轮对话、技能商店。
             ### Windows
-            下载 `HiXNS-Setup.exe` 安装，桌面快捷方式启动。
+            下载 `HiXNS-Windows-amd64.zip`，解压后双击 `HiXNS\HiXNS.exe` 运行。
             ### macOS
             解压 `.tar.gz`，将 `HiXNS.app` 拖入 Applications。
             ### Linux
-            解压 `.tar.gz`，运行 `./HiXNS`。需要系统安装 hermes-agent。
+            解压 `.tar.gz`，运行 `./HiXNS`。
           draft: false
           prerelease: false
-          files: |
-            HiXNS-Setup.exe
-            HiXNS.exe
+          files: HiXNS-Windows-amd64.zip
 
   build-macos:
     strategy:
