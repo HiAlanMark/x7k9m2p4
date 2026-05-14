@@ -30,8 +30,6 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 ; 界面
 WizardStyle=modern
-WizardImageFile=compiler:WizModernImage.bmp
-WizardSmallImageFile=compiler:WizModernSmallImage.bmp
 ; 权限
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
@@ -47,7 +45,6 @@ VersionInfoProductName={#MyAppName}
 VersionInfoProductVersion={#MyAppVersion}
 
 [Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
