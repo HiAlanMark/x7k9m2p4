@@ -258,6 +258,7 @@ import { useRouter } from 'vue-router'
 import type { TwoXSkill, TwoXSkillDetail } from '@/types'
 import * as api from '@/api'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import IconSearch from '../components/icons/IconSearch.vue'
 import IconStar from '../components/icons/IconStar.vue'
 import IconDownload from '../components/icons/IconDownload.vue'
@@ -349,7 +350,8 @@ function formatNum(n: number): string {
 }
 
 function renderMd(content: string) {
-  return marked(content) as string
+  const html = marked(content) as string
+  return DOMPurify.sanitize(html)
 }
 
 function showToast(msg: string, type: 'success' | 'error' | 'warn' = 'success') {

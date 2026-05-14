@@ -207,6 +207,7 @@ import { useAppStore } from '../stores/app'
 import { useGfwStore } from '../stores/gfw'
 import { storeToRefs } from 'pinia'
 import { marked, type Tokens } from 'marked'
+import DOMPurify from 'dompurify'
 import hljs from 'highlight.js'
 import * as api from '../api'
 import { isBrowserMode, browserChat, hermesCancel } from '../api'
@@ -255,7 +256,8 @@ watch(inputText, async () => {
 })
 
 function renderMarkdown(content: string) {
-  return marked(content) as string
+  const html = marked(content) as string
+  return DOMPurify.sanitize(html, { ADD_ATTR: ['class', 'onclick'] })
 }
 
 function formatJson(obj: Record<string, unknown>) {
