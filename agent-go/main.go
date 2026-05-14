@@ -769,13 +769,12 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 
 	sse := &sseWriter{w: w, flusher: flusher}
 
-	// === 优先委托给 Hermes Agent ===
-	if hermesState.Available {
-		log.Printf("[handleChat] 委托给 Hermes Agent: %s", hermesState.Path)
-		hermesChat(sse, body.Content, body.APIBase, body.APIKey, body.Model, body.Messages, body.SessionID)
-	} else {
-		// Fallback: 内置简易 Agent Loop
-		log.Printf("[handleChat] Hermes 不可用，使用内置 agentLoop")
+	// === 使用内置 Agent Loop（流式输出，即时响应） ===
+	// hermes chat -Q 不支持流式输出（全部缓冲后一次性返回），导致用户等待 10-30 秒无反馈
+	// Go 内置 agentLoop 直接调用 LLM API 流式输出，用户立即看到文字
+	// hermes 仍用于后台功能：config/sessions/cron/memory/tools/skills 管理
+	{
+		log.Printf("[handleChat] 使用内置 agentLoop（流式输出）")
 		messages := []map[string]any{{"role": "system", "content": systemPrompt}}
 		messages = append(messages, body.Messages...)
 		if body.Content != "" {
