@@ -176,7 +176,7 @@
           @keydown.enter.exact.prevent="sendMessage"
           @focus="inputFocused = true"
           @blur="inputFocused = false"
-          placeholder="输入消息..."
+          placeholder="输入消息... (Shift+Enter 换行)"
           rows="1"
           ref="textareaRef"
         ></textarea>
@@ -322,7 +322,7 @@ async function sendMessage() {
         agentStatus.value = ''
         pendingApproval.value = null
         chatStore.finishResponse()
-        chatStore.addSystemMessage(`Error: ${err}`)
+        chatStore.addSystemMessage(`错误：${err}`)
       },
       config,
       // onToolCall

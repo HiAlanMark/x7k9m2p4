@@ -253,7 +253,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import type { TwoXSkill, TwoXSkillDetail } from '@/types'
 import * as api from '@/api'
@@ -490,6 +490,10 @@ async function uninstallSkill(sk: InstalledSkill) {
 
 onMounted(() => {
   loadSkills()
+})
+
+onBeforeUnmount(() => {
+  if (searchTimeout) clearTimeout(searchTimeout)
 })
 </script>
 

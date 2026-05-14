@@ -324,6 +324,20 @@ body {
   z-index: 1;
 }
 
+@media (max-width: 768px) {
+  .sidebar {
+    width: 60px;
+    min-width: 60px;
+  }
+  .sidebar .sidebar-brand span,
+  .sidebar .nav-label,
+  .sidebar .session-title,
+  .sidebar .sidebar-footer .model-info,
+  .sidebar .sidebar-footer .balance-row {
+    display: none;
+  }
+}
+
 .sidebar-brand {
   display: flex;
   align-items: center;

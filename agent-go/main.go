@@ -905,7 +905,7 @@ func runHermes(args ...string) (string, error) {
 	if hermesPath == "" {
 		return "", fmt.Errorf("Hermes Agent 未安装")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, hermesPath, args...)
 	cmd.Env = append(os.Environ(), "NO_COLOR=1", "TERM=dumb")
