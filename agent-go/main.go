@@ -807,7 +807,8 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, hermesPath, args...)
+	cmdPath, cmdArgs := buildHermesCommand(args...)
+	cmd := exec.CommandContext(ctx, cmdPath, cmdArgs...)
 	// 通过环境变量覆盖模型配置，不修改 config.yaml（避免并发竞争）
 	cmd.Env = append(os.Environ(),
 		"NO_COLOR=1", "TERM=dumb",
@@ -900,16 +901,33 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 
 // runHermes executes a hermes CLI command and returns stdout
 func runHermes(args ...string) (string, error) {
-	hermesPath := hermesState.Path
-	if hermesPath == "" {
+	cmdPath, cmdArgs := buildHermesCommand(args...)
+	if cmdPath == "" {
 		return "", fmt.Errorf("Hermes Agent 未安装")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, hermesPath, args...)
+	cmd := exec.CommandContext(ctx, cmdPath, cmdArgs...)
 	cmd.Env = append(os.Environ(), "NO_COLOR=1", "TERM=dumb")
 	out, err := cmd.CombinedOutput()
 	return string(out), err
+}
+
+// buildHermesCommand 根据 hermes 安装方式构建命令
+// bundled-python: python.exe -m hermes_cli <args>
+// 其他方式: hermes <args>
+func buildHermesCommand(args ...string) (string, []string) {
+	hermesPath := hermesState.Path
+	if hermesPath == "" {
+		return "", nil
+	}
+	if hermesState.Source == "bundled-python" {
+		// 用嵌入式 Python 调用 hermes_cli 模块
+		fullArgs := []string{"-m", "hermes_cli"}
+		fullArgs = append(fullArgs, args...)
+		return hermesPath, fullArgs
+	}
+	return hermesPath, args
 }
 
 // jsonResponse writes a JSON response
@@ -1786,19 +1804,34 @@ func detectHermes() hermesInfo {
 	for _, bp := range bundledPaths {
 		if _, err := os.Stat(filepath.Join(bp, "run_agent.py")); err == nil {
 			info.SourceDir = bp
-			// 使用内嵌的 venv 中的 hermes
+
+			// 方式A: 内嵌 Python 运行时 (bundled/python/)
+			pythonDir := filepath.Join(filepath.Dir(bp), "python")
+			pythonExe := filepath.Join(pythonDir, "python.exe") // Windows
+			if runtime.GOOS != "windows" {
+				pythonExe = filepath.Join(pythonDir, "bin", "python3")
+			}
+			if _, err := os.Stat(pythonExe); err == nil {
+				// 用嵌入式 Python 运行 hermes
+				hermesPath = pythonExe
+				info.Source = "bundled-python"
+				break
+			}
+
+			// 方式B: 内嵌 venv (bundled/hermes-agent/venv/)
 			venvHermes := filepath.Join(bp, "venv", "bin", "hermes")
 			if runtime.GOOS == "windows" {
 				venvHermes = filepath.Join(bp, "venv", "Scripts", "hermes.exe")
 			}
 			if _, err := os.Stat(venvHermes); err == nil {
 				hermesPath = venvHermes
-			} else {
-				// 尝试 run-hermes.sh
-				runScript := filepath.Join(bp, "run-hermes.sh")
-				if _, err := os.Stat(runScript); err == nil {
-					hermesPath = runScript
-				}
+				break
+			}
+
+			// 方式C: run-hermes.sh 启动脚本
+			runScript := filepath.Join(bp, "run-hermes.sh")
+			if _, err := os.Stat(runScript); err == nil {
+				hermesPath = runScript
 			}
 			break
 		}

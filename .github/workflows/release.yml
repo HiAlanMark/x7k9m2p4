@@ -70,40 +70,64 @@ jobs:
           rm -rf agent-go/dist
           cp -r dist agent-go/dist
 
-      - name: Bundle Hermes Agent
+      - name: Bundle Hermes Agent with Embedded Python
         shell: bash
         run: |
-          BUNDLE_DIR="build/${{ matrix.goos }}-${{ matrix.goarch }}/bundled/hermes-agent"
-          mkdir -p "$BUNDLE_DIR"
+          PLATFORM="${{ matrix.goos }}"
+          ARCH="${{ matrix.goarch }}"
+          BUILD_BASE="build/${PLATFORM}-${ARCH}/bundled"
+          HERMES_DIR="${BUILD_BASE}/hermes-agent"
+          PYTHON_DIR="${BUILD_BASE}/python"
+          mkdir -p "$HERMES_DIR" "$PYTHON_DIR"
 
-          # 克隆 Hermes Agent
-          git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /tmp/hermes-src
-
-          # 创建 venv 并安装
-          python -m venv "$BUNDLE_DIR/venv"
-          if [ -f "$BUNDLE_DIR/venv/Scripts/python.exe" ]; then
-            PYTHON="$BUNDLE_DIR/venv/Scripts/python.exe"
+          # === 1. 下载嵌入式 Python (免安装运行时) ===
+          PY_VER="3.11.9"
+          if [ "$PLATFORM" = "windows" ]; then
+            # Windows: 官方嵌入式包
+            curl -sL "https://www.python.org/ftp/python/${PY_VER}/python-${PY_VER}-embed-amd64.zip" -o /tmp/python-embed.zip
+            unzip -q /tmp/python-embed.zip -d "$PYTHON_DIR"
+            # 启用 pip: 取消 python311._pth 中的 import site 注释
+            PTH_FILE=$(ls "$PYTHON_DIR"/python*._pth 2>/dev/null | head -1)
+            if [ -n "$PTH_FILE" ]; then
+              sed -i 's/#import site/import site/' "$PTH_FILE"
+            fi
+            # 安装 pip
+            curl -sL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
+            "$PYTHON_DIR/python.exe" /tmp/get-pip.py --no-warn-script-location
+            PYTHON="$PYTHON_DIR/python.exe"
+          elif [ "$PLATFORM" = "darwin" ]; then
+            # macOS: 用系统 python3 创建 standalone venv
+            python3 -m venv "$PYTHON_DIR"
+            PYTHON="$PYTHON_DIR/bin/python3"
           else
-            PYTHON="$BUNDLE_DIR/venv/bin/python"
+            # Linux: 用系统 python3 创建 standalone venv
+            python3 -m venv "$PYTHON_DIR"
+            PYTHON="$PYTHON_DIR/bin/python3"
           fi
 
-          "$PYTHON" -m pip install --upgrade pip
-          "$PYTHON" -m pip install /tmp/hermes-src
+          echo "Python: $("$PYTHON" --version 2>&1)"
 
-          # 复制核心源码
-          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py; do
-            [ -f "/tmp/hermes-src/$f" ] && cp "/tmp/hermes-src/$f" "$BUNDLE_DIR/"
+          # === 2. 安装 Hermes Agent ===
+          git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /tmp/hermes-src
+          "$PYTHON" -m pip install --upgrade pip 2>/dev/null || true
+          "$PYTHON" -m pip install /tmp/hermes-src --no-warn-script-location
+
+          # === 3. 复制核心源码 ===
+          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py; do
+            [ -f "/tmp/hermes-src/$f" ] && cp "/tmp/hermes-src/$f" "$HERMES_DIR/"
           done
-          for d in agent tools hermes_cli gateway plugins cron; do
-            [ -d "/tmp/hermes-src/$d" ] && cp -r "/tmp/hermes-src/$d" "$BUNDLE_DIR/$d"
+          for d in agent tools hermes_cli gateway plugins cron acp_adapter tui_gateway skills; do
+            [ -d "/tmp/hermes-src/$d" ] && cp -r "/tmp/hermes-src/$d" "$HERMES_DIR/$d"
           done
+          [ -f "/tmp/hermes-src/pyproject.toml" ] && cp "/tmp/hermes-src/pyproject.toml" "$HERMES_DIR/"
 
-          # 清理
-          find "$BUNDLE_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
-          find "$BUNDLE_DIR" -name '*.pyc' -delete 2>/dev/null || true
-          rm -rf "$BUNDLE_DIR/venv/share" /tmp/hermes-src 2>/dev/null || true
+          # === 4. 清理 ===
+          find "$BUILD_BASE" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+          find "$BUILD_BASE" -name '*.pyc' -delete 2>/dev/null || true
+          rm -rf "$PYTHON_DIR/share" "$PYTHON_DIR/include" /tmp/hermes-src /tmp/python-embed.zip /tmp/get-pip.py 2>/dev/null || true
 
-          echo "Hermes bundle: $(du -sh $BUNDLE_DIR | cut -f1)"
+          echo "=== Bundle sizes ==="
+          du -sh "$PYTHON_DIR" "$HERMES_DIR" "$BUILD_BASE"
 
       - name: Build Windows resource (Windows only)
         if: matrix.goos == 'windows'
@@ -139,6 +163,8 @@ jobs:
         run: |
           mkdir build\windows-amd64 2>nul
           copy build\%ASSET% build\windows-amd64\hixns-agent.exe
+          REM bundled 目录已在 Bundle Hermes 步骤中创建在 build\windows-amd64\bundled\
+          dir build\windows-amd64\bundled\ /s /b | find /c "." || echo "No bundled files"
           mkdir build\installer 2>nul
           "C:\Program Files (x86)\Inno Setup 6\iscc.exe" scripts\installer.iss
         env:

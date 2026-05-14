@@ -55,7 +55,10 @@ Name: "startupicon"; Description: "开机自动启动"; GroupDescription: "{cm:A
 ; 主程序
 Source: "..\build\windows-amd64\hixns-agent.exe"; DestDir: "{app}"; Flags: ignoreversion
 
-; 内嵌 Hermes Agent (完整 venv) — 仅当目录存在时打包
+; 嵌入式 Python 运行时 (用户无需安装Python)
+Source: "..\build\windows-amd64\bundled\python\*"; DestDir: "{app}\bundled\python"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+
+; Hermes Agent 核心 (AI引擎)
 Source: "..\build\windows-amd64\bundled\hermes-agent\*"; DestDir: "{app}\bundled\hermes-agent"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Excludes: "__pycache__,*.pyc"
 
 [Icons]
