@@ -75,26 +75,23 @@ jobs:
         run: |
           # 创建独立 venv 并安装 hermes-agent
           python -m venv build/hermes-venv
-          if [ "${{ matrix.goos }}" = "windows" ]; then
+
+          # 激活 venv (跨平台)
+          if [ -f "build/hermes-venv/Scripts/activate" ]; then
             source build/hermes-venv/Scripts/activate
           else
             source build/hermes-venv/bin/activate
           fi
-          pip install --upgrade pip
-          pip install hermes-agent 2>/dev/null || pip install hermes-ai-agent 2>/dev/null || echo "hermes-agent not on PyPI, creating minimal bundle"
 
-          # 创建 bundled 目录结构
+          pip install --upgrade pip
+          pip install hermes-agent || pip install hermes-ai-agent || echo "hermes-agent not on PyPI, creating minimal bundle"
+
+          # 创建 bundled 目录
           BUNDLE_DIR="build/${{ matrix.goos }}-${{ matrix.goarch }}/bundled/hermes-agent"
           mkdir -p "$BUNDLE_DIR"
+          cp -r build/hermes-venv "$BUNDLE_DIR/venv"
 
-          # 复制 venv
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            cp -r build/hermes-venv "$BUNDLE_DIR/venv"
-          else
-            cp -r build/hermes-venv "$BUNDLE_DIR/venv"
-          fi
-
-          # 清理不必要的文件
+          # 清理
           find "$BUNDLE_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
           find "$BUNDLE_DIR" -name '*.pyc' -delete 2>/dev/null || true
           rm -rf "$BUNDLE_DIR/venv/share" 2>/dev/null || true
