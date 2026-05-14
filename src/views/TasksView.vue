@@ -62,7 +62,7 @@
     <!-- Cron tasks list -->
     <template v-if="activeTab === 'cron'">
       <div v-if="cronTasks.length === 0" class="empty-state">
-        <div class="empty-icon">⏱</div>
+        <div class="empty-icon"><svg width="32" height="32" viewBox="0 0 1024 1024" fill="currentColor"><path d="M426.666667 42.666667a42.666667 42.666667 0 0 0 0 85.333333h170.666666a42.666667 42.666667 0 0 0 0-85.333333z"/><path d="M512 213.333333c-211.584 0-384 172.416-384 384s172.416 384 384 384 384-172.416 384-384-172.416-384-384-384z m0 85.333334c165.461333 0 298.666667 133.205333 298.666667 298.666666s-133.205333 298.666667-298.666667 298.666667-298.666667-133.205333-298.666667-298.666667S346.538667 298.666667 512 298.666667z m0 85.333333a42.666667 42.666667 0 0 0-42.666667 42.666667v170.666666a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V426.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/></svg></div>
         <div class="empty-text">暂无定时任务</div>
         <div class="empty-hint">点击「新建定时任务」创建你的第一个自动化任务</div>
       </div>
@@ -83,10 +83,10 @@
             <span class="task-meta" v-if="task.nextRun">下次: {{ formatTime(task.nextRun) }}</span>
             <span class="task-meta">运行 {{ task.runCount || 0 }} 次</span>
             <div class="task-actions">
-              <button v-if="task.status === 'active'" class="act-btn" @click="pauseTask(task)" title="暂停">⏸</button>
-              <button v-if="task.status === 'paused'" class="act-btn" @click="resumeTask(task)" title="恢复">▶</button>
-              <button class="act-btn" @click="runTask(task)" title="立即执行">⚡</button>
-              <button class="act-btn danger" @click="deleteTask(task)" title="删除">✕</button>
+              <button v-if="task.status === 'active'" class="act-btn" @click="pauseTask(task)" title="暂停"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M640 85.333333c-46.506667 0-85.333333 38.826667-85.333333 85.333334v682.666666c0 46.506667 38.826667 85.333333 85.333333 85.333334h128c46.506667 0 85.333333-38.826667 85.333333-85.333334V170.666667c0-46.506667-38.826667-85.333333-85.333333-85.333334z m-384 0c-46.506667 0-85.333333 38.826667-85.333333 85.333334v682.666666c0 46.506667 38.826667 85.333333 85.333333 85.333334h128c46.506667 0 85.333333-38.826667 85.333333-85.333334V170.666667c0-46.506667-38.826667-85.333333-85.333333-85.333334z"/></svg></button>
+              <button v-if="task.status === 'paused'" class="act-btn" @click="resumeTask(task)" title="恢复"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M297.813333 85.845333C231.936 87.424 170.666667 140.8 170.666667 213.333333v597.333334c0 96.725333 108.928 159.36 192.512 110.592l512-298.666667c83.029333-48.384 82.986667-172.970667-0.085334-221.269333l-512-298.666667c-18.858667-11.008-39.552-16.768-65.28-16.810667z"/></svg></button>
+              <button class="act-btn" @click="runTask(task)" title="立即执行"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.053333 0 384 171.946667 384 384s-171.946667 384-384 384S128 724.053333 128 512s171.946667-384 384-384z"/><path d="M427.264 299.349333c-44.202667 0.853333-86.058667 36.608-85.930667 84.906667v255.573333c-0.128 64.298667 74.24 106.453333 129.322667 73.258667l213.077333-127.744c53.888-32.128 53.888-114.56 0-146.688l-213.077333-127.786667c-12.8-7.68-27.52-11.52-43.392-11.52z"/></svg></button>
+              <button class="act-btn danger" @click="deleteTask(task)" title="删除"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
           </div>
         </div>
@@ -96,7 +96,7 @@
     <!-- Running tasks -->
     <template v-if="activeTab === 'running'">
       <div v-if="runningTasks.length === 0" class="empty-state">
-        <div class="empty-icon">💤</div>
+        <div class="empty-icon"><svg width="32" height="32" viewBox="0 0 1024 1024" fill="currentColor"><path d="M768 170.666667a42.666667 42.666667 0 0 0-42.666667 42.666666 42.666667 42.666667 0 0 0 42.666667 42.666667h170.666667a42.666667 42.666667 0 0 0 42.666666-42.666667 42.666667 42.666667 0 0 0-42.666666-42.666666z"/><path d="M853.333333 85.333333a42.666667 42.666667 0 0 0-42.666666 42.666667v170.666667a42.666667 42.666667 0 0 0 42.666666 42.666666 42.666667 42.666667 0 0 0 42.666667-42.666666V128a42.666667 42.666667 0 0 0-42.666667-42.666667z"/></svg></div>
         <div class="empty-text">没有正在运行的任务</div>
       </div>
       <div v-else class="task-list">
@@ -120,7 +120,7 @@
     <!-- History -->
     <template v-if="activeTab === 'history'">
       <div v-if="historyTasks.length === 0" class="empty-state">
-        <div class="empty-icon">📋</div>
+        <div class="empty-icon"><svg width="32" height="32" viewBox="0 0 1024 1024" fill="currentColor"><path d="M384 42.666667c-46.506667 0-85.333333 38.826667-85.333333 85.333333v85.333333c0 46.506667 38.826667 85.333333 85.333333 85.333334h256c46.506667 0 85.333333-38.826667 85.333333-85.333334V128c0-46.506667-38.826667-85.333333-85.333333-85.333333z"/><path d="M256 128C185.813333 128 128 185.813333 128 256v597.333333c0 70.186667 57.813333 128 128 128h512c70.186667 0 128-57.813333 128-128V256c0-70.186667-57.813333-128-128-128h-85.333333a42.666667 42.666667 0 0 0 0 85.333333h85.333333a42.666667 42.666667 0 0 1 42.666667 42.666667v597.333333a42.666667 42.666667 0 0 1-42.666667 42.666667H256a42.666667 42.666667 0 0 1-42.666667-42.666667V256a42.666667 42.666667 0 0 1 42.666667-42.666667h85.333333a42.666667 42.666667 0 0 0 0-85.333333z"/></svg></div>
         <div class="empty-text">暂无执行记录</div>
       </div>
       <div v-else class="task-list">
@@ -411,7 +411,7 @@ function formatElapsed(iso?: string): string {
 .empty-state {
   text-align: center; padding: 60px 20px;
 }
-.empty-icon { font-size: 32px; margin-bottom: 12px; }
+.empty-icon { margin-bottom: 12px; color: var(--color-text-tertiary); }
 .empty-text { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 6px; }
 .empty-hint { font-size: 12px; color: var(--color-text-tertiary); }
 
