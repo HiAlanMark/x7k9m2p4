@@ -2,7 +2,7 @@
 ; 使用: iscc scripts/installer.iss
 
 #define MyAppName "Hi!XNS"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.3.0"
 #define MyAppPublisher "Hi!XNS"
 #define MyAppURL "https://hixns.com"
 #define MyAppExeName "hixns-agent.exe"

@@ -17,7 +17,7 @@
               <span class="t-flag">--interactive</span>
             </div>
             <div class="terminal-line output">
-              <span class="t-text">Hi!XNS Agent v0.1.0</span>
+              <span class="t-text">Hi!XNS Agent v0.3.0</span>
             </div>
             <div class="terminal-line output">
               <span class="t-text dim">56+ 模型可用 · gfw.net</span>

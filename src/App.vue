@@ -11,7 +11,7 @@
       <!-- Brand -->
       <div class="sidebar-brand">
         <IconBrandLogo :width="120" :height="24" :dark="appStore.isDark" />
-        <span class="brand-version">v0.1</span>
+        <span class="brand-version">v0.3</span>
       </div>
 
       <!-- Navigation -->
