@@ -3,7 +3,9 @@
   <SplashScreen v-if="showSplash" @done="showSplash = false" />
 
   <div v-show="!showSplash" class="app">
-    <!-- Custom Title Bar (no native frame) -->
+    <!-- 窗口拖拽区域 (顶部 32px) -->
+    <div class="window-drag-area"></div>
+    <!-- 窗口控制按钮 (右上角固定) -->
     <TitleBar />
     <!-- 全局极光背景 -->
     <SoftAurora
@@ -346,6 +348,18 @@ body {
   background: var(--color-bg-page);
 }
 
+/* 窗口拖拽区域 — 覆盖顶部 32px */
+.window-drag-area {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 138px; /* 给右上角按钮留空 (46*3=138) */
+  height: 32px;
+  -webkit-app-region: drag;
+  z-index: 99998;
+  pointer-events: auto;
+}
+
 /* ===== Sidebar — iOS 27 deep glass ===== */
 .sidebar {
   width: 220px;
@@ -358,7 +372,6 @@ body {
   border-right: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow-inset), 1px 0 0 rgba(255,255,255,0.02);
   user-select: none;
-  -webkit-app-region: drag;
   transition: background 0.4s var(--spring-smooth), border-color 0.4s;
   position: relative;
   z-index: 2;
@@ -383,7 +396,6 @@ body {
   align-items: center;
   gap: 10px;
   padding: 20px 16px 16px;
-  -webkit-app-region: drag;
 }
 
 /* Brand version tag */
@@ -400,7 +412,6 @@ body {
 /* Navigation */
 .sidebar-nav {
   padding: 4px 8px;
-  -webkit-app-region: no-drag;
 }
 
 .nav-item {
