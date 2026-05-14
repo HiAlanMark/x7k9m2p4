@@ -8,9 +8,6 @@ on:
 permissions:
   contents: write
 
-env:
-  GOTOOLCHAIN: local
-
 jobs:
   build:
     strategy:
@@ -53,7 +50,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
           cache-dependency-path: agent-go/go.sum
 
       - name: Install frontend dependencies
@@ -67,22 +64,6 @@ jobs:
         run: |
           rm -rf agent-go/dist
           cp -r dist agent-go/dist
-
-      - name: Fix Go dependencies for 1.24 compat
-        shell: bash
-        run: |
-          cd agent-go
-          # Force go.mod to go 1.22 so tooling can run
-          sed -i.bak 's/^go .*/go 1.22/' go.mod 2>/dev/null || sed -i '' 's/^go .*/go 1.22/' go.mod
-          # Replace pinned x/sys version in go.mod
-          sed -i.bak 's|golang.org/x/sys v0\.42\.0|golang.org/x/sys v0.33.0|g' go.mod 2>/dev/null || sed -i '' 's|golang.org/x/sys v0\.42\.0|golang.org/x/sys v0.33.0|g' go.mod
-          # Delete go.sum and let go mod tidy regenerate it
-          rm -f go.sum go.mod.bak
-          go mod tidy
-          # Restore go directive
-          sed -i.bak 's/^go .*/go 1.24/' go.mod 2>/dev/null || sed -i '' 's/^go .*/go 1.24/' go.mod
-          rm -f go.mod.bak
-          cat go.mod | head -5
 
       - name: Build Windows resource (Windows only)
         if: matrix.goos == 'windows'
