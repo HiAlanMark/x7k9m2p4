@@ -11,6 +11,7 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -59,6 +60,7 @@ jobs:
         run: npm run build
 
       - name: Copy frontend to Go embed dir
+        shell: bash
         run: |
           rm -rf agent-go/dist
           cp -r dist agent-go/dist
