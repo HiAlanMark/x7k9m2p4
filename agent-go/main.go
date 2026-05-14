@@ -2033,17 +2033,22 @@ func openDesktopWindow(url string) {
 		if r := recover(); r != nil {
 			log.Printf("[Hi!XNS] 原生窗口异常: %v，打开浏览器...", r)
 			openBrowser(url)
-			// 保持进程不退出
 			select {}
 		}
 	}()
 
 	log.Printf("[Hi!XNS] 正在打开桌面窗口: %s", url)
+
+	// Windows: 在创建 webview 前先设置窗口背景为黑色（消除白屏）
+	if runtime.GOOS == "windows" {
+		go setWindowBackgroundBlack()
+	}
+
 	w := webview.New(false)
 	if w == nil {
 		log.Printf("[Hi!XNS] 无法创建原生窗口，打开浏览器...")
 		openBrowser(url)
-		select {} // 保持进程不退出（不会执行到下面的代码）
+		select {}
 	}
 	defer w.Destroy()
 	w.SetTitle("Hi!XNS")
@@ -2055,24 +2060,25 @@ func openDesktopWindow(url string) {
 		w.Terminate()
 	})
 	w.Bind("windowMinimize", func() {
-		if runtime.GOOS == "windows" {
-			minimizeWindow()
-		}
+		minimizeWindow()
 	})
 	w.Bind("windowMaximize", func() {
-		if runtime.GOOS == "windows" {
-			toggleMaximizeWindow()
-		}
+		toggleMaximizeWindow()
 	})
 	w.Bind("windowStartDrag", func() {
-		if runtime.GOOS == "windows" {
-			startDragWindow()
-		}
+		startDragWindow()
 	})
 
-	// 注入 JS: 窗口控制 + 右键菜单禁用 + 拖拽 + 暗色检测 + 白屏消除
+	// 注入 JS — 在页面加载前执行
 	w.Init(`
-		// === 窗口控制 ===
+		// === 1. 消除白屏: 立即设置黑色背景 ===
+		(function(){
+			var s = document.createElement('style');
+			s.textContent = 'html,body,#app{background:#000!important;margin:0;padding:0;overflow:hidden}';
+			document.head.appendChild(s);
+		})();
+
+		// === 2. 窗口控制消息 ===
 		window.addEventListener('message', function(e) {
 			if (!e.data || !e.data.type) return;
 			switch(e.data.type) {
@@ -2082,126 +2088,107 @@ func openDesktopWindow(url string) {
 			}
 		});
 
-		// === 消除启动白屏 ===
-		document.documentElement.style.background = '#000';
-		document.body.style.background = '#000';
-
-		// === 自动检测系统暗色/亮色 ===
+		// === 3. 自动检测系统亮色/暗色 ===
 		(function() {
-			var saved = localStorage.getItem('hixns_theme');
-			if (!saved) {
+			var saved = localStorage.getItem('hermes_theme');
+			if (!saved || saved === 'system') {
 				var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 				document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-				localStorage.setItem('hixns_theme', isDark ? 'dark' : 'light');
 			}
 			window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-				if (!localStorage.getItem('hixns_theme_manual')) {
+				var t = localStorage.getItem('hermes_theme');
+				if (!t || t === 'system') {
 					document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
 				}
 			});
 		})();
 
-		// === 禁用右键菜单(全局) + 输入框智能右键 ===
+		// === 4. 全局禁用右键 + 输入框智能右键 ===
 		document.addEventListener('contextmenu', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
 			var el = e.target;
 			var isInput = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
-			if (!isInput) {
-				e.preventDefault();
-				return;
-			}
-			// 输入框: 有选中文字 → 允许默认菜单(复制/剪切/粘贴)
-			var sel = window.getSelection();
-			var hasSelection = sel && sel.toString().length > 0;
-			if (hasSelection) {
-				// 允许浏览器默认右键(复制/剪切/粘贴)
-				return;
-			}
-			// 输入框无选中: 显示自定义菜单(全选/粘贴)
-			e.preventDefault();
-			showInputContextMenu(e, el);
-		}, true);
+			if (!isInput) return;
 
-		function showInputContextMenu(e, el) {
-			// 移除旧菜单
-			var old = document.getElementById('hixns-ctx-menu');
+			// 检查是否有选中文字
+			var selText = '';
+			if (el.selectionStart !== undefined && el.selectionEnd !== undefined) {
+				selText = el.value ? el.value.substring(el.selectionStart, el.selectionEnd) : '';
+			} else {
+				var s = window.getSelection();
+				selText = s ? s.toString() : '';
+			}
+
+			// 显示自定义右键菜单
+			var old = document.getElementById('hixns-ctx');
 			if (old) old.remove();
-
 			var menu = document.createElement('div');
-			menu.id = 'hixns-ctx-menu';
-			menu.style.cssText = 'position:fixed;z-index:999999;background:rgba(30,30,30,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:4px 0;min-width:120px;box-shadow:0 8px 32px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;font-size:13px;color:#e0e0e0;';
-			menu.style.left = e.clientX + 'px';
-			menu.style.top = e.clientY + 'px';
+			menu.id = 'hixns-ctx';
+			menu.style.cssText = 'position:fixed;z-index:999999;background:rgba(28,28,30,0.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:4px 0;min-width:130px;box-shadow:0 12px 40px rgba(0,0,0,0.5);font-size:13px;color:#e0e0e0;user-select:none;';
+			menu.style.left = Math.min(e.clientX, window.innerWidth - 140) + 'px';
+			menu.style.top = Math.min(e.clientY, window.innerHeight - 120) + 'px';
 
-			function addItem(label, fn) {
+			function addItem(label, fn, disabled) {
 				var item = document.createElement('div');
 				item.textContent = label;
-				item.style.cssText = 'padding:6px 16px;cursor:pointer;transition:background 0.1s;';
-				item.onmouseenter = function() { item.style.background = 'rgba(255,255,255,0.1)'; };
-				item.onmouseleave = function() { item.style.background = 'transparent'; };
-				item.onclick = function() { fn(); menu.remove(); };
+				item.style.cssText = 'padding:7px 16px;cursor:' + (disabled ? 'default' : 'pointer') + ';transition:background 0.1s;font-family:-apple-system,BlinkMacSystemFont,sans-serif;opacity:' + (disabled ? '0.35' : '1') + ';';
+				if (!disabled) {
+					item.onmouseenter = function() { item.style.background = 'rgba(255,255,255,0.08)'; };
+					item.onmouseleave = function() { item.style.background = ''; };
+					item.onclick = function() { fn(); menu.remove(); };
+				}
 				menu.appendChild(item);
 			}
 
-			addItem('全选', function() {
-				el.focus();
-				el.select ? el.select() : document.execCommand('selectAll');
-			});
-			addItem('粘贴', function() {
-				el.focus();
-				navigator.clipboard.readText().then(function(t) {
-					document.execCommand('insertText', false, t);
-				});
-			});
+			if (selText.length > 0) {
+				addItem('复制', function() { navigator.clipboard.writeText(selText); });
+				addItem('剪切', function() { document.execCommand('cut'); });
+				addItem('粘贴', function() { navigator.clipboard.readText().then(function(t) { document.execCommand('insertText', false, t); }); });
+			} else {
+				addItem('全选', function() { el.focus(); el.select ? el.select() : document.execCommand('selectAll'); });
+				addItem('粘贴', function() { el.focus(); navigator.clipboard.readText().then(function(t) { document.execCommand('insertText', false, t); }); });
+			}
 
 			document.body.appendChild(menu);
-
-			// 点击其他地方关闭
 			setTimeout(function() {
-				document.addEventListener('click', function close() {
-					menu.remove();
-					document.removeEventListener('click', close);
-				}, { once: true });
-			}, 10);
-		}
+				function close() { if(menu.parentNode) menu.remove(); document.removeEventListener('mousedown', close); }
+				document.addEventListener('mousedown', close);
+			}, 0);
+		}, true);
 
-		// === 禁用拖拽文件到窗口 ===
+		// === 5. 禁用拖拽文件 + 禁用选择(非输入框) ===
 		document.addEventListener('dragover', function(e) { e.preventDefault(); });
 		document.addEventListener('drop', function(e) { e.preventDefault(); });
+		document.addEventListener('selectstart', function(e) {
+			var el = e.target;
+			if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA' && !el.isContentEditable && !el.closest('.msg-content,.markdown-body,.tool-pre')) {
+				e.preventDefault();
+			}
+		});
 
-		// === 窗口拖拽(通过Win32 API) ===
-		// 顶部区域 + sidebar brand 区域都可拖拽
+		// === 6. 窗口拖拽: 顶部20px区域 ===
 		document.addEventListener('mousedown', function(e) {
 			if (e.button !== 0) return;
+			if (e.clientY > 20) return;
+			if (e.clientX > window.innerWidth - 150) return;
 			var el = e.target;
-			// 排除交互元素
-			if (el.closest('button,a,input,textarea,select,[role="button"],.nav-item,.session-item,.model-dropdown')) return;
-
-			// 方式1: 顶部 36px 区域（排除右侧按钮区）
-			var isTopBar = (e.clientY <= 36 && e.clientX < window.innerWidth - 150);
-			// 方式2: sidebar-brand 区域
-			var isBrand = !!el.closest('.sidebar-brand');
-			// 方式3: sidebar 头部空白区域
-			var isSidebarTop = !!el.closest('.sidebar') && e.clientY <= 60;
-
-			if (isTopBar || isBrand || isSidebarTop) {
-				e.preventDefault();
-				if (window.windowStartDrag) window.windowStartDrag();
-			}
+			if (el.closest('button,a,input,textarea,select,[role="button"]')) return;
+			e.preventDefault();
+			if (window.windowStartDrag) window.windowStartDrag();
 		});
 	`)
 
-	// Windows: 创建后立即设置黑色背景 + 去掉标题栏（在 Navigate 之前！）
+	// Windows: 去掉系统标题栏
 	if runtime.GOOS == "windows" {
 		go func() {
-			setWindowBackgroundBlack()  // 消除白屏
-			time.Sleep(100 * time.Millisecond)
-			removeWindowFrame()         // 去掉系统标题栏
+			time.Sleep(200 * time.Millisecond)
+			removeWindowFrame()
 		}()
 	}
 
 	w.Navigate(url)
 	w.Run()
-	// 窗口关闭时退出程序
 	log.Println("[Hi!XNS] 窗口已关闭")
 	os.Exit(0)
 }

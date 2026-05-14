@@ -300,16 +300,18 @@ jobs:
             ### 下载安装包
             | 平台 | 安装包 | 说明 |
             |------|--------|------|
-            | **Windows** | `HiXNS-Setup-0.3.0.exe` | 双击安装，含 Hermes Agent |
+            | **Windows** | `HiXNS-Setup-*.exe` | 双击安装，自动检测旧版本并升级 |
             | **macOS** | `HiXNS-macos-arm64.dmg` | 拖入应用文件夹 |
             | **Linux** | `HiXNS-linux-amd64.AppImage` | chmod +x 后直接运行 |
 
             ### 更新内容
-            - 无边框窗口 + 自定义标题栏（最小化/最大化/关闭）
-            - 启动界面（Logo动画+进度条）
-            - 内嵌 Hermes Agent（从源码编译打包）
-            - iOS 27 级毛玻璃 UI + WebGL 极光背景
-            - 12 项功能优化
+            - 最小窗口尺寸 900×600，禁止更小
+            - 顶部 20px 拖拽区域实现窗口移动
+            - 消除启动白屏闪烁
+            - 全局禁用右键菜单，输入框智能右键（复制/剪切/粘贴/全选）
+            - 安装包支持中文，自动检测旧版本升级
+            - 禁用文本选择（消息内容除外）
+            - 内嵌 Hermes Agent + Python 运行时
           files: release/*
           draft: false
           prerelease: false

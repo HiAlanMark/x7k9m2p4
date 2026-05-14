@@ -2,10 +2,11 @@
 ; 构建: iscc scripts/installer.iss
 
 #define MyAppName "Hi!XNS"
-#define MyAppVersion "0.3.0"
+#define MyAppVersion "0.4.1"
 #define MyAppPublisher "Hi!XNS"
 #define MyAppURL "https://hixns.com"
 #define MyAppExeName "hixns-agent.exe"
+#define MyAppMutex "HiXNS_Agent_Mutex"
 
 [Setup]
 AppId={{A3F8E2D1-7B4C-4E5F-9A6D-1C2B3D4E5F6A}
@@ -18,24 +19,17 @@ AppSupportURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-; 安装/卸载图标
 SetupIconFile=..\src-tauri\icons\icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
-; 输出
 OutputDir=..\build\installer
 OutputBaseFilename=HiXNS-Setup-{#MyAppVersion}
-; 压缩
 Compression=lzma2/ultra64
 SolidCompression=yes
-; 界面
 WizardStyle=modern
-; 权限
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-; 语言
-ShowLanguageDialog=auto
 ; 版本信息
 VersionInfoVersion={#MyAppVersion}
 VersionInfoCompany={#MyAppPublisher}
@@ -43,13 +37,22 @@ VersionInfoDescription={#MyAppName} AI Agent
 VersionInfoCopyright=Copyright (c) 2025 {#MyAppPublisher}
 VersionInfoProductName={#MyAppName}
 VersionInfoProductVersion={#MyAppVersion}
+; 升级时覆盖安装（同 AppId 自动检测旧版本）
+UsePreviousAppDir=yes
+CloseApplications=yes
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[CustomMessages]
+english.CreateDesktopIcon=创建桌面快捷方式
+english.LaunchAfterInstall=安装完成后启动 {#MyAppName}
+english.StartWithWindows=开机自动启动
+
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-Name: "startupicon"; Description: "开机自动启动"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"
+Name: "startupicon"; Description: "{cm:StartWithWindows}"; Flags: unchecked
 
 [Files]
 ; 主程序
@@ -71,7 +74,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: startupicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchAfterInstall}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\bundled"
@@ -79,21 +82,28 @@ Type: filesandordirs; Name: "{app}\logs"
 Type: filesandordirs; Name: "{app}\data"
 
 [Code]
-// 安装前检查是否已运行，提示关闭
+// 安装前：检测旧版本并关闭正在运行的实例
 function InitializeSetup(): Boolean;
 var
   ResultCode: Integer;
+  UninstStr: String;
 begin
   Result := True;
-  if CheckForMutexes('HiXNS_Agent_Mutex') then
+
+  // 检查是否正在运行
+  if CheckForMutexes('{#MyAppMutex}') then
   begin
-    if MsgBox('{#MyAppName} 正在运行，需要先关闭才能继续安装。' + #13#10 + '是否立即关闭？',
-              mbConfirmation, MB_YESNO) = IDYES then
+    MsgBox('检测到 {#MyAppName} 正在运行，安装程序将自动关闭它。', mbInformation, MB_OK);
+    Exec('taskkill', '/f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Sleep(1500);
+  end;
+
+  // 检查是否有旧版本安装
+  if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{A3F8E2D1-7B4C-4E5F-9A6D-1C2B3D4E5F6A}_is1', 'DisplayVersion', UninstStr) then
+  begin
+    if UninstStr <> '{#MyAppVersion}' then
     begin
-      Exec('taskkill', '/f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-      Sleep(1000);
-    end
-    else
-      Result := False;
+      MsgBox('检测到旧版本 ' + UninstStr + '，将自动升级到 {#MyAppVersion}。', mbInformation, MB_OK);
+    end;
   end;
 end;
