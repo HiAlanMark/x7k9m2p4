@@ -1,6 +1,6 @@
 <template>
   <div class="chat-view">
-    <div class="messages" ref="messagesRef">
+    <div class="messages" ref="messagesRef" @scroll="onMessagesScroll">
       <!-- Empty state -->
       <div v-if="messages.length === 0" class="empty-state">
         <div class="empty-inner">
@@ -87,17 +87,29 @@
             </div>
           </div>
 
-          <!-- Meta -->
-          <div v-if="msg.role === 'assistant' && (msg.model || msg.token_usage)" class="msg-meta">
-            <span v-if="msg.model">{{ msg.model }}</span>
-            <template v-if="msg.token_usage">
-              <span class="meta-dot"></span>
-              <span>{{ ((msg.token_usage.prompt_tokens || 0) + (msg.token_usage.completion_tokens || 0)).toLocaleString() }} tok</span>
-            </template>
-            <template v-if="msg.duration_ms">
-              <span class="meta-dot"></span>
-              <span>{{ (msg.duration_ms / 1000).toFixed(1) }}s</span>
-            </template>
+          <!-- Meta + Actions -->
+          <div v-if="msg.role === 'assistant'" class="msg-footer">
+            <div v-if="msg.model || msg.token_usage" class="msg-meta">
+              <span v-if="msg.model">{{ msg.model }}</span>
+              <template v-if="msg.token_usage">
+                <span class="meta-dot"></span>
+                <span>⬆ {{ (msg.token_usage.prompt_tokens || 0).toLocaleString() }}</span>
+                <span class="meta-dot"></span>
+                <span>⬇ {{ (msg.token_usage.completion_tokens || 0).toLocaleString() }} tok</span>
+              </template>
+              <template v-if="msg.duration_ms">
+                <span class="meta-dot"></span>
+                <span>{{ (msg.duration_ms / 1000).toFixed(1) }}s</span>
+              </template>
+            </div>
+            <div class="msg-actions">
+              <button class="action-btn" @click="copyMessage(msg.content)" :title="'复制'">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+              <button class="action-btn" @click="regenerateMessage(idx)" :disabled="isStreaming" :title="'重新生成'">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </button>
+            </div>
           </div>
         </div>
       </template>
@@ -167,6 +179,13 @@
       </div>
     </div>
 
+    <!-- Scroll to bottom FAB -->
+    <transition name="fab-fade">
+      <button v-if="showScrollBtn" class="scroll-fab" @click="scrollToBottom(true)" title="滚动到底部">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+    </transition>
+
     <!-- Input -->
     <div class="input-area">
       <div class="input-box" :class="{ focused: inputFocused }">
@@ -195,6 +214,8 @@
         <span class="status-item">{{ chatStore.providerMode === 'custom' ? '自定义' : 'gfw' }}</span>
         <span class="status-sep">/</span>
         <span class="status-item" :class="{ active: isStreaming }">{{ isStreaming ? '生成中' : '就绪' }}</span>
+        <span v-if="messages.length > 0" class="status-sep">·</span>
+        <button v-if="messages.length > 0" class="export-btn" @click="exportChat" title="导出为 Markdown">导出</button>
       </div>
     </div>
   </div>
@@ -210,7 +231,7 @@ import { marked, type Tokens } from 'marked'
 import DOMPurify from 'dompurify'
 import hljs from 'highlight.js'
 import * as api from '../api'
-import { isBrowserMode, browserChat, hermesCancel } from '../api'
+import { isBrowserMode, browserChat, hermesCancel, generateTitle } from '../api'
 import IconSend from '../components/icons/IconSend.vue'
 import IconStar from '../components/icons/IconStar.vue'
 import IconChat from '../components/icons/IconChat.vue'
@@ -219,6 +240,7 @@ import IconStore from '../components/icons/IconStore.vue'
 import IconUser from '../components/icons/IconUser.vue'
 import IconSettings from '../components/icons/IconSettings.vue'
 import IconChevronDown from '../components/icons/IconChevronDown.vue'
+import { SpotlightCard, FadeIn, ShinyText } from '../components/fx'
 
 const chatStore = useChatStore()
 const appStore = useAppStore()
@@ -234,6 +256,7 @@ const agentMaxIter = ref(0)
 const pendingApproval = ref<{ id: string; tool: string; command: string; reason: string } | null>(null)
 const isConnecting = ref(false)
 const inputFocused = ref(false)
+const showScrollBtn = ref(false)
 
 // Configure marked with highlight.js
 const renderer = new marked.Renderer()
@@ -319,6 +342,8 @@ async function sendMessage() {
         agentIteration.value = 0
         pendingApproval.value = null
         chatStore.finishResponse(usage, config.model, undefined, fullText)
+        // 首轮对话自动生成智能标题
+        autoGenerateTitle(text, fullText, config)
       },
       (err) => {
         agentStatus.value = ''
@@ -359,8 +384,42 @@ async function sendMessage() {
 watch(() => messages.value.length, async () => { await nextTick(); scrollToBottom() })
 watch(() => currentResponse.value, async () => { await nextTick(); scrollToBottom() })
 
-function scrollToBottom() {
-  if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+function scrollToBottom(smooth = false) {
+  if (messagesRef.value) {
+    if (smooth) {
+      messagesRef.value.scrollTo({ top: messagesRef.value.scrollHeight, behavior: 'smooth' })
+    } else {
+      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+    }
+  }
+}
+
+function onMessagesScroll() {
+  if (!messagesRef.value) return
+  const { scrollTop, scrollHeight, clientHeight } = messagesRef.value
+  showScrollBtn.value = scrollHeight - scrollTop - clientHeight > 200
+}
+
+function copyMessage(content: string) {
+  navigator.clipboard.writeText(content).catch(() => {})
+}
+
+async function regenerateMessage(idx: number) {
+  if (isStreaming.value) return
+  // Find the user message right before this assistant message
+  const msgs = messages.value
+  let userMsgIdx = -1
+  for (let i = idx - 1; i >= 0; i--) {
+    if (msgs[i].role === 'user') { userMsgIdx = i; break }
+  }
+  if (userMsgIdx < 0) return
+  const userText = msgs[userMsgIdx].content
+  // Remove messages from the assistant reply onwards
+  chatStore.truncateMessages(idx)
+  // Re-send
+  inputText.value = userText
+  await nextTick()
+  sendMessage()
 }
 
 function approveCommand() {
@@ -383,9 +442,69 @@ async function cancelExecution() {
   } catch { /* ignore */ }
 }
 
+async function autoGenerateTitle(userText: string, aiReply: string, config: { baseUrl: string; apiKey: string; model: string }) {
+  // 只在首轮对话时生成标题（只有 1 条 user + 1 条 assistant）
+  const session = chatStore.currentSession
+  if (!session) return
+  const userCount = session.messages.filter(m => m.role === 'user').length
+  if (userCount !== 1) return
+  // 如果标题已经不是默认截断标题就跳过
+  const firstUser = session.messages.find(m => m.role === 'user')
+  if (!firstUser) return
+  const defaultTitle = firstUser.content.trim().length > 30
+    ? firstUser.content.trim().substring(0, 30) + '...'
+    : firstUser.content.trim()
+  if (session.title !== defaultTitle && session.title !== '新会话') return
+  // 后台异步生成标题，不阻塞 UI
+  try {
+    const title = await generateTitle(userText, aiReply, config)
+    if (title && title.length >= 2) {
+      chatStore.renameSession(session.id, title)
+    }
+  } catch { /* ignore */ }
+}
+
 onMounted(async () => {
   if (gfwStore.models.length === 0) await gfwStore.fetchModels()
 })
+
+function exportChat() {
+  const session = chatStore.currentSession
+  if (!session || session.messages.length === 0) return
+  const title = session.title || '对话'
+  const date = new Date().toLocaleDateString('zh-CN')
+  let md = `# ${title}\n\n> 导出时间: ${date}\n\n---\n\n`
+  for (const msg of session.messages) {
+    if (msg.role === 'system') {
+      md += `> **[系统]** ${msg.content}\n\n`
+    } else if (msg.role === 'user') {
+      md += `## 我\n\n${msg.content}\n\n`
+    } else if (msg.role === 'assistant') {
+      md += `## Hi!XNS\n\n${msg.content}\n\n`
+      if (msg.tool_calls && msg.tool_calls.length > 0) {
+        md += `<details><summary>工具调用 (${msg.tool_calls.length})</summary>\n\n`
+        for (const tc of msg.tool_calls) {
+          md += `- **${tc.tool}** [${tc.status}]\n`
+          if (tc.input) md += `  - 参数: \`${JSON.stringify(tc.input).substring(0, 200)}\`\n`
+          if (tc.output) md += `  - 结果: \`${tc.output.substring(0, 200)}\`\n`
+        }
+        md += `\n</details>\n\n`
+      }
+      if (msg.token_usage) {
+        md += `*${msg.model || ''} · ⬆${msg.token_usage.prompt_tokens || 0} ⬇${msg.token_usage.completion_tokens || 0} tok*\n\n`
+      }
+    }
+    md += `---\n\n`
+  }
+  // 触发浏览器下载
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${title.replace(/[/\\:*?"<>|]/g, '_')}_${new Date().toISOString().slice(0, 10)}.md`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 </script>
 
 <style scoped>
@@ -531,10 +650,11 @@ onMounted(async () => {
   color: var(--color-primary);
 }
 
-/* ===== Messages ===== */
+/* ===== Messages — iOS 27 glass cards ===== */
 .msg {
   padding: 20px 48px;
   border-bottom: 1px solid var(--color-border-subtle);
+  transition: background 0.3s var(--spring-smooth);
 }
 
 .msg:last-child {
@@ -547,8 +667,15 @@ onMounted(async () => {
 
 .msg.assistant {
   background: var(--glass-bg);
-  backdrop-filter: blur(8px) saturate(1.3);
-  -webkit-backdrop-filter: blur(8px) saturate(1.3);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-shadow-inset);
+  animation: msgSlideIn 0.4s var(--spring-bounce) both;
+}
+
+@keyframes msgSlideIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .msg-header {
@@ -1142,14 +1269,101 @@ onMounted(async () => {
 .connecting-dots .dot:nth-child(3) { animation-delay: 0.32s; }
 
 /* ===== Meta ===== */
+.msg-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
 .msg-meta {
   display: flex;
   align-items: center;
   gap: 0;
-  margin-top: 10px;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--color-text-tertiary);
+}
+
+.msg-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.msg:hover .msg-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: var(--color-bg-input);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.action-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ===== Scroll FAB ===== */
+.scroll-fab {
+  position: absolute;
+  right: 24px;
+  bottom: 120px;
+  z-index: 15;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--glass-shadow-inset), var(--shadow-card);
+  transition: all 0.25s var(--spring-bounce);
+}
+
+.scroll-fab:hover {
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
+  transform: translateY(-3px) scale(1.08);
+  box-shadow: var(--glass-shadow-inset), var(--shadow-float);
+}
+
+.scroll-fab:active {
+  transform: scale(0.92);
+}
+
+.fab-fade-enter-active,
+.fab-fade-leave-active {
+  transition: opacity 0.2s, transform 0.2s;
+}
+.fab-fade-enter-from,
+.fab-fade-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 .meta-dot {
@@ -1181,7 +1395,7 @@ onMounted(async () => {
   word-break: break-word;
 }
 
-/* ===== Input ===== */
+/* ===== Input — iOS 27 floating glass ===== */
 .input-area {
   position: absolute;
   left: 0;
@@ -1192,7 +1406,7 @@ onMounted(async () => {
   z-index: 10;
   background: linear-gradient(to top,
     var(--color-bg-page) 0%,
-    var(--color-bg-page) 30%,
+    var(--color-bg-page) 20%,
     transparent 100%
   );
 }
@@ -1204,16 +1418,21 @@ onMounted(async () => {
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 10px 14px;
-  gap: 8px;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.08), 0 0 0 1px var(--glass-border);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  border-radius: 18px;
+  padding: 12px 16px;
+  gap: 10px;
+  box-shadow: var(--glass-shadow-inset), var(--shadow-float);
+  transition: border-color 0.25s var(--spring-smooth),
+              box-shadow 0.25s var(--spring-smooth),
+              transform 0.2s var(--spring-bounce);
 }
 
 .input-box.focused {
   border-color: var(--color-primary);
-  box-shadow: 0 2px 20px rgba(10,132,255,0.12);
+  box-shadow: var(--glass-shadow-inset),
+              0 4px 24px rgba(10,132,255,0.12),
+              0 0 0 3px rgba(10,132,255,0.06);
+  transform: translateY(-1px);
 }
 
 .input-chevron {
@@ -1253,15 +1472,15 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 6px 12px;
   background: var(--color-bg-input);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius-btn);
   color: var(--color-text-tertiary);
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 11px;
-  transition: all 0.12s;
+  transition: all 0.2s var(--spring-bounce);
   white-space: nowrap;
   flex-shrink: 0;
   margin-top: 1px;
@@ -1271,6 +1490,11 @@ textarea::placeholder {
   border-color: var(--color-text-secondary);
   color: var(--color-text-primary);
   background: var(--color-bg-input);
+  transform: scale(1.04);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .send-btn:disabled {
@@ -1317,6 +1541,24 @@ textarea::placeholder {
 .status-item { padding: 0 4px; }
 .status-item.active { color: var(--color-primary); opacity: 1; }
 .status-sep { padding: 0 2px; opacity: 0.3; }
+
+.export-btn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  cursor: pointer;
+  transition: all 0.12s;
+  margin-left: 2px;
+}
+.export-btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-secondary);
+  background: var(--color-bg-input);
+}
 
 
 /* ===== Scrollbar ===== */

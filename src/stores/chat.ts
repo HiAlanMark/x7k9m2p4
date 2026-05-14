@@ -260,6 +260,15 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  function truncateMessages(fromIndex: number) {
+    const session = currentSession.value
+    if (session && fromIndex >= 0 && fromIndex < session.messages.length) {
+      session.messages.splice(fromIndex)
+      session.updatedAt = new Date().toISOString()
+      persist()
+    }
+  }
+
   // hermes session_id 管理（用于上下文续接）
   function setHermesSessionId(sid: string) {
     const session = currentSession.value
@@ -289,7 +298,7 @@ export const useChatStore = defineStore('chat', () => {
     getActiveConfig, setProviderMode, setCustomProvider,
     // 消息操作
     addUserMessage, addSystemMessage, startAssistantResponse, appendToResponse,
-    addToolCall, completeToolCall, finishResponse, clearMessages,
+    addToolCall, completeToolCall, finishResponse, clearMessages, truncateMessages,
     setHermesSessionId, getHermesSessionId,
   }
 })

@@ -43,6 +43,33 @@
       </div>
     </div>
 
+    <!-- Edit form (inline) -->
+    <div v-if="editingTask" class="card create-card">
+      <div class="card-header">
+        <span class="card-header-tag" style="background: var(--color-warning); color: #000;">EDIT</span>
+        <span>编辑任务 · {{ editingTask.id.substring(0, 8) }}</span>
+      </div>
+      <div class="card-body">
+        <div class="form-row">
+          <label class="form-label">任务名称</label>
+          <input v-model="editForm.name" type="text" class="form-input" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">执行计划</label>
+          <input v-model="editForm.schedule" type="text" class="form-input" />
+          <p class="form-hint">支持: 30m, every 2h, cron表达式(0 9 * * *), ISO时间戳</p>
+        </div>
+        <div class="form-row">
+          <label class="form-label">提示词</label>
+          <textarea v-model="editForm.prompt" class="form-textarea" rows="3"></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" @click="saveEdit">保存修改</button>
+          <button class="btn-secondary" @click="editingTask = null">取消</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Tabs -->
     <div class="tabs">
       <button :class="['tab', { active: activeTab === 'cron' }]" @click="activeTab = 'cron'">
@@ -83,6 +110,7 @@
             <span class="task-meta" v-if="task.nextRun">下次: {{ formatTime(task.nextRun) }}</span>
             <span class="task-meta">运行 {{ task.runCount || 0 }} 次</span>
             <div class="task-actions">
+              <button class="act-btn" @click="editTask(task)" title="编辑"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
               <button v-if="task.status === 'active'" class="act-btn" @click="pauseTask(task)" title="暂停"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M640 85.333333c-46.506667 0-85.333333 38.826667-85.333333 85.333334v682.666666c0 46.506667 38.826667 85.333333 85.333333 85.333334h128c46.506667 0 85.333333-38.826667 85.333333-85.333334V170.666667c0-46.506667-38.826667-85.333333-85.333333-85.333334z m-384 0c-46.506667 0-85.333333 38.826667-85.333333 85.333334v682.666666c0 46.506667 38.826667 85.333333 85.333333 85.333334h128c46.506667 0 85.333333-38.826667 85.333333-85.333334V170.666667c0-46.506667-38.826667-85.333333-85.333333-85.333334z"/></svg></button>
               <button v-if="task.status === 'paused'" class="act-btn" @click="resumeTask(task)" title="恢复"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M297.813333 85.845333C231.936 87.424 170.666667 140.8 170.666667 213.333333v597.333334c0 96.725333 108.928 159.36 192.512 110.592l512-298.666667c83.029333-48.384 82.986667-172.970667-0.085334-221.269333l-512-298.666667c-18.858667-11.008-39.552-16.768-65.28-16.810667z"/></svg></button>
               <button class="act-btn" @click="runTask(task)" title="立即执行"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.053333 0 384 171.946667 384 384s-171.946667 384-384 384S128 724.053333 128 512s171.946667-384 384-384z"/><path d="M427.264 299.349333c-44.202667 0.853333-86.058667 36.608-85.930667 84.906667v255.573333c-0.128 64.298667 74.24 106.453333 129.322667 73.258667l213.077333-127.744c53.888-32.128 53.888-114.56 0-146.688l-213.077333-127.786667c-12.8-7.68-27.52-11.52-43.392-11.52z"/></svg></button>
@@ -146,7 +174,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { hermesCronList, hermesCronCreate, hermesCronPause, hermesCronResume, hermesCronRemove, hermesCronRun } from '../api'
+import { hermesCronList, hermesCronCreate, hermesCronPause, hermesCronResume, hermesCronRemove, hermesCronRun, hermesCronUpdate } from '../api'
 
 interface CronTask {
   id: string
@@ -181,6 +209,8 @@ interface HistoryTask {
 const activeTab = ref<'cron' | 'running' | 'history'>('cron')
 const showCreate = ref(false)
 const newTask = ref({ name: '', schedule: '', prompt: '', skills: '' })
+const editingTask = ref<CronTask | null>(null)
+const editForm = ref({ name: '', schedule: '', prompt: '' })
 
 // 从真实 Hermes cron API 加载任务
 const cronTasks = ref<CronTask[]>([])
@@ -248,6 +278,29 @@ async function runTask(task: CronTask) {
 async function deleteTask(task: CronTask) {
   await hermesCronRemove(task.id)
   await loadTasks()
+}
+
+function editTask(task: CronTask) {
+  editingTask.value = task
+  editForm.value = {
+    name: task.name,
+    schedule: task.schedule,
+    prompt: task.prompt,
+  }
+  showCreate.value = false  // 关闭创建表单
+}
+
+async function saveEdit() {
+  if (!editingTask.value) return
+  try {
+    await hermesCronUpdate(editingTask.value.id, {
+      name: editForm.value.name || undefined,
+      schedule: editForm.value.schedule || undefined,
+      prompt: editForm.value.prompt || undefined,
+    })
+    editingTask.value = null
+    await loadTasks()
+  } catch (e) { console.error('更新任务失败:', e) }
 }
 
 onMounted(() => { loadTasks() })
@@ -321,17 +374,20 @@ function formatElapsed(iso?: string): string {
   transition: all 0.15s;
 }
 
-.btn-create:hover { filter: brightness(1.1); box-shadow: 0 2px 8px rgba(10,132,255,0.25); }
+.btn-create:hover { filter: brightness(1.1); box-shadow: 0 2px 8px rgba(10,132,255,0.25); transform: scale(1.04); }
+.btn-create:active { transform: scale(0.95); }
 
 /* Create form */
 .create-card { margin-bottom: 20px; }
 
 .card {
   background: var(--glass-bg);
-  backdrop-filter: blur(16px) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(16px) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--glass-shadow-inset), var(--shadow-card);
+  transition: all 0.3s var(--spring-smooth);
   overflow: hidden;
 }
 
@@ -376,10 +432,12 @@ function formatElapsed(iso?: string): string {
 .form-actions { display: flex; gap: 8px; margin-top: 14px; }
 
 .btn-primary {
-  padding: 6px 16px; background: var(--color-primary); border: none; border-radius: 8px;
+  padding: 6px 16px; background: var(--color-primary); border: none; border-radius: var(--radius-btn);
   color: #fff; font-size: 12px; font-weight: 600; font-family: var(--font-mono);
-  cursor: pointer;
+  cursor: pointer; transition: all 0.2s var(--spring-bounce);
 }
+.btn-primary:hover { filter: brightness(1.1); transform: scale(1.03); }
+.btn-primary:active { transform: scale(0.96); }
 .btn-secondary {
   padding: 6px 16px; background: transparent; border: 1px solid var(--color-border);
   border-radius: 8px; color: var(--color-text-secondary); font-size: 12px;
@@ -420,10 +478,12 @@ function formatElapsed(iso?: string): string {
 
 .task-card {
   background: var(--glass-bg);
-  backdrop-filter: blur(12px) saturate(1.4);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border: 1px solid var(--glass-border);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--glass-shadow-inset), var(--shadow-card);
+  transition: all 0.3s var(--spring-bounce);
   padding: 14px 16px;
   transition: border-color 0.12s;
 }

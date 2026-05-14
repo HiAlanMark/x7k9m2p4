@@ -1,5 +1,12 @@
 <template>
   <div class="app">
+    <!-- 全局极光背景 -->
+    <SoftAurora
+      :color1="appStore.isDark ? '#0A84FF' : '#3b82f6'"
+      :color2="appStore.isDark ? '#BF5AF2' : '#8b5cf6'"
+      :brightness="appStore.isDark ? 0.35 : 0.25"
+      :speed="0.3"
+    />
     <aside class="sidebar">
       <!-- Brand -->
       <div class="sidebar-brand">
@@ -31,36 +38,36 @@
         </router-link>
       </nav>
 
-      <!-- Session list (始终显示) -->
+      <!-- Session list -->
       <div class="session-list">
         <div class="session-list-header">
           <span class="session-list-title">会话</span>
           <button class="new-session-btn" @click="chatStore.newSession(); router.push('/')" title="新建会话">+</button>
         </div>
         <div class="session-items">
-          <div
-            v-for="s in chatStore.sortedSessions"
-            :key="s.id"
-            :class="['session-item', { active: s.id === chatStore.activeSessionId }]"
-            @click="chatStore.switchSession(s.id); router.push('/')"
-          >
-            <span class="session-item-title">{{ s.title }}</span>
-            <span class="session-item-count">{{ s.messages.filter(m => m.role === 'user').length }}</span>
-            <!-- 删除：先确认再删 -->
-            <button
-              v-if="chatStore.sessions.length > 1 && confirmDeleteId !== s.id"
-              class="session-delete-btn"
-              @click.stop="confirmDeleteId = s.id"
-              title="删除会话"
+          <transition-group name="session-anim" tag="div">
+            <div
+              v-for="s in chatStore.sortedSessions"
+              :key="s.id"
+              :class="['session-item', { active: s.id === chatStore.activeSessionId }]"
+              @click="chatStore.switchSession(s.id); router.push('/')"
             >
-              <svg width="12" height="12" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/> <path d="M640 341.333333a42.666667 42.666667 0 0 0-30.165333 12.501334l-256 256a42.666667 42.666667 0 0 0 0 60.330666 42.666667 42.666667 0 0 0 60.330666 0l256-256a42.666667 42.666667 0 0 0 0-60.330666A42.666667 42.666667 0 0 0 640 341.333333z"/> <path d="M384 341.333333a42.666667 42.666667 0 0 0-30.165333 12.501334 42.666667 42.666667 0 0 0 0 60.330666l256 256a42.666667 42.666667 0 0 0 60.330666 0 42.666667 42.666667 0 0 0 0-60.330666l-256-256A42.666667 42.666667 0 0 0 384 341.333333z"/></svg>
-            </button>
-            <!-- 确认状态 -->
-            <span v-if="confirmDeleteId === s.id" class="confirm-delete" @click.stop>
-              <button class="confirm-yes" @click.stop="chatStore.deleteSession(s.id); confirmDeleteId = ''" title="确认删除">删除</button>
-              <button class="confirm-no" @click.stop="confirmDeleteId = ''" title="取消">取消</button>
-            </span>
-          </div>
+              <span class="session-item-title">{{ s.title }}</span>
+              <span class="session-item-count">{{ s.messages.filter(m => m.role === 'user').length }}</span>
+              <button
+                v-if="chatStore.sessions.length > 1 && confirmDeleteId !== s.id"
+                class="session-delete-btn"
+                @click.stop="confirmDeleteId = s.id"
+                title="删除会话"
+              >
+                <svg width="12" height="12" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/> <path d="M640 341.333333a42.666667 42.666667 0 0 0-30.165333 12.501334l-256 256a42.666667 42.666667 0 0 0 0 60.330666 42.666667 42.666667 0 0 0 60.330666 0l256-256a42.666667 42.666667 0 0 0 0-60.330666A42.666667 42.666667 0 0 0 640 341.333333z"/> <path d="M384 341.333333a42.666667 42.666667 0 0 0-30.165333 12.501334 42.666667 42.666667 0 0 0 0 60.330666l256 256a42.666667 42.666667 0 0 0 60.330666 0 42.666667 42.666667 0 0 0 0-60.330666l-256-256A42.666667 42.666667 0 0 0 384 341.333333z"/></svg>
+              </button>
+              <span v-if="confirmDeleteId === s.id" class="confirm-delete" @click.stop>
+                <button class="confirm-yes" @click.stop="chatStore.deleteSession(s.id); confirmDeleteId = ''" title="确认删除">删除</button>
+                <button class="confirm-no" @click.stop="confirmDeleteId = ''" title="取消">取消</button>
+              </span>
+            </div>
+          </transition-group>
         </div>
       </div>
 
@@ -115,7 +122,11 @@
       </div>
     </aside>
     <main class="main-content">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <transition name="page-fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </main>
   </div>
 </template>
@@ -134,6 +145,7 @@ import IconStar from './components/icons/IconStar.vue'
 import IconSun from './components/icons/IconSun.vue'
 import IconMoon from './components/icons/IconMoon.vue'
 import IconBrandLogo from './components/icons/IconBrandLogo.vue'
+import SoftAurora from './components/fx/SoftAurora.vue'
 
 const gfwStore = useGfwStore()
 const chatStore = useChatStore()
@@ -181,7 +193,7 @@ onUnmounted(() => {
 </script>
 
 <style>
-/* ===== CSS Custom Properties ===== */
+/* ===== CSS Custom Properties — iOS 27 Glass Design System ===== */
 :root,
 [data-theme="light"] {
   --color-primary: #0070FF;
@@ -189,75 +201,96 @@ onUnmounted(() => {
   --color-primary-dark: #0050CC;
   --color-accent: #6C38FF;
   --color-bg-page: #F2F2F7;
-  --color-bg-card: rgba(255,255,255,0.72);
+  --color-bg-card: rgba(255,255,255,0.55);
   --color-bg-card-solid: #FFFFFF;
-  --color-bg-input: rgba(120,120,128,0.08);
-  --color-bg-sidebar: rgba(242,242,247,0.78);
+  --color-bg-input: rgba(120,120,128,0.06);
+  --color-bg-sidebar: rgba(242,242,247,0.55);
   --color-text-primary: #1C1C1E;
   --color-text-secondary: #636366;
   --color-text-tertiary: #AEAEB2;
-  --color-border: rgba(60,60,67,0.12);
-  --color-border-subtle: rgba(60,60,67,0.06);
+  --color-border: rgba(60,60,67,0.10);
+  --color-border-subtle: rgba(60,60,67,0.05);
   --color-success: #30D158;
   --color-warning: #FF9F0A;
   --color-error: #FF453A;
-  --shadow-card: 0 0.5px 0 rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.06);
-  --shadow-card-hover: 0 2px 16px rgba(0,0,0,0.10);
-  --radius-card: 12px;
-  --radius-btn: 8px;
-  --radius-input: 8px;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-float: 0 12px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+  --radius-card: 20px;
+  --radius-btn: 12px;
+  --radius-input: 12px;
+  --radius-pill: 100px;
   --font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
-  --glass-bg: rgba(255,255,255,0.65);
-  --glass-border: rgba(255,255,255,0.45);
-  --glass-blur: 20px;
+  /* iOS 27 Glass — deeper blur, lower opacity, more transparent */
+  --glass-bg: rgba(255,255,255,0.45);
+  --glass-border: rgba(255,255,255,0.30);
+  --glass-blur: 32px;
   --glass-saturate: 1.8;
-
+  --glass-shadow-inset: inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.04);
+  /* Spring animation tokens */
+  --spring-bounce: cubic-bezier(.34,1.56,.64,1);
+  --spring-smooth: cubic-bezier(.16,1,.3,1);
+  --spring-snap: cubic-bezier(.68,-.6,.32,1.6);
+  --ease-out-expo: cubic-bezier(.19,1,.22,1);
+  --transition-fast: 0.15s var(--spring-smooth);
+  --transition-medium: 0.3s var(--spring-smooth);
+  --transition-slow: 0.5s var(--spring-smooth);
+  --transition-bounce: 0.4s var(--spring-bounce);
+  /* Message colors */
   --color-msg-user-bg: #1C1C1E;
   --color-msg-user-text: #F2F2F7;
   --color-msg-ai-bg: transparent;
   --color-msg-ai-text: #1C1C1E;
-  --color-msg-ai-border: rgba(60,60,67,0.12);
+  --color-msg-ai-border: rgba(60,60,67,0.08);
   --color-code-bg: #0D1117;
   --color-code-border: #30363D;
-  --color-balance-bg: rgba(120,120,128,0.08);
-  --color-tool-bg: rgba(120,120,128,0.04);
+  --color-balance-bg: rgba(120,120,128,0.06);
+  --color-tool-bg: rgba(120,120,128,0.03);
 }
 
 [data-theme="dark"] {
   --color-primary: #0A84FF;
-  --color-primary-light: rgba(10,132,255,0.15);
+  --color-primary-light: rgba(10,132,255,0.12);
   --color-primary-dark: #409CFF;
   --color-accent: #BF5AF2;
   --color-bg-page: #000000;
-  --color-bg-card: rgba(28,28,30,0.72);
+  --color-bg-card: rgba(28,28,30,0.50);
   --color-bg-card-solid: #1C1C1E;
-  --color-bg-input: rgba(120,120,128,0.20);
-  --color-bg-sidebar: rgba(0,0,0,0.78);
+  --color-bg-input: rgba(120,120,128,0.16);
+  --color-bg-sidebar: rgba(0,0,0,0.50);
   --color-text-primary: #F2F2F7;
   --color-text-secondary: #AEAEB2;
   --color-text-tertiary: #636366;
-  --color-border: rgba(84,84,88,0.45);
-  --color-border-subtle: rgba(84,84,88,0.25);
+  --color-border: rgba(84,84,88,0.35);
+  --color-border-subtle: rgba(84,84,88,0.18);
   --color-success: #30D158;
   --color-warning: #FF9F0A;
   --color-error: #FF453A;
-  --shadow-card: 0 1px 4px rgba(0,0,0,0.4);
-  --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.5);
-  --glass-bg: rgba(44,44,46,0.55);
-  --glass-border: rgba(84,84,88,0.35);
-  --glass-blur: 24px;
+  --shadow-card: 0 1px 4px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.15);
+  --shadow-card-hover: 0 8px 32px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.15);
+  --shadow-float: 0 16px 48px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.2);
+  /* iOS 27 Glass Dark — deeper, more translucent */
+  --glass-bg: rgba(38,38,40,0.40);
+  --glass-border: rgba(84,84,88,0.25);
+  --glass-blur: 36px;
   --glass-saturate: 1.6;
-
-  --color-msg-user-bg: rgba(120,120,128,0.20);
+  --glass-shadow-inset: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.15);
+  /* Message colors */
+  --color-msg-user-bg: rgba(120,120,128,0.16);
   --color-msg-user-text: #F2F2F7;
   --color-msg-ai-bg: transparent;
   --color-msg-ai-text: #F2F2F7;
-  --color-msg-ai-border: rgba(84,84,88,0.45);
+  --color-msg-ai-border: rgba(84,84,88,0.30);
   --color-code-bg: #0D1117;
   --color-code-border: #30363D;
-  --color-balance-bg: rgba(120,120,128,0.15);
-  --color-tool-bg: rgba(120,120,128,0.08);
+  --color-balance-bg: rgba(120,120,128,0.12);
+  --color-tool-bg: rgba(120,120,128,0.06);
+}
+
+/* ===== Global spring transitions ===== */
+*, *::before, *::after {
+  transition-timing-function: var(--spring-smooth);
 }
 
 /* ===== Reset ===== */
@@ -273,24 +306,22 @@ body {
   transition: background 0.3s, color 0.3s;
 }
 
-/* ===== iOS 26 Glass Background Mesh ===== */
+/* ===== iOS 27 Aurora Background — replaces static gradients ===== */
 .app::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(0,112,255,0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 85% 75%, rgba(108,56,255,0.10) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 50% 10%, rgba(48,209,88,0.08) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(0,112,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 75%, rgba(108,56,255,0.05) 0%, transparent 55%);
   pointer-events: none;
 }
 
 [data-theme="dark"] .app::before {
   background:
-    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(10,132,255,0.15) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 85% 75%, rgba(191,90,242,0.12) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 50% 10%, rgba(48,209,88,0.08) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(10,132,255,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 75%, rgba(191,90,242,0.06) 0%, transparent 55%);
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -307,7 +338,7 @@ body {
   background: var(--color-bg-page);
 }
 
-/* ===== Sidebar ===== */
+/* ===== Sidebar — iOS 27 deep glass ===== */
 .sidebar {
   width: 220px;
   min-width: 220px;
@@ -317,11 +348,12 @@ body {
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-inset), 1px 0 0 rgba(255,255,255,0.02);
   user-select: none;
   -webkit-app-region: drag;
-  transition: background 0.3s, border-color 0.3s;
+  transition: background 0.4s var(--spring-smooth), border-color 0.4s;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 @media (max-width: 768px) {
@@ -374,8 +406,21 @@ body {
   margin-bottom: 1px;
   font-size: 13px;
   font-weight: 500;
-  transition: all 0.15s;
+  transition: all 0.25s var(--spring-bounce);
   cursor: pointer;
+  position: relative;
+}
+
+.nav-item:hover {
+  transform: translateX(3px);
+}
+
+.nav-item:active {
+  transform: scale(0.97) translateX(2px);
+}
+
+.nav-item.active {
+  transform: translateX(0);
 }
 
 .nav-icon {
@@ -794,5 +839,46 @@ body {
   position: relative;
   z-index: 1;
   transition: background 0.3s;
+}
+/* ===== Session list transition — q弹入场 ===== */
+.session-anim-enter-active {
+  transition: all 0.35s var(--spring-bounce);
+}
+.session-anim-leave-active {
+  transition: all 0.25s var(--spring-smooth);
+}
+.session-anim-enter-from {
+  opacity: 0;
+  transform: translateX(-12px) scale(0.95);
+}
+.session-anim-leave-to {
+  opacity: 0;
+  transform: translateX(12px) scale(0.95);
+}
+.session-anim-move {
+  transition: transform 0.3s var(--spring-bounce);
+}
+
+/* ===== Route page transition ===== */
+.page-fade-enter-active {
+  transition: opacity 0.3s var(--spring-smooth), transform 0.3s var(--spring-smooth);
+}
+.page-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-fade-leave-to {
+  opacity: 0;
+}
+
+/* ===== Global button bounce ===== */
+button, .btn-primary, .btn-secondary, [role="button"] {
+  transition: all 0.2s var(--spring-bounce);
+}
+button:active, .btn-primary:active, .btn-secondary:active {
+  transform: scale(0.96);
 }
 </style>

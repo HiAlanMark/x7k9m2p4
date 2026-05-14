@@ -1114,6 +1114,38 @@ func handleCronRun(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
 }
 
+func handleCronUpdate(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	var body struct {
+		ID       string `json:"id"`
+		Schedule string `json:"schedule"`
+		Prompt   string `json:"prompt"`
+		Name     string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
+		jsonError(w, "无效请求: 需要 id 字段", 400)
+		return
+	}
+	// hermes cronjob update 支持多个参数
+	args := []string{"cronjob", "update", body.ID}
+	if body.Schedule != "" {
+		args = append(args, "--schedule", body.Schedule)
+	}
+	if body.Prompt != "" {
+		args = append(args, "--prompt", body.Prompt)
+	}
+	if body.Name != "" {
+		args = append(args, "--name", body.Name)
+	}
+	out, err := runHermes(args...)
+	if err != nil {
+		jsonError(w, "更新失败: "+strings.TrimSpace(out), 500)
+		return
+	}
+	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
+}
+
 // ============================================================
 // Hermes Sessions API
 // ============================================================
@@ -1878,6 +1910,7 @@ func main() {
 	mux.HandleFunc("/v1/agent/cron/resume", handleCronResume)
 	mux.HandleFunc("/v1/agent/cron/remove", handleCronRemove)
 	mux.HandleFunc("/v1/agent/cron/run", handleCronRun)
+	mux.HandleFunc("/v1/agent/cron/update", handleCronUpdate)
 	// Hermes sessions
 	mux.HandleFunc("/v1/agent/sessions/list", handleSessionsList)
 	mux.HandleFunc("/v1/agent/sessions/delete", handleSessionsDelete)

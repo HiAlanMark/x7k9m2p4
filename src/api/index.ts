@@ -429,6 +429,9 @@ export async function hermesCronRemove(id: string) {
 export async function hermesCronRun(id: string) {
   return agentPost('/v1/agent/cron/run', { id })
 }
+export async function hermesCronUpdate(id: string, updates: { schedule?: string; prompt?: string; name?: string }) {
+  return agentPost('/v1/agent/cron/update', { id, ...updates })
+}
 
 // --- Sessions ---
 export async function hermesSessionsList() {
@@ -463,6 +466,47 @@ export async function hermesToolsDisable(name: string) {
 // --- Cancel ---
 export async function hermesCancel() {
   return agentPost('/v1/agent/cancel', {})
+}
+
+// --- Generate Title ---
+export async function generateTitle(
+  userMessage: string,
+  assistantReply: string,
+  config: { baseUrl: string; apiKey: string; model: string },
+): Promise<string> {
+  const isDev_ = import.meta.env?.DEV ?? false
+  let baseUrl = config.baseUrl || GFW_AI
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${config.apiKey}`,
+    'Content-Type': 'application/json',
+  }
+  if (isDev_ && baseUrl.startsWith('http')) {
+    headers['x-proxy-target'] = baseUrl
+    baseUrl = '/proxy/custom'
+  }
+  try {
+    const r = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          { role: 'system', content: '用5-10个中文字概括以下对话的主题，只输出标题本身，不要标点符号、引号或解释。' },
+          { role: 'user', content: `用户: ${userMessage.substring(0, 200)}\n助手: ${assistantReply.substring(0, 300)}` },
+        ],
+        max_tokens: 20,
+        temperature: 0.3,
+        stream: false,
+      }),
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!r.ok) return ''
+    const data = await r.json()
+    const title = data.choices?.[0]?.message?.content?.trim() || ''
+    return title.replace(/["""''「」『』]/g, '').substring(0, 30)
+  } catch {
+    return ''
+  }
 }
 
 // ============================================================

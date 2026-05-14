@@ -162,18 +162,23 @@
             <IconStar :size="16" />
           </div>
           <div class="installed-info">
-            <div class="installed-name">{{ sk.name || sk.slug }}</div>
+            <div class="installed-name">
+              {{ sk.name || sk.slug }}
+              <span v-if="sk.hasUpdate" class="update-badge">可更新</span>
+            </div>
             <div class="installed-meta">
               <span class="meta-tag" v-if="sk.category">{{ sk.category }}</span>
               <span class="source-badge" :class="sk.source">{{ sk.source === '2x' ? '商店' : '内置' }}</span>
               <span v-if="sk.version" class="installed-ver">v{{ sk.version }}</span>
+              <span v-if="sk.hasUpdate" class="update-ver">→ v{{ sk.storeVersion }}</span>
               <span class="installed-files">{{ sk.files }} 文件</span>
             </div>
             <div class="installed-desc" v-if="sk.description">{{ sk.description }}</div>
           </div>
-          <button class="uninstall-btn" @click="uninstallSkill(sk)" :title="'卸载 ' + sk.slug">
-            卸载
-          </button>
+          <div class="installed-actions">
+            <button v-if="sk.hasUpdate" class="update-btn" @click="updateSkill(sk)" :title="'更新到 v' + sk.storeVersion">更新</button>
+            <button class="uninstall-btn" @click="uninstallSkill(sk)" :title="'卸载 ' + sk.slug">卸载</button>
+          </div>
         </div>
       </div>
     </template>
@@ -296,6 +301,8 @@ interface InstalledSkill {
   author?: string
   files: number
   path: string
+  hasUpdate?: boolean
+  storeVersion?: string
 }
 const installedSkills = ref<InstalledSkill[]>([])
 const installedLoading = ref(false)
@@ -461,10 +468,49 @@ async function loadInstalled() {
       if (a.category !== b.category) return (a.category || '').localeCompare(b.category || '')
       return (a.name || a.slug).localeCompare(b.name || b.slug)
     })
+    // 异步检查商店技能是否有更新
+    checkUpdates()
   } catch {
     showToast('无法获取已安装技能列表，请确认 Agent 已启动', 'error')
   } finally {
     installedLoading.value = false
+  }
+}
+
+async function checkUpdates() {
+  const storeSkills = installedSkills.value.filter(s => s.source === '2x' && s.version)
+  if (storeSkills.length === 0) return
+  for (const sk of storeSkills) {
+    try {
+      const detail = await api.twoXGetSkillDetail(sk.slug)
+      if (detail && detail.current_version && sk.version && detail.current_version !== sk.version) {
+        sk.hasUpdate = true
+        sk.storeVersion = detail.current_version
+      }
+    } catch { /* ignore individual failures */ }
+  }
+}
+
+async function updateSkill(sk: InstalledSkill) {
+  try {
+    const isDev = import.meta.env?.DEV ?? false
+    const agentUrl = isDev ? '/proxy/agent' : ''
+    const r = await fetch(`${agentUrl}/v1/agent/install-skill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: sk.slug, category: sk.category }),
+    })
+    const data = await r.json()
+    if (data.success) {
+      sk.hasUpdate = false
+      sk.version = sk.storeVersion
+      sk.storeVersion = undefined
+      showToast(`${sk.name || sk.slug} 已更新到 v${sk.version}`, 'success')
+    } else {
+      showToast(`更新失败: ${data.error || '未知错误'}`, 'error')
+    }
+  } catch {
+    showToast('更新失败: Agent 未启动或网络错误', 'error')
   }
 }
 
@@ -752,19 +798,24 @@ onBeforeUnmount(() => {
 
 .skill-card {
   background: var(--glass-bg);
-  backdrop-filter: blur(16px) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(16px) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   padding: 16px;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  box-shadow: var(--glass-shadow-inset), var(--shadow-card);
+  transition: all 0.3s var(--spring-bounce);
 }
 
 .skill-card:hover {
   border-color: var(--color-text-tertiary);
-  box-shadow: var(--shadow-card-hover);
-  transform: translateY(-1px);
+  box-shadow: var(--glass-shadow-inset), var(--shadow-card-hover);
+  transform: translateY(-3px) scale(1.01);
+}
+
+.skill-card:active {
+  transform: scale(0.98);
 }
 
 .card-header {
@@ -940,24 +991,40 @@ onBeforeUnmount(() => {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
   padding: 40px;
+  animation: modalOverlayIn 0.25s ease;
+}
+
+@keyframes modalOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-panel {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--glass-shadow-inset), var(--shadow-float);
   width: 100%;
   max-width: 640px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+  animation: modalPanelIn 0.35s var(--spring-bounce);
+}
+
+@keyframes modalPanelIn {
+  from { opacity: 0; transform: scale(0.92) translateY(16px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .modal-header {
@@ -1319,6 +1386,52 @@ onBeforeUnmount(() => {
 .uninstall-btn:hover {
   border-color: var(--color-error);
   color: var(--color-error);
+}
+
+.installed-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.update-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  background: var(--color-warning);
+  color: #000;
+  padding: 1px 5px;
+  border-radius: 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+  animation: pulse 2s ease infinite;
+}
+
+.update-ver {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.update-btn {
+  padding: 4px 10px;
+  background: var(--color-primary);
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.update-btn:hover {
+  opacity: 0.85;
 }
 
 /* Scrollbar */
