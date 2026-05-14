@@ -73,7 +73,13 @@ jobs:
 
       - name: Install NSIS
         shell: pwsh
-        run: choco install nsis -y --no-progress
+        run: |
+          # Direct download instead of choco (avoids 504 timeout)
+          $url = "https://sourceforge.net/projects/nsis/files/NSIS%203/3.10/nsis-3.10-setup.exe/download"
+          Invoke-WebRequest -Uri $url -OutFile nsis-setup.exe -MaximumRetryCount 3
+          Start-Process -Wait -FilePath .\nsis-setup.exe -ArgumentList "/S"
+          # Verify
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /VERSION
 
       - name: Create NSIS installer
         shell: pwsh
