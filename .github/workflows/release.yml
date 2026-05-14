@@ -83,8 +83,8 @@ jobs:
             source build/hermes-venv/bin/activate
           fi
 
-          pip install --upgrade pip
-          pip install hermes-agent || pip install hermes-ai-agent || echo "hermes-agent not on PyPI, creating minimal bundle"
+          python -m pip install --upgrade pip
+          python -m pip install hermes-agent || python -m pip install hermes-ai-agent || echo "hermes-agent not on PyPI, creating minimal bundle"
 
           # 创建 bundled 目录
           BUNDLE_DIR="build/${{ matrix.goos }}-${{ matrix.goarch }}/bundled/hermes-agent"
