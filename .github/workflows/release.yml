@@ -52,7 +52,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev fuse
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev fuse libfuse2
 
       - name: Install Windows C compiler
         if: runner.os == 'Windows'
@@ -220,13 +220,16 @@ jobs:
           echo "=== NSIS output ==="
           find build/bin -name "*.exe" -type f 2>/dev/null
           find build/bin -name "*installer*" -type f 2>/dev/null
+          find build/bin -name "*nsis*" -type f 2>/dev/null
+          # 列出所有 build/bin 内容
+          ls -laR build/bin/
 
       - name: Rename Windows Installer
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          # Wails NSIS 生成 <output>-x64-installer.exe 或 <output>-amd64-installer.exe
-          INSTaller=$(find build/bin -name "*-x64-installer.exe" -o -name "*-amd64-installer.exe" | head -1)
+          # Wails NSIS 生成各种格式的安装包，全部搜索
+          INSTaller=$(find build/bin -name "*.exe" -type f ! -name "installer.exe" ! -name "hixns-agent.exe" | head -1)
           if [ -n "$INSTaller" ]; then
             cp "$INSTaller" "build/bin/${{ matrix.nsis_asset }}"
             echo "Installer: $INSTaller -> ${{ matrix.nsis_asset }}"
@@ -251,7 +254,7 @@ jobs:
           cp -r build/bin/hermes-agent "$APPDIR/usr/bin/" 2>/dev/null || true
           cp -r build/bin/hermes-python "$APPDIR/usr/bin/" 2>/dev/null || true
 
-          # .desktop (Name 不含特殊字符)
+          # .desktop
           cat > "$APPDIR/HiXNS.desktop" << 'EOF'
           [Desktop Entry]
           Name=HiXNS
@@ -275,12 +278,20 @@ jobs:
           EOF
           chmod +x "$APPDIR/AppRun"
 
-          # 下载 linuxdeploy (使用 --appimage-extract-and-run 避免 FUSE 问题)
-          curl -fsSL "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -o /tmp/linuxdeploy
-          chmod +x /tmp/linuxdeploy
+          # 下载并提取 linuxdeploy (避免 FUSE)
+          curl -fsSL "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -o /tmp/linuxdeploy.AppImage
+          chmod +x /tmp/linuxdeploy.AppImage
+          cd /tmp
+          ./linuxdeploy.AppImage --appimage-extract 2>/dev/null || true
+          LINUXDEPLOY="/tmp/squashfs-root/AppRun"
+          if [ ! -f "$LINUXDEPLOY" ]; then
+            # 备用：直接运行 AppImage
+            LINUXDEPLOY="/tmp/linuxdeploy.AppImage"
+          fi
 
-          # 打包 (用 --appimage-extract-and-run 绕过 FUSE)
-          APPIMAGE_EXE_NAME="HiXNS-Linux-x86_64" /tmp/linuxdeploy --appimage-extract-and-run \
+          # 打包
+          cd "$GITHUB_WORKSPACE"
+          APPIMAGE_EXE_NAME="HiXNS-Linux-x86_64" "$LINUXDEPLOY" \
             --appdir "$APPDIR" \
             --output appimage \
             --desktop-file "$APPDIR/HiXNS.desktop" \
@@ -289,17 +300,16 @@ jobs:
             2>&1 | tail -20
 
           echo "=== linuxdeploy output ==="
-          find "$APPDIR" -name "*.AppImage" -type f
           find "$GITHUB_WORKSPACE" -name "*.AppImage" -type f 2>/dev/null
           find /tmp -name "*.AppImage" -type f 2>/dev/null
 
-          # 查找 AppImage (可能在多个位置)
-          APPIMAGE=$(find "$APPDIR" "$GITHUB_WORKSPACE" /tmp -name "*.AppImage" -type f 2>/dev/null | head -1)
+          # 查找 AppImage
+          APPIMAGE=$(find "$GITHUB_WORKSPACE" /tmp -name "*.AppImage" -type f 2>/dev/null | head -1)
           if [ -n "$APPIMAGE" ]; then
             cp "$APPIMAGE" "build/bin/${{ matrix.appimage_asset }}"
             echo "AppImage: $APPIMAGE -> build/bin/${{ matrix.appimage_asset }}"
           else
-            echo "::error::AppImage not found anywhere"
+            echo "::error::AppImage not found"
             echo "=== AppDir contents ==="
             ls -la "$APPDIR/"
             exit 1
@@ -346,7 +356,7 @@ jobs:
           echo "=== App bundle ==="
           find "$APP_BUNDLE" -maxdepth 3 -type f | head -20
 
-          # 复制 Hermes 到 .app 内 (与二进制同目录, detectHermes 优先查找)
+          # 复制 Hermes 到 .app 内
           MACOS_DIR="$APP_BUNDLE/Contents/MacOS"
           cp -r build/bin/hermes-agent "$MACOS_DIR/" 2>/dev/null || true
           cp -r build/bin/hermes-python "$MACOS_DIR/" 2>/dev/null || true
@@ -354,15 +364,11 @@ jobs:
           # 安装 create-dmg
           brew install create-dmg 2>/dev/null || true
 
-          # 创建 DMG (输出到 build/bin/)
+          # 创建 DMG (简化参数，避免 exit code 64)
           DMG_OUTPUT="build/bin/${{ matrix.dmg_asset }}"
           create-dmg \
             --volname "Hi!XNS" \
-            --window-pos 200 200 \
             --window-size 600 400 \
-            --icon-size 100 \
-            --icon "HiXNS.app" 150 200 \
-            --app-drop-link 450 200 \
             "$DMG_OUTPUT" \
             "$APP_BUNDLE" 2>&1
 
