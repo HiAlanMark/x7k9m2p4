@@ -85,8 +85,6 @@ jobs:
       # 构建
       - name: Build Wails App
         id: build
-        env:
-          CGO_ENABLED: 1
         shell: bash
         run: |
           EXTRA_FLAGS=""
@@ -96,7 +94,7 @@ jobs:
           wails build -clean -trimpath -s -skipbindings -v -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS 2>&1 | tee build.log
           BUILD_EXIT_CODE=${PIPESTATUS[0]}
           echo "=== Build directory contents ==="
-          ls -R build/ || echo "build/ dir not found"
+          find build/ -type f 2>/dev/null || echo "build/ dir not found"
           if [ $BUILD_EXIT_CODE -ne 0 ]; then
             echo "::error::Wails build failed with exit code $BUILD_EXIT_CODE"
             exit $BUILD_EXIT_CODE
