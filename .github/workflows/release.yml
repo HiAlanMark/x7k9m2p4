@@ -54,6 +54,15 @@ jobs:
           update: true
           install: mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-cmake
 
+      - name: Install WebView2 SDK
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # WebView2 SDK 通常预装在 Windows runner 上
+          # 但需要确保头文件路径正确
+          $env:WEBVIEW2_LOADER_INCLUDE_DIR = "C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/ucrt"
+          echo "WEBVIEW2_LOADER_INCLUDE_DIR=$env:WEBVIEW2_LOADER_INCLUDE_DIR" >> $env:GITHUB_ENV
+
       - name: Set CGO for Windows
         if: runner.os == 'Windows'
         shell: bash
