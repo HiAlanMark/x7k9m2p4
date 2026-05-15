@@ -871,9 +871,16 @@ async function fetchUpstreamModels() {
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${apiKey}`,
     }
-    if (isDev && baseUrl.startsWith('http')) {
-      headers['x-proxy-target'] = baseUrl
-      fetchUrl = '/proxy/custom/models'
+    // Wails 模式或开发模式下通过 Go 后端代理避免跨域
+    // 判断：如果是外部 URL 且当前 origin 不是该 URL 的 origin，则走代理
+    if (baseUrl.startsWith('http')) {
+      try {
+        const targetOrigin = new URL(baseUrl).origin
+        if (targetOrigin !== window.location.origin) {
+          headers['x-proxy-target'] = baseUrl
+          fetchUrl = '/proxy/custom/models'
+        }
+      } catch (_) {}
     }
 
     const r = await fetch(fetchUrl, {

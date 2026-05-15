@@ -1952,6 +1952,57 @@ func main() {
 	mux.HandleFunc("/v1/agent/tools/enable", handleToolsEnable)
 	mux.HandleFunc("/v1/agent/tools/disable", handleToolsDisable)
 
+	// 通用 HTTP 代理 — 解决 Wails 模式下的跨域问题
+	mux.HandleFunc("/proxy/custom/", func(w http.ResponseWriter, r *http.Request) {
+		targetBase := r.Header.Get("x-proxy-target")
+		if targetBase == "" {
+			http.Error(w, `{"error":"Missing x-proxy-target header"}`, http.StatusBadRequest)
+			return
+		}
+		// 拼接完整 URL
+		targetPath := strings.TrimPrefix(r.URL.Path, "/proxy/custom")
+		fullURL := strings.TrimRight(targetBase, "/") + targetPath
+		if r.URL.RawQuery != "" {
+			fullURL += "?" + r.URL.RawQuery
+		}
+
+		// 构建代理请求
+		proxyReq, err := http.NewRequest(r.Method, fullURL, r.Body)
+		if err != nil {
+			http.Error(w, `{"error":"Invalid target URL"}`, http.StatusBadRequest)
+			return
+		}
+		// 复制 headers
+		for k, vv := range r.Header {
+			if k == "Host" || k == "X-Proxy-Target" {
+				continue
+			}
+			proxyReq.Header[k] = vv
+		}
+		proxyReq.Host = "" // 让 Go 自动设置
+
+		// 发送请求
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Do(proxyReq)
+		if err != nil {
+			http.Error(w, `{"error":"Proxy error: `+err.Error()+`"}`, http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+
+		// 设置 CORS
+		setCORS(w)
+		// 复制响应
+		for k, vv := range resp.Header {
+			if k == "Content-Length" || k == "Transfer-Encoding" || k == "Connection" {
+				continue
+			}
+			w.Header()[k] = vv
+		}
+		w.WriteHeader(resp.StatusCode)
+		io.Copy(w, resp.Body)
+	})
+
 	// 内嵌前端 — SPA 静态文件
 	frontendFS, _ := fs.Sub(distFS, "frontend/dist")
 	fileServer := http.FileServer(http.FS(frontendFS))
