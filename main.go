@@ -1807,36 +1807,43 @@ func detectHermes() hermesInfo {
 		if _, err := os.Stat(filepath.Join(bp, "run_agent.py")); err == nil {
 			info.SourceDir = bp
 
-			// 方式A: 内嵌 Python 运行时 (bundled/python/)
-			pythonDir := filepath.Join(filepath.Dir(bp), "python")
-			pythonExe := filepath.Join(pythonDir, "python.exe") // Windows
-			if runtime.GOOS != "windows" {
-				pythonExe = filepath.Join(pythonDir, "bin", "python3")
-			}
-			if _, err := os.Stat(pythonExe); err == nil {
-				// 用嵌入式 Python 运行 hermes
-				hermesPath = pythonExe
-				info.Source = "bundled-python"
-				break
-			}
-
-			// 方式B: 内嵌 venv (bundled/hermes-agent/venv/)
-			venvHermes := filepath.Join(bp, "venv", "bin", "hermes")
-			if runtime.GOOS == "windows" {
-				venvHermes = filepath.Join(bp, "venv", "Scripts", "hermes.exe")
-			}
-			if _, err := os.Stat(venvHermes); err == nil {
-				hermesPath = venvHermes
-				break
-			}
-
-			// 方式C: run-hermes.sh 启动脚本
-			runScript := filepath.Join(bp, "run-hermes.sh")
-			if _, err := os.Stat(runScript); err == nil {
-				hermesPath = runScript
-			}
+		// 方式A: 内嵌 Python 运行时 (hermes-python/)
+		pythonDir := filepath.Join(filepath.Dir(bp), "hermes-python")
+		pythonExe := filepath.Join(pythonDir, "python.exe") // Windows
+		if runtime.GOOS != "windows" {
+			pythonExe = filepath.Join(pythonDir, "bin", "python3")
+		}
+		if _, err := os.Stat(pythonExe); err == nil {
+			// 用嵌入式 Python 运行 hermes
+			hermesPath = pythonExe
+			info.Source = "bundled-python"
 			break
 		}
+
+		// 方式B: 内嵌 venv (hermes-agent/venv/)
+		venvHermes := filepath.Join(bp, "venv", "bin", "hermes")
+		if runtime.GOOS == "windows" {
+			venvHermes = filepath.Join(bp, "venv", "Scripts", "hermes.exe")
+		}
+		if _, err := os.Stat(venvHermes); err == nil {
+			hermesPath = venvHermes
+			break
+		}
+
+		// 方式C: run-hermes.sh 启动脚本
+		runScript := filepath.Join(bp, "run-hermes.sh")
+		if _, err := os.Stat(runScript); err == nil {
+			hermesPath = runScript
+			break
+		}
+
+		// 方式D: run-hermes.bat (Windows)
+		runBat := filepath.Join(bp, "run-hermes.bat")
+		if _, err := os.Stat(runBat); err == nil {
+			hermesPath = runBat
+			break
+		}
+	}
 	}
 
 	// 2. 系统安装
