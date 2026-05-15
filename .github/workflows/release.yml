@@ -100,6 +100,34 @@ jobs:
             exit $BUILD_EXIT_CODE
           fi
 
+      # 打包 Hermes Agent
+      - name: Bundle Hermes Agent
+        shell: bash
+        run: |
+          BUILD_DIR="build/bin"
+          HERMES_DIR="$BUILD_DIR/hermes-agent"
+          mkdir -p "$HERMES_DIR"
+
+          # 克隆 Hermes 源码
+          git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /tmp/hermes-src
+
+          # 复制核心文件
+          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py; do
+            [ -f "/tmp/hermes-src/$f" ] && cp "/tmp/hermes-src/$f" "$HERMES_DIR/"
+          done
+          for d in agent tools hermes_cli gateway plugins cron acp_adapter tui_gateway skills; do
+            [ -d "/tmp/hermes-src/$d" ] && cp -r "/tmp/hermes-src/$d" "$HERMES_DIR/$d"
+          done
+          [ -f "/tmp/hermes-src/pyproject.toml" ] && cp "/tmp/hermes-src/pyproject.toml" "$HERMES_DIR/"
+
+          # 清理
+          find "$HERMES_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+          find "$HERMES_DIR" -name '*.pyc' -delete 2>/dev/null || true
+          rm -rf /tmp/hermes-src
+
+          echo "=== Hermes bundled ==="
+          du -sh "$HERMES_DIR"
+
       - name: Upload build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
