@@ -40,27 +40,37 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
-
-      - name: Go mod tidy
-        run: go mod tidy
-
-      # Linux 依赖
+      # 平台依赖 — 必须在 Go 操作之前安装
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
 
-      # 构建 Wails 应用
+      # 先构建前端，让 go:embed 能找到 frontend/dist
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      # Go 依赖
+      - name: Go mod tidy
+        run: go mod tidy
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      # 构建 Wails 应用（-s 跳过前端构建，因为已经构建过了）
       - name: Build Wails App
-        run: wails build -clean -trimpath -platform ${{ matrix.platform }} -o ${{ matrix.asset }}
+        run: wails build -clean -trimpath -s -platform ${{ matrix.platform }} -o ${{ matrix.asset }}
 
       # Windows NSIS 安装器
       - name: Build Windows NSIS Installer
         if: runner.os == 'Windows'
-        run: wails build -clean -trimpath -platform windows/amd64 -nsis -o hixns-agent.exe
+        run: wails build -clean -trimpath -s -platform windows/amd64 -nsis -o hixns-agent.exe
 
       # 上传产物
       - name: Upload binary
@@ -104,9 +114,9 @@ jobs:
           body: |
             ## Hi!XNS ${{ github.ref_name }}
 
-            ### 🚀 架构升级：迁移到 Wails v2
+            ### 架构升级：迁移到 Wails v2
 
-            本版本从 go-webview 迁移到 Wails v2 框架，彻底解决窗口控制问题。
+            从 go-webview 迁移到 Wails v2 框架，彻底解决窗口控制问题。
 
             ### 下载安装包
             | 平台 | 安装包 | 说明 |
@@ -116,13 +126,13 @@ jobs:
             | **Linux** | `*-linux-amd64` | chmod +x 后直接运行 |
 
             ### 改进
-            - ✅ 无边框窗口 — Wails `Frameless: true`
-            - ✅ 顶部拖拽 — CSS `--wails-draggable: drag`
-            - ✅ 禁用右键 — `EnableDefaultContextMenu: false`
-            - ✅ 无启动白屏 — `StartHidden: true` + DOM ready 后显示
-            - ✅ 最小窗口 900×600
-            - ✅ 自动跟随系统主题
-            - ✅ NSIS 安装器（替代 Inno Setup）
+            - 无边框窗口 (Frameless)
+            - 顶部拖拽 (CSS --wails-draggable)
+            - 禁用右键菜单
+            - 无启动白屏 (StartHidden + DOM ready 显示)
+            - 最小窗口 900x600
+            - 自动跟随系统主题
+            - NSIS 安装器
           files: release/*
           draft: false
           prerelease: false
