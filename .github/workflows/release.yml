@@ -39,11 +39,17 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+          cache: false
 
       # 平台依赖
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev
+          # 优先安装 4.1，如果失败则安装 4.0
+          sudo apt-get install -y libwebkit2gtk-4.1-dev || sudo apt-get install -y libwebkit2gtk-4.0-dev
+
       - name: Install Windows C compiler
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
@@ -55,7 +61,6 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          # 将 MSYS2 mingw64 bin 目录加到 PATH，确保 Go CGO 能找到 gcc
           echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
           echo "CC=gcc" >> $GITHUB_ENV
           echo "CGO_ENABLED=1" >> $GITHUB_ENV
@@ -81,13 +86,10 @@ jobs:
         shell: bash
         run: |
           EXTRA_FLAGS=""
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            EXTRA_FLAGS="-webview2 browser -debug"
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            pkg-config --exists webkit2gtk-4.1 && EXTRA_FLAGS="-tags webkit2_41" || true
           fi
-          wails build -clean -trimpath -s -skipbindings -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS 2>&1 || {
-            echo "::error::Wails build failed. Check logs above."
-            exit 1
-          }
+          wails build -clean -trimpath -s -skipbindings -v -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS
 
       # Windows NSIS
       - name: Build Windows NSIS Installer
