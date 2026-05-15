@@ -4,17 +4,10 @@ import type {
 } from '@/types'
 
 // ============================================================
-// 检测是否在 Tauri 环境中运行
+// API 调用层 — 直接 HTTP 调用 (Wails 模式)
 // ============================================================
 
-const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__
-
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  if (isTauri) {
-    const { invoke: tauriInvoke } = await import('@tauri-apps/api/core')
-    return tauriInvoke<T>(cmd, args)
-  }
-  // 浏览器模式：直接调用 gfw.net / 2x.com.cn API
   return browserFallback<T>(cmd, args)
 }
 
@@ -324,7 +317,6 @@ export async function twoXPhoneLogin(phone: string, password: string) {
 }
 
 export async function twoXGetProfile() {
-  if (isTauri) return invoke('skill_store_get_profile' as any)
   return { username: 'browser_user', nickname: 'Browser User' }
 }
 
@@ -514,7 +506,7 @@ export async function generateTitle(
 // ============================================================
 
 export function isBrowserMode() {
-  return !isTauri
+  return true
 }
 
 export async function browserChat(
