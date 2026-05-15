@@ -1792,9 +1792,10 @@ func detectHermes() hermesInfo {
 	bundledPaths := []string{}
 	if exeDir != "" {
 		bundledPaths = append(bundledPaths,
-			filepath.Join(exeDir, "bundled", "hermes-agent"),            // 同目录
-			filepath.Join(exeDir, "..", "bundled", "hermes-agent"),       // 开发模式
-			filepath.Join(exeDir, "..", "Resources", "hermes-agent"),     // macOS bundle
+			filepath.Join(exeDir, "hermes-agent"),                // 安装包同目录 (Wails NSIS/AppImage)
+			filepath.Join(exeDir, "bundled", "hermes-agent"),     // 备用
+			filepath.Join(exeDir, "..", "bundled", "hermes-agent"),
+			filepath.Join(exeDir, "..", "Resources", "hermes-agent"),
 		)
 	}
 	// 项目目录（开发时）

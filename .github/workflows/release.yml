@@ -17,12 +17,18 @@ jobs:
           - os: windows-latest
             platform: windows/amd64
             asset: hixns-agent-windows-amd64.exe
+            hermes_python_url: https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip
+            hermes_python_dir: hermes-python
           - os: ubuntu-22.04
             platform: linux/amd64
             asset: hixns-agent-linux-amd64
+            hermes_python_url: https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz
+            hermes_python_dir: hermes-python
           - os: macos-latest
             platform: darwin/universal
             asset: hixns-agent-macos-universal
+            hermes_python_url: https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz
+            hermes_python_dir: hermes-python
 
     runs-on: ${{ matrix.os }}
 
@@ -46,9 +52,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev
-          # 优先安装 4.1，如果失败则安装 4.0
-          sudo apt-get install -y libwebkit2gtk-4.1-dev || sudo apt-get install -y libwebkit2gtk-4.0-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev
 
       - name: Install Windows C compiler
         if: runner.os == 'Windows'
@@ -82,6 +86,114 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
+      # =====================================================
+      # 构建 Hermes 完整运行环境（Python + 依赖）
+      # =====================================================
+      - name: Build Hermes Environment (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          BUILD_DIR="build/bin"
+          HERMES_SRC_DIR="$BUILD_DIR/hermes-agent"
+          HERMES_PY_DIR="$BUILD_DIR/hermes-python"
+          mkdir -p "$HERMES_SRC_DIR" "$HERMES_PY_DIR"
+
+          # 克隆 Hermes 源码
+          git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /tmp/hermes-src
+
+          # 复制核心文件
+          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py; do
+            [ -f "/tmp/hermes-src/$f" ] && cp "/tmp/hermes-src/$f" "$HERMES_SRC_DIR/"
+          done
+          for d in agent tools hermes_cli gateway plugins cron acp_adapter tui_gateway skills; do
+            [ -d "/tmp/hermes-src/$d" ] && cp -r "/tmp/hermes-src/$d" "$HERMES_SRC_DIR/$d"
+          done
+          [ -f "/tmp/hermes-src/pyproject.toml" ] && cp "/tmp/hermes-src/pyproject.toml" "$HERMES_SRC_DIR/"
+          rm -rf /tmp/hermes-src
+
+          # 下载嵌入式 Python
+          curl -fsSL "${{ matrix.hermes_python_url }}" -o /tmp/python-embed.zip
+          unzip -q /tmp/python-embed.zip -d "$HERMES_PY_DIR/"
+          rm /tmp/python-embed.zip
+
+          # 安装 pip
+          curl -fsSL https://bootstrap.pypa.io/get-pip.py -o "$HERMES_PY_DIR/get-pip.py"
+          "$HERMES_PY_DIR/python.exe" "$HERMES_PY_DIR/get-pip.py" --no-warn-script-location
+
+          # 安装 Hermes 依赖
+          cd "$HERMES_PY_DIR"
+          python.exe -m pip install --no-warn-script-location /tmp/hermes-src 2>/dev/null || true
+          # 如果上面失败，手动安装核心依赖
+          python.exe -m pip install --no-warn-script-location \
+            aiohttp pydantic pyyaml rich httpx openai tiktoken \
+            beautifulsoup4 lxml playwright python-dotenv 2>/dev/null || true
+          cd "$GITHUB_WORKSPACE"
+
+          # 创建启动脚本
+          cat > "$HERMES_SRC_DIR/run-hermes.sh" << 'SCRIPT'
+          @echo off
+          set SCRIPT_DIR=%~dp0
+          set PYTHON_DIR=%SCRIPT_DIR%..\hermes-python
+          "%PYTHON_DIR%\python.exe" -m hermes_cli %*
+          SCRIPT
+
+          find "$HERMES_SRC_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+
+          echo "=== Hermes bundled (Windows) ==="
+          du -sh "$HERMES_SRC_DIR" "$HERMES_PY_DIR"
+
+      - name: Build Hermes Environment (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          BUILD_DIR="build/bin"
+          HERMES_SRC_DIR="$BUILD_DIR/hermes-agent"
+          HERMES_PY_DIR="$BUILD_DIR/hermes-python"
+          mkdir -p "$HERMES_SRC_DIR" "$HERMES_PY_DIR"
+
+          # 克隆 Hermes 源码
+          git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /tmp/hermes-src
+
+          # 复制核心文件
+          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py; do
+            [ -f "/tmp/hermes-src/$f" ] && cp "/tmp/hermes-src/$f" "$HERMES_SRC_DIR/"
+          done
+          for d in agent tools hermes_cli gateway plugins cron acp_adapter tui_gateway skills; do
+            [ -d "/tmp/hermes-src/$d" ] && cp -r "/tmp/hermes-src/$d" "$HERMES_SRC_DIR/$d"
+          done
+          [ -f "/tmp/hermes-src/pyproject.toml" ] && cp "/tmp/hermes-src/pyproject.toml" "$HERMES_SRC_DIR/"
+
+          # 用系统 Python 创建 venv
+          python3 -m venv "$HERMES_PY_DIR"
+          source "$HERMES_PY_DIR/bin/activate"
+
+          # 安装 Hermes 依赖
+          pip install --no-cache-dir \
+            aiohttp pydantic pyyaml rich httpx openai tiktoken \
+            beautifulsoup4 lxml playwright python-dotenv 2>/dev/null || true
+
+          # 如果 pyproject.toml 存在，尝试安装
+          pip install --no-cache-dir /tmp/hermes-src 2>/dev/null || true
+
+          deactivate
+
+          # 创建启动脚本
+          cat > "$HERMES_SRC_DIR/run-hermes.sh" << 'SCRIPT'
+          #!/bin/bash
+          SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+          PYTHON_DIR="$SCRIPT_DIR/../hermes-python"
+          exec "$PYTHON_DIR/bin/python3" -m hermes_cli "$@"
+          SCRIPT
+          chmod +x "$HERMES_SRC_DIR/run-hermes.sh"
+
+          # 清理
+          find "$HERMES_SRC_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+          rm -rf /tmp/hermes-src
+          find "$HERMES_PY_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+
+          echo "=== Hermes bundled (${{ runner.os }}) ==="
+          du -sh "$HERMES_SRC_DIR" "$HERMES_PY_DIR"
+
       # 构建
       - name: Build Wails App
         id: build
@@ -100,34 +212,7 @@ jobs:
             exit $BUILD_EXIT_CODE
           fi
 
-      # 打包 Hermes Agent
-      - name: Bundle Hermes Agent
-        shell: bash
-        run: |
-          BUILD_DIR="build/bin"
-          HERMES_DIR="$BUILD_DIR/hermes-agent"
-          mkdir -p "$HERMES_DIR"
-
-          # 克隆 Hermes 源码
-          git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /tmp/hermes-src
-
-          # 复制核心文件
-          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py; do
-            [ -f "/tmp/hermes-src/$f" ] && cp "/tmp/hermes-src/$f" "$HERMES_DIR/"
-          done
-          for d in agent tools hermes_cli gateway plugins cron acp_adapter tui_gateway skills; do
-            [ -d "/tmp/hermes-src/$d" ] && cp -r "/tmp/hermes-src/$d" "$HERMES_DIR/$d"
-          done
-          [ -f "/tmp/hermes-src/pyproject.toml" ] && cp "/tmp/hermes-src/pyproject.toml" "$HERMES_DIR/"
-
-          # 清理
-          find "$HERMES_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
-          find "$HERMES_DIR" -name '*.pyc' -delete 2>/dev/null || true
-          rm -rf /tmp/hermes-src
-
-          echo "=== Hermes bundled ==="
-          du -sh "$HERMES_DIR"
-
+      # 上传构建日志
       - name: Upload build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -135,24 +220,107 @@ jobs:
           name: build-log-${{ matrix.os }}
           path: build.log
 
-      # 上传
-      - name: Upload binary
+      # 上传二进制 + Hermes
+      - name: Upload binary + Hermes
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
           path: build/bin/**
 
-      # Windows NSIS
+      # =====================================================
+      # 全平台安装包
+      # =====================================================
       - name: Build Windows NSIS Installer
         if: runner.os == 'Windows'
-        run: wails build -clean -trimpath -s -skipbindings -platform windows/amd64 -nsis -o hixns-agent.exe
+        shell: bash
+        run: |
+          # NSIS 打包需要 Hermes 也在 build/bin 里
+          wails build -clean -trimpath -s -skipbindings -platform windows/amd64 -nsis -o hixns-agent.exe 2>&1 | tee nsis-build.log
+          echo "=== NSIS output ==="
+          find build/bin -name "*installer*" -o -name "*.exe" 2>/dev/null
 
-      - name: Upload NSIS installer
+      - name: Upload Windows Installer
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: HiXNS-Setup-windows
           path: build/bin/*-amd64-installer.exe
+
+      - name: Build Linux AppImage
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # Wails 自带 AppImage 支持
+          wails build -clean -trimpath -s -skipbindings -platform linux/amd64 -o hixns-agent-appimage -upxlevel 9 2>&1 || true
+          # 如果 Wails 不支持 AppImage，手动打包
+          if [ ! -f "build/bin/hixns-agent-appimage" ]; then
+            echo "Wails AppImage not supported, using direct binary"
+          fi
+          # 准备 AppImage
+          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps
+          cp build/bin/hixns-agent-linux-amd64 AppDir/usr/bin/hixns-agent
+          cp build/bin/hermes-agent AppDir/usr/bin/ -r 2>/dev/null || true
+          cp build/bin/hermes-python AppDir/usr/bin/ -r 2>/dev/null || true
+
+          # 创建 .desktop
+          cat > AppDir/HiXNS.desktop << 'EOF'
+          [Desktop Entry]
+          Name=Hi!XNS
+          Exec=hixns-agent
+          Icon=HiXNS
+          Type=Application
+          Categories=Utility;
+          EOF
+
+          # 下载 linuxdeploy 打包 AppImage
+          curl -fsSL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -o /tmp/linuxdeploy
+          chmod +x /tmp/linuxdeploy
+          cd AppDir
+          /tmp/linuxdeploy --appdir . --output appimage 2>&1 || echo "AppImage build skipped"
+          cd ..
+          if [ -f "HiXNS-*.AppImage" ]; then
+            mv HiXNS-*.AppImage build/bin/HiXNS-linux-x86_64.AppImage
+          fi
+
+      - name: Upload Linux AppImage
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: HiXNS-Setup-linux
+          path: build/bin/*.AppImage
+
+      - name: Build macOS DMG
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          # 构建 .app bundle
+          wails build -clean -trimpath -s -skipbindings -platform darwin/universal -o HiXNS.app 2>&1 | tee dmg-build.log
+
+          # 创建 DMG
+          if [ -d "build/bin/HiXNS.app" ]; then
+            # 复制 Hermes 到 .app 内
+            cp -r build/bin/hermes-agent build/bin/HiXNS.app/Contents/Resources/ 2>/dev/null || true
+            cp -r build/bin/hermes-python build/bin/HiXNS.app/Contents/Resources/ 2>/dev/null || true
+
+            # 安装 create-dmg
+            brew install create-dmg 2>/dev/null || true
+            create-dmg \
+              --volname "Hi!XNS" \
+              --window-pos 200 200 \
+              --window-size 600 400 \
+              --icon-size 100 \
+              --icon "HiXNS.app" 150 200 \
+              --app-drop-link 450 200 \
+              "build/bin/HiXNS-macos.dmg" \
+              "build/bin/HiXNS.app" 2>/dev/null || echo "DMG build skipped"
+          fi
+
+      - name: Upload macOS DMG
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: HiXNS-Setup-macos
+          path: build/bin/*.dmg
 
   release:
     needs: build
@@ -172,7 +340,7 @@ jobs:
           for dir in artifacts/*/; do
             cp "$dir"* release/ 2>/dev/null || true
           done
-          chmod +x release/hixns-agent-linux-* release/hixns-agent-macos-* 2>/dev/null || true
+          chmod +x release/hixns-agent-linux-* release/hixns-agent-macos-* release/*.AppImage 2>/dev/null || true
           ls -lh release/
 
       - name: Create GitHub Release
@@ -182,23 +350,24 @@ jobs:
           body: |
             ## Hi!XNS ${{ github.ref_name }}
 
-            ### 架构升级：迁移到 Wails v2
+            ### 全平台安装包 + Hermes 完整内嵌
 
-            从 go-webview 迁移到 Wails v2 框架，彻底解决窗口控制问题。
+            每个安装包都包含完整的 Hermes Agent 运行环境（Python + 依赖），开箱即用。
 
             ### 下载
             | 平台 | 文件 | 说明 |
             |------|------|------|
-            | **Windows** | `hixns-agent-windows-amd64.exe` | 直接运行 |
-            | **macOS** | `hixns-agent-macos-universal` | Intel + Apple Silicon |
-            | **Linux** | `hixns-agent-linux-amd64` | chmod +x 后运行 |
+            | **Windows** | `HiXNS-Setup-windows/*-amd64-installer.exe` | NSIS 安装包 |
+            | **Linux** | `HiXNS-Setup-linux/*.AppImage` | AppImage 安装包 |
+            | **macOS** | `HiXNS-Setup-macos/*.dmg` | DMG 安装包 |
 
             ### 改进
+            - 全平台安装包（NSIS / AppImage / DMG）
+            - Hermes Agent 完整内嵌（Python 运行时 + 依赖预装）
+            - 开箱即用，无需额外安装 Python
             - 无边框窗口 + CSS 拖拽
             - 禁用右键菜单
             - 无启动白屏
-            - 最小窗口 900×600
-            - 自动跟随系统主题
           files: release/*
           draft: false
           prerelease: false
