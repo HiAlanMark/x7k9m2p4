@@ -83,13 +83,26 @@ jobs:
 
       # 构建
       - name: Build Wails App
+        id: build
         shell: bash
         run: |
           EXTRA_FLAGS=""
           if [ "${{ runner.os }}" = "Linux" ]; then
             pkg-config --exists webkit2gtk-4.1 && EXTRA_FLAGS="-tags webkit2_41" || true
           fi
-          wails build -clean -trimpath -s -skipbindings -v -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS
+          # 捕获详细日志到文件
+          wails build -clean -trimpath -s -skipbindings -v -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS 2>&1 | tee build.log || true
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "::error::Wails build failed. See build.log artifact."
+            exit 1
+          fi
+
+      - name: Upload build log on failure
+        if: failure() && steps.build.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ matrix.platform }}
+          path: build.log
 
       # Windows NSIS
       - name: Build Windows NSIS Installer
