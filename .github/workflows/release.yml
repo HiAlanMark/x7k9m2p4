@@ -91,7 +91,7 @@ jobs:
           if [ "${{ runner.os }}" = "Linux" ]; then
             pkg-config --exists webkit2gtk-4.1 && EXTRA_FLAGS="-tags webkit2_41" || true
           fi
-          wails build -clean -trimpath -s -skipbindings -v -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS 2>&1 | tee build.log
+          wails build -clean -trimpath -s -skipbindings -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS 2>&1 | tee build.log
           BUILD_EXIT_CODE=${PIPESTATUS[0]}
           echo "=== Build directory contents ==="
           find build/ -type f 2>/dev/null || echo "build/ dir not found"
