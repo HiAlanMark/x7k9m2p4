@@ -106,7 +106,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log-${{ matrix.platform }}
+          name: build-log-${{ matrix.os }}
           path: build.log
 
       # 上传
