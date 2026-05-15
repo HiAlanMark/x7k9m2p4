@@ -2039,9 +2039,10 @@ func openDesktopWindow(url string) {
 
 	log.Printf("[Hi!XNS] 正在打开桌面窗口: %s", url)
 
-	// Windows: 在创建 webview 前先设置窗口背景为黑色（消除白屏）
+	// Windows: 启动窗口初始化 goroutine
+	// 它会等待窗口创建后立即隐藏 → 去标题栏 → 子类化 → 等前端信号显示
 	if runtime.GOOS == "windows" {
-		go setWindowBackgroundBlack()
+		go setupWindow()
 	}
 
 	w := webview.New(false)
@@ -2055,7 +2056,7 @@ func openDesktopWindow(url string) {
 	w.SetSize(1280, 860, webview.HintNone)
 	w.SetSize(900, 600, webview.HintMin)
 
-	// 绑定窗口控制函数供前端调用
+	// 绑定窗口控制函数
 	w.Bind("windowClose", func() {
 		w.Terminate()
 	})
@@ -2065,20 +2066,21 @@ func openDesktopWindow(url string) {
 	w.Bind("windowMaximize", func() {
 		toggleMaximizeWindow()
 	})
-	w.Bind("windowStartDrag", func() {
-		startDragWindow()
+	// windowShowReady: 前端启动画面渲染完毕后调用，显示窗口
+	w.Bind("windowShowReady", func() {
+		showWindowWhenReady()
 	})
 
-	// 注入 JS — 在页面加载前执行
+	// === 注入 JS ===
 	w.Init(`
-		// === 1. 消除白屏: 立即设置黑色背景 ===
+		// 1. 黑色背景（兜底）
 		(function(){
 			var s = document.createElement('style');
 			s.textContent = 'html,body,#app{background:#000!important;margin:0;padding:0;overflow:hidden}';
-			document.head.appendChild(s);
+			(document.head || document.documentElement).appendChild(s);
 		})();
 
-		// === 2. 窗口控制消息 ===
+		// 2. 窗口控制消息
 		window.addEventListener('message', function(e) {
 			if (!e.data || !e.data.type) return;
 			switch(e.data.type) {
@@ -2088,7 +2090,7 @@ func openDesktopWindow(url string) {
 			}
 		});
 
-		// === 3. 自动检测系统亮色/暗色 ===
+		// 3. 自动检测系统亮色/暗色
 		(function() {
 			var saved = localStorage.getItem('hermes_theme');
 			if (!saved || saved === 'system') {
@@ -2103,15 +2105,15 @@ func openDesktopWindow(url string) {
 			});
 		})();
 
-		// === 4. 全局禁用右键 + 输入框智能右键 ===
+		// 4. 全局禁用右键 + 输入框自定义右键菜单
 		document.addEventListener('contextmenu', function(e) {
 			e.preventDefault();
 			e.stopPropagation();
+			e.stopImmediatePropagation();
 			var el = e.target;
 			var isInput = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
-			if (!isInput) return;
+			if (!isInput) return false;
 
-			// 检查是否有选中文字
 			var selText = '';
 			if (el.selectionStart !== undefined && el.selectionEnd !== undefined) {
 				selText = el.value ? el.value.substring(el.selectionStart, el.selectionEnd) : '';
@@ -2120,7 +2122,6 @@ func openDesktopWindow(url string) {
 				selText = s ? s.toString() : '';
 			}
 
-			// 显示自定义右键菜单
 			var old = document.getElementById('hixns-ctx');
 			if (old) old.remove();
 			var menu = document.createElement('div');
@@ -2129,35 +2130,34 @@ func openDesktopWindow(url string) {
 			menu.style.left = Math.min(e.clientX, window.innerWidth - 140) + 'px';
 			menu.style.top = Math.min(e.clientY, window.innerHeight - 120) + 'px';
 
-			function addItem(label, fn, disabled) {
+			function addItem(label, fn) {
 				var item = document.createElement('div');
 				item.textContent = label;
-				item.style.cssText = 'padding:7px 16px;cursor:' + (disabled ? 'default' : 'pointer') + ';transition:background 0.1s;font-family:-apple-system,BlinkMacSystemFont,sans-serif;opacity:' + (disabled ? '0.35' : '1') + ';';
-				if (!disabled) {
-					item.onmouseenter = function() { item.style.background = 'rgba(255,255,255,0.08)'; };
-					item.onmouseleave = function() { item.style.background = ''; };
-					item.onclick = function() { fn(); menu.remove(); };
-				}
+				item.style.cssText = 'padding:7px 16px;cursor:pointer;transition:background 0.1s;font-family:-apple-system,BlinkMacSystemFont,sans-serif;';
+				item.onmouseenter = function() { item.style.background = 'rgba(255,255,255,0.08)'; };
+				item.onmouseleave = function() { item.style.background = ''; };
+				item.onclick = function() { fn(); menu.remove(); };
 				menu.appendChild(item);
 			}
 
 			if (selText.length > 0) {
-				addItem('复制', function() { navigator.clipboard.writeText(selText); });
-				addItem('剪切', function() { document.execCommand('cut'); });
-				addItem('粘贴', function() { navigator.clipboard.readText().then(function(t) { document.execCommand('insertText', false, t); }); });
+				addItem('\u590D\u5236', function() { navigator.clipboard.writeText(selText); });
+				addItem('\u526A\u5207', function() { document.execCommand('cut'); });
+				addItem('\u7C98\u8D34', function() { navigator.clipboard.readText().then(function(t) { document.execCommand('insertText', false, t); }); });
 			} else {
-				addItem('全选', function() { el.focus(); el.select ? el.select() : document.execCommand('selectAll'); });
-				addItem('粘贴', function() { el.focus(); navigator.clipboard.readText().then(function(t) { document.execCommand('insertText', false, t); }); });
+				addItem('\u5168\u9009', function() { el.focus(); el.select ? el.select() : document.execCommand('selectAll'); });
+				addItem('\u7C98\u8D34', function() { el.focus(); navigator.clipboard.readText().then(function(t) { document.execCommand('insertText', false, t); }); });
 			}
 
 			document.body.appendChild(menu);
 			setTimeout(function() {
-				function close() { if(menu.parentNode) menu.remove(); document.removeEventListener('mousedown', close); }
-				document.addEventListener('mousedown', close);
+				function close(ev) { if(menu.parentNode && !menu.contains(ev.target)) { menu.remove(); document.removeEventListener('mousedown', close, true); } }
+				document.addEventListener('mousedown', close, true);
 			}, 0);
+			return false;
 		}, true);
 
-		// === 5. 禁用拖拽文件 + 禁用选择(非输入框) ===
+		// 5. 禁用拖拽文件 + 禁用非输入区文本选择
 		document.addEventListener('dragover', function(e) { e.preventDefault(); });
 		document.addEventListener('drop', function(e) { e.preventDefault(); });
 		document.addEventListener('selectstart', function(e) {
@@ -2167,25 +2167,24 @@ func openDesktopWindow(url string) {
 			}
 		});
 
-		// === 6. 窗口拖拽: 顶部20px区域 ===
-		document.addEventListener('mousedown', function(e) {
-			if (e.button !== 0) return;
-			if (e.clientY > 20) return;
-			if (e.clientX > window.innerWidth - 150) return;
-			var el = e.target;
-			if (el.closest('button,a,input,textarea,select,[role="button"]')) return;
-			e.preventDefault();
-			if (window.windowStartDrag) window.windowStartDrag();
-		});
+		// 6. 启动画面渲染后通知 Go 显示窗口
+		// Vue 挂载后 SplashScreen 立即渲染，此时通知显示
+		(function waitAndShow() {
+			var check = setInterval(function() {
+				var splash = document.querySelector('.splash-screen');
+				var app = document.getElementById('app');
+				if (splash || (app && app.children.length > 0)) {
+					clearInterval(check);
+					if (window.windowShowReady) window.windowShowReady();
+				}
+			}, 30);
+			// 最多等 3 秒，防止卡死
+			setTimeout(function() {
+				clearInterval(check);
+				if (window.windowShowReady) window.windowShowReady();
+			}, 3000);
+		})();
 	`)
-
-	// Windows: 去掉系统标题栏
-	if runtime.GOOS == "windows" {
-		go func() {
-			time.Sleep(200 * time.Millisecond)
-			removeWindowFrame()
-		}()
-	}
 
 	w.Navigate(url)
 	w.Run()

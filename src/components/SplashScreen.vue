@@ -20,7 +20,7 @@
         </div>
       </div>
       <!-- Version -->
-      <div class="splash-version">v0.3.0</div>
+      <div class="splash-version">v0.4.2</div>
     </div>
   </transition>
 </template>

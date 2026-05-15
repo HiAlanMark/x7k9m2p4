@@ -2,8 +2,11 @@
 
 package main
 
-func removeWindowFrame()      {}
+func setupWindow()            {}
+func showWindowWhenReady()    {}
 func minimizeWindow()         {}
 func toggleMaximizeWindow()   {}
 func startDragWindow()        {}
+func removeWindowFrame()      {}
 func setWindowBackgroundBlack() {}
+func hideWindow()             {}
