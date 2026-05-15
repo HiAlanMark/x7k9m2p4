@@ -52,15 +52,17 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           update: true
-          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-make
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-cmake
 
-      - name: Set CC for Windows
+      - name: Set CGO for Windows
         if: runner.os == 'Windows'
         shell: bash
         run: |
           echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
           echo "CC=gcc" >> $GITHUB_ENV
           echo "CGO_ENABLED=1" >> $GITHUB_ENV
+          echo "CGO_CFLAGS=-I/C/msys64/mingw64/include" >> $GITHUB_ENV
+          echo "CGO_LDFLAGS=-L/C/msys64/mingw64/lib" >> $GITHUB_ENV
 
       # 先构建前端
       - name: Install frontend dependencies
