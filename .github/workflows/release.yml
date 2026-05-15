@@ -85,37 +85,41 @@ jobs:
       # 构建
       - name: Build Wails App
         id: build
+        env:
+          CGO_ENABLED: 1
         shell: bash
         run: |
           EXTRA_FLAGS=""
           if [ "${{ runner.os }}" = "Linux" ]; then
             pkg-config --exists webkit2gtk-4.1 && EXTRA_FLAGS="-tags webkit2_41" || true
           fi
-          # 捕获详细日志到文件
-          wails build -clean -trimpath -s -skipbindings -v -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS 2>&1 | tee build.log || true
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then
-            echo "::error::Wails build failed. See build.log artifact."
-            exit 1
+          wails build -clean -trimpath -s -skipbindings -v -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS 2>&1 | tee build.log
+          BUILD_EXIT_CODE=${PIPESTATUS[0]}
+          echo "=== Build directory contents ==="
+          ls -R build/ || echo "build/ dir not found"
+          if [ $BUILD_EXIT_CODE -ne 0 ]; then
+            echo "::error::Wails build failed with exit code $BUILD_EXIT_CODE"
+            exit $BUILD_EXIT_CODE
           fi
 
       - name: Upload build log on failure
-        if: failure() && steps.build.outcome == 'failure'
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: build-log-${{ matrix.platform }}
           path: build.log
-
-      # Windows NSIS
-      - name: Build Windows NSIS Installer
-        if: runner.os == 'Windows'
-        run: wails build -clean -trimpath -s -skipbindings -platform windows/amd64 -nsis -o hixns-agent.exe
 
       # 上传
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
-          path: build/bin/*
+          path: build/bin/**
+
+      # Windows NSIS
+      - name: Build Windows NSIS Installer
+        if: runner.os == 'Windows'
+        run: wails build -clean -trimpath -s -skipbindings -platform windows/amd64 -nsis -o hixns-agent.exe
 
       - name: Upload NSIS installer
         if: runner.os == 'Windows'
