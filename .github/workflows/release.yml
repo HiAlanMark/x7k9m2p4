@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     strategy:
@@ -41,7 +44,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
           cache: false
 
       # ── 平台依赖 ──────────────────────────────────────
@@ -49,7 +52,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev fuse
 
       - name: Install Windows C compiler
         if: runner.os == 'Windows'
@@ -96,6 +99,8 @@ jobs:
             echo "::error::Wails build failed"
             exit ${PIPESTATUS[0]}
           fi
+          echo "=== Build output ==="
+          find build/bin -type f -o -type d | sort
 
       # ── 2. 克隆 Hermes 源码 ───────────────────────────
       - name: Clone Hermes source
@@ -128,8 +133,7 @@ jobs:
           unzip -q /tmp/py.zip -d "$PYTHON_DIR/"
           rm /tmp/py.zip
 
-          # 启用 site 模块 (取消注释 import site)
-          # 嵌入式 Python 默认禁用 site，需要手动开启
+          # 启用 site 模块
           echo "import site" >> "$PYTHON_DIR/python311._pth"
 
           # 安装 pip
@@ -215,18 +219,21 @@ jobs:
           wails build -trimpath -s -skipbindings -platform windows/amd64 -nsis -o installer.exe 2>&1 | tee nsis.log
           echo "=== NSIS output ==="
           find build/bin -name "*.exe" -type f 2>/dev/null
+          find build/bin -name "*installer*" -type f 2>/dev/null
 
       - name: Rename Windows Installer
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          INSTaller=$(find build/bin -name "*-amd64-installer.exe" -type f | head -1)
+          # Wails NSIS 生成 <output>-x64-installer.exe 或 <output>-amd64-installer.exe
+          INSTaller=$(find build/bin -name "*-x64-installer.exe" -o -name "*-amd64-installer.exe" | head -1)
           if [ -n "$INSTaller" ]; then
             cp "$INSTaller" "build/bin/${{ matrix.nsis_asset }}"
             echo "Installer: $INSTaller -> ${{ matrix.nsis_asset }}"
           else
-            echo "::warning::NSIS installer not found, listing:"
+            echo "::error::NSIS installer not found, listing all exe files:"
             find build/bin -name "*.exe" -type f
+            exit 1
           fi
 
       # Linux AppImage
@@ -244,10 +251,10 @@ jobs:
           cp -r build/bin/hermes-agent "$APPDIR/usr/bin/" 2>/dev/null || true
           cp -r build/bin/hermes-python "$APPDIR/usr/bin/" 2>/dev/null || true
 
-          # .desktop
+          # .desktop (Name 不含特殊字符)
           cat > "$APPDIR/HiXNS.desktop" << 'EOF'
           [Desktop Entry]
-          Name=Hi!XNS
+          Name=HiXNS
           Comment=Hi!XNS AI Agent Desktop
           Exec=hixns-agent
           Icon=HiXNS
@@ -272,15 +279,22 @@ jobs:
           curl -fsSL "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -o /tmp/linuxdeploy
           chmod +x /tmp/linuxdeploy
 
-          # 打包
+          # 打包 (使用 APPIMAGE_EXE_NAME 控制输出文件名)
           cd "$APPDIR"
-          /tmp/linuxdeploy --appdir . --output appimage --desktop-file HiXNS.desktop --icon-file HiXNS.png --icon-name HiXNS 2>&1 | tail -10 || true
+          APPIMAGE_EXE_NAME="HiXNS-Linux-x86_64" /tmp/linuxdeploy --appdir . --output appimage --desktop-file HiXNS.desktop --icon-file HiXNS.png --icon-name HiXNS 2>&1 | tail -10 || true
+          echo "=== linuxdeploy output ==="
+          find . -name "*.AppImage" -type f
           cd "$GITHUB_WORKSPACE"
 
-          # 重命名
-          APPIMAGE=$(find . -name "HiXNS-*.AppImage" -type f | head -1)
+          # 重命名 (linuxdeploy 输出到当前目录)
+          APPIMAGE=$(find "$APPDIR" -name "*.AppImage" -type f | head -1)
           if [ -n "$APPIMAGE" ]; then
-            mv "$APPIMAGE" "build/bin/${{ matrix.appimage_asset }}"
+            cp "$APPIMAGE" "build/bin/${{ matrix.appimage_asset }}"
+            echo "AppImage: $APPIMAGE -> build/bin/${{ matrix.appimage_asset }}"
+          else
+            echo "::error::AppImage not found in $APPDIR"
+            find "$APPDIR" -type f | head -20
+            exit 1
           fi
 
       # macOS DMG
@@ -321,6 +335,9 @@ jobs:
             fi
           fi
 
+          echo "=== App bundle ==="
+          find "$APP_BUNDLE" -maxdepth 3 -type f | head -20
+
           # 复制 Hermes 到 .app 内 (与二进制同目录, detectHermes 优先查找)
           MACOS_DIR="$APP_BUNDLE/Contents/MacOS"
           cp -r build/bin/hermes-agent "$MACOS_DIR/" 2>/dev/null || true
@@ -329,7 +346,8 @@ jobs:
           # 安装 create-dmg
           brew install create-dmg 2>/dev/null || true
 
-          # 创建 DMG
+          # 创建 DMG (输出到 build/bin/)
+          DMG_OUTPUT="build/bin/${{ matrix.dmg_asset }}"
           create-dmg \
             --volname "Hi!XNS" \
             --window-pos 200 200 \
@@ -337,8 +355,12 @@ jobs:
             --icon-size 100 \
             --icon "HiXNS.app" 150 200 \
             --app-drop-link 450 200 \
-            "build/bin/${{ matrix.dmg_asset }}" \
-            "$APP_BUNDLE" 2>&1 | tail -5 || echo "DMG creation had issues"
+            "$DMG_OUTPUT" \
+            "$APP_BUNDLE" 2>&1
+
+          echo "=== DMG output ==="
+          ls -lh "$DMG_OUTPUT" 2>/dev/null || echo "DMG not found at $DMG_OUTPUT"
+          find build/bin -name "*.dmg" -type f
 
       # ── 5. 上传产物 ───────────────────────────────────
       - name: Upload build log on failure
