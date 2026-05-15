@@ -275,25 +275,33 @@ jobs:
           EOF
           chmod +x "$APPDIR/AppRun"
 
-          # 下载 linuxdeploy
+          # 下载 linuxdeploy (使用 --appimage-extract-and-run 避免 FUSE 问题)
           curl -fsSL "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -o /tmp/linuxdeploy
           chmod +x /tmp/linuxdeploy
 
-          # 打包 (使用 APPIMAGE_EXE_NAME 控制输出文件名)
-          cd "$APPDIR"
-          APPIMAGE_EXE_NAME="HiXNS-Linux-x86_64" /tmp/linuxdeploy --appdir . --output appimage --desktop-file HiXNS.desktop --icon-file HiXNS.png --icon-name HiXNS 2>&1 | tail -10 || true
-          echo "=== linuxdeploy output ==="
-          find . -name "*.AppImage" -type f
-          cd "$GITHUB_WORKSPACE"
+          # 打包 (用 --appimage-extract-and-run 绕过 FUSE)
+          APPIMAGE_EXE_NAME="HiXNS-Linux-x86_64" /tmp/linuxdeploy --appimage-extract-and-run \
+            --appdir "$APPDIR" \
+            --output appimage \
+            --desktop-file "$APPDIR/HiXNS.desktop" \
+            --icon-file "$APPDIR/HiXNS.png" \
+            --icon-name HiXNS \
+            2>&1 | tail -20
 
-          # 重命名 (linuxdeploy 输出到当前目录)
-          APPIMAGE=$(find "$APPDIR" -name "*.AppImage" -type f | head -1)
+          echo "=== linuxdeploy output ==="
+          find "$APPDIR" -name "*.AppImage" -type f
+          find "$GITHUB_WORKSPACE" -name "*.AppImage" -type f 2>/dev/null
+          find /tmp -name "*.AppImage" -type f 2>/dev/null
+
+          # 查找 AppImage (可能在多个位置)
+          APPIMAGE=$(find "$APPDIR" "$GITHUB_WORKSPACE" /tmp -name "*.AppImage" -type f 2>/dev/null | head -1)
           if [ -n "$APPIMAGE" ]; then
             cp "$APPIMAGE" "build/bin/${{ matrix.appimage_asset }}"
             echo "AppImage: $APPIMAGE -> build/bin/${{ matrix.appimage_asset }}"
           else
-            echo "::error::AppImage not found in $APPDIR"
-            find "$APPDIR" -type f | head -20
+            echo "::error::AppImage not found anywhere"
+            echo "=== AppDir contents ==="
+            ls -la "$APPDIR/"
             exit 1
           fi
 
