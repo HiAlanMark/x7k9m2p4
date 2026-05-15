@@ -17,7 +17,7 @@ jobs:
           - os: windows-latest
             platform: windows/amd64
             asset: hixns-agent-windows-amd64.exe
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             platform: linux/amd64
             asset: hixns-agent-linux-amd64
           - os: macos-latest
@@ -40,15 +40,14 @@ jobs:
         with:
           go-version: '1.22'
 
-      # 平台依赖 — 必须在 Go 操作之前安装
+      # 平台依赖
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev
-          sudo apt-get install -y libwebkit2gtk-4.0-dev 2>/dev/null || sudo apt-get install -y libwebkit2gtk-4.1-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
 
-      # 先构建前端，让 go:embed 能找到 frontend/dist
+      # 先构建前端
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm install
@@ -64,16 +63,22 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      # 构建 Wails 应用（-s 跳过前端构建，-skipbindings 跳过binding生成）
+      # 构建
       - name: Build Wails App
-        run: wails build -clean -trimpath -s -skipbindings -platform ${{ matrix.platform }} -o ${{ matrix.asset }}
+        shell: bash
+        run: |
+          EXTRA_FLAGS=""
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            EXTRA_FLAGS="-windowsconsole"
+          fi
+          wails build -clean -trimpath -s -skipbindings -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS
 
-      # Windows NSIS 安装器
+      # Windows NSIS
       - name: Build Windows NSIS Installer
         if: runner.os == 'Windows'
         run: wails build -clean -trimpath -s -skipbindings -platform windows/amd64 -nsis -o hixns-agent.exe
 
-      # 上传产物
+      # 上传
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
@@ -119,21 +124,19 @@ jobs:
 
             从 go-webview 迁移到 Wails v2 框架，彻底解决窗口控制问题。
 
-            ### 下载安装包
-            | 平台 | 安装包 | 说明 |
-            |------|--------|------|
-            | **Windows** | `*-installer.exe` | NSIS 安装器 |
-            | **macOS** | `*-macos-universal` | Intel + Apple Silicon |
-            | **Linux** | `*-linux-amd64` | chmod +x 后直接运行 |
+            ### 下载
+            | 平台 | 文件 | 说明 |
+            |------|------|------|
+            | **Windows** | `hixns-agent-windows-amd64.exe` | 直接运行 |
+            | **macOS** | `hixns-agent-macos-universal` | Intel + Apple Silicon |
+            | **Linux** | `hixns-agent-linux-amd64` | chmod +x 后运行 |
 
             ### 改进
-            - 无边框窗口 (Frameless)
-            - 顶部拖拽 (CSS --wails-draggable)
+            - 无边框窗口 + CSS 拖拽
             - 禁用右键菜单
-            - 无启动白屏 (StartHidden + DOM ready 显示)
-            - 最小窗口 900x600
+            - 无启动白屏
+            - 最小窗口 900×600
             - 自动跟随系统主题
-            - NSIS 安装器
           files: release/*
           draft: false
           prerelease: false
