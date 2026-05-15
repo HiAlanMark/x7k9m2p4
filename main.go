@@ -25,12 +25,15 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unsafe"
 
 	_ "modernc.org/sqlite"
 
-	webview "github.com/abemedia/go-webview"
-	_ "github.com/abemedia/go-webview/embedded" // 内嵌原生库 (webview.dll/dylib/so)
+	wails "github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 // ============================================================
@@ -1904,11 +1907,11 @@ var hermesState hermesInfo
 // 内嵌前端静态文件 (go:embed)
 // ============================================================
 
-//go:embed dist/*
+//go:embed all:frontend/dist
 var distFS embed.FS
 
 // ============================================================
-// Main
+// Main — Wails 桌面应用入口
 // ============================================================
 
 func main() {
@@ -1931,10 +1934,8 @@ func main() {
 	mux.HandleFunc("/v1/agent/install-skill", handleInstallSkill)
 	mux.HandleFunc("/v1/agent/skills", handleListSkills)
 	mux.HandleFunc("/v1/agent/uninstall-skill", handleUninstallSkill)
-	// Hermes config
 	mux.HandleFunc("/v1/agent/config", handleConfig)
 	mux.HandleFunc("/v1/agent/config/set", handleConfigSet)
-	// Hermes cron
 	mux.HandleFunc("/v1/agent/cron/list", handleCronList)
 	mux.HandleFunc("/v1/agent/cron/create", handleCronCreate)
 	mux.HandleFunc("/v1/agent/cron/pause", handleCronPause)
@@ -1942,35 +1943,29 @@ func main() {
 	mux.HandleFunc("/v1/agent/cron/remove", handleCronRemove)
 	mux.HandleFunc("/v1/agent/cron/run", handleCronRun)
 	mux.HandleFunc("/v1/agent/cron/update", handleCronUpdate)
-	// Hermes sessions
 	mux.HandleFunc("/v1/agent/sessions/list", handleSessionsList)
 	mux.HandleFunc("/v1/agent/sessions/delete", handleSessionsDelete)
 	mux.HandleFunc("/v1/agent/sessions/rename", handleSessionsRename)
-	// Hermes memory
 	mux.HandleFunc("/v1/agent/memory", handleMemory)
 	mux.HandleFunc("/v1/agent/memory/edit", handleMemoryEdit)
-	// Hermes tools
 	mux.HandleFunc("/v1/agent/tools/list", handleToolsList)
 	mux.HandleFunc("/v1/agent/tools/enable", handleToolsEnable)
 	mux.HandleFunc("/v1/agent/tools/disable", handleToolsDisable)
 
-	// 内嵌前端 — 从 go:embed 的 dist/ 目录提供 SPA 静态文件
-	frontendFS, _ := fs.Sub(distFS, "dist")
+	// 内嵌前端 — SPA 静态文件
+	frontendFS, _ := fs.Sub(distFS, "frontend/dist")
 	fileServer := http.FileServer(http.FS(frontendFS))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		setCORS(w)
-		// API 路径不走前端
 		if strings.HasPrefix(r.URL.Path, "/v1/") {
 			http.NotFound(w, r)
 			return
 		}
-		// 尝试提供静态文件，不存在则返回 index.html (SPA fallback)
 		path := r.URL.Path
 		if path == "/" {
 			path = "/index.html"
 		}
 		if _, err := fs.Stat(frontendFS, strings.TrimPrefix(path, "/")); err != nil {
-			// 文件不存在 → SPA fallback 到 index.html
 			r.URL.Path = "/"
 		}
 		fileServer.ServeHTTP(w, r)
@@ -2010,214 +2005,74 @@ func main() {
 		}
 	}()
 
-	// 等待服务器就绪
-	time.Sleep(300 * time.Millisecond)
+	// 创建 Wails App
+	app := NewApp()
 
-	// 在主线程打开原生桌面窗口（GUI 必须在主线程）
-	openDesktopWindow("http://" + addr)
+	// 启动 Wails 桌面窗口
+	err := wails.Run(&options.App{
+		Title:     "Hi!XNS",
+		Width:     1280,
+		Height:    860,
+		MinWidth:  900,
+		MinHeight: 600,
 
-	// 窗口关闭后优雅退出
-	log.Println("[Hi!XNS Agent] 正在关闭...")
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	server.Shutdown(ctx)
-	log.Println("[Hi!XNS Agent] 已关闭")
+		// === 核心：一行解决之前所有 Win32 hack ===
+		Frameless:                true,  // 无边框，不需要 removeWindowFrame()
+		StartHidden:              true,  // 启动隐藏，不需要 ShowWindow(SW_HIDE)
+		EnableDefaultContextMenu: false, // 禁用右键，不需要 COM vtable hack
+
+		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 255}, // 黑色背景，不需要 CreateSolidBrush
+
+		// 拖拽通过 CSS --wails-draggable:drag 声明（前端 TitleBar 设置）
+
+		AssetServer: &assetserver.Options{
+			Assets: distFS,
+		},
+
+		OnStartup:     app.startup,
+		OnDomReady:    app.domReady,
+		OnBeforeClose: app.beforeClose,
+		OnShutdown: func(ctx context.Context) {
+			// 窗口关闭后优雅退出 HTTP 服务
+			log.Println("[Hi!XNS Agent] 正在关闭...")
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			server.Shutdown(shutdownCtx)
+			log.Println("[Hi!XNS Agent] 已关闭")
+		},
+
+		Bind: []interface{}{
+			app,
+		},
+
+		// Windows 特定选项
+		Windows: &windows.Options{
+			Theme: windows.SystemDefault, // 自动跟随系统主题
+			// WebviewIsTransparent: true,
+		},
+
+		// macOS 特定选项
+		Mac: &mac.Options{
+			TitleBar: mac.TitleBarHiddenInset(),
+			About: &mac.AboutInfo{
+				Title:   "Hi!XNS",
+				Message: "AI Agent Desktop",
+			},
+		},
+
+		// Linux 特定选项
+		Linux: &linux.Options{},
+
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop:     false,
+			DisableWebViewDrop: true,
+		},
+	})
+
+	if err != nil {
+		log.Fatalf("[Hi!XNS] Wails 启动失败: %v", err)
+	}
 }
 
 // Regex for search
 var _ = regexp.Compile
-
-// openDesktopWindow 打开原生桌面窗口
-func openDesktopWindow(url string) {
-	// recover 防止 webview panic 导致程序无声退出
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("[Hi!XNS] 原生窗口异常: %v，打开浏览器...", r)
-			openBrowser(url)
-			select {}
-		}
-	}()
-
-	log.Printf("[Hi!XNS] 正在打开桌面窗口: %s", url)
-
-	// Windows: 启动窗口初始化 goroutine
-	// 它会等待窗口创建后立即隐藏 → 去标题栏 → 子类化 → 等前端信号显示
-	if runtime.GOOS == "windows" {
-		go setupWindow()
-	}
-
-	w := webview.New(false)
-	if w == nil {
-		log.Printf("[Hi!XNS] 无法创建原生窗口，打开浏览器...")
-		openBrowser(url)
-		select {}
-	}
-	defer w.Destroy()
-	w.SetTitle("Hi!XNS")
-	w.SetSize(1280, 860, webview.HintNone)
-	w.SetSize(900, 600, webview.HintMin)
-
-	// 绑定窗口控制函数
-	w.Bind("windowClose", func() {
-		w.Terminate()
-	})
-	w.Bind("windowMinimize", func() {
-		minimizeWindow()
-	})
-	w.Bind("windowMaximize", func() {
-		toggleMaximizeWindow()
-	})
-	// windowShowReady: 前端启动画面渲染完毕后调用，显示窗口
-	w.Bind("windowShowReady", func() {
-		showWindowWhenReady()
-	})
-
-	// === 注入 JS ===
-	w.Init(`
-		// 1. 黑色背景（兜底）
-		(function(){
-			var s = document.createElement('style');
-			s.textContent = 'html,body,#app{background:#000!important;margin:0;padding:0;overflow:hidden}';
-			(document.head || document.documentElement).appendChild(s);
-		})();
-
-		// 2. 窗口控制消息
-		window.addEventListener('message', function(e) {
-			if (!e.data || !e.data.type) return;
-			switch(e.data.type) {
-				case 'window-close': if(window.windowClose) window.windowClose(); break;
-				case 'window-minimize': if(window.windowMinimize) window.windowMinimize(); break;
-				case 'window-maximize': if(window.windowMaximize) window.windowMaximize(); break;
-			}
-		});
-
-		// 3. 自动检测系统亮色/暗色
-		(function() {
-			var saved = localStorage.getItem('hermes_theme');
-			if (!saved || saved === 'system') {
-				var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-				document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-			}
-			window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-				var t = localStorage.getItem('hermes_theme');
-				if (!t || t === 'system') {
-					document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-				}
-			});
-		})();
-
-		// 4. 全局禁用右键 + 输入框自定义右键菜单
-		document.addEventListener('contextmenu', function(e) {
-			e.preventDefault();
-			e.stopPropagation();
-			e.stopImmediatePropagation();
-			var el = e.target;
-			var isInput = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
-			if (!isInput) return false;
-
-			var selText = '';
-			if (el.selectionStart !== undefined && el.selectionEnd !== undefined) {
-				selText = el.value ? el.value.substring(el.selectionStart, el.selectionEnd) : '';
-			} else {
-				var s = window.getSelection();
-				selText = s ? s.toString() : '';
-			}
-
-			var old = document.getElementById('hixns-ctx');
-			if (old) old.remove();
-			var menu = document.createElement('div');
-			menu.id = 'hixns-ctx';
-			menu.style.cssText = 'position:fixed;z-index:999999;background:rgba(28,28,30,0.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:4px 0;min-width:130px;box-shadow:0 12px 40px rgba(0,0,0,0.5);font-size:13px;color:#e0e0e0;user-select:none;';
-			menu.style.left = Math.min(e.clientX, window.innerWidth - 140) + 'px';
-			menu.style.top = Math.min(e.clientY, window.innerHeight - 120) + 'px';
-
-			function addItem(label, fn) {
-				var item = document.createElement('div');
-				item.textContent = label;
-				item.style.cssText = 'padding:7px 16px;cursor:pointer;transition:background 0.1s;font-family:-apple-system,BlinkMacSystemFont,sans-serif;';
-				item.onmouseenter = function() { item.style.background = 'rgba(255,255,255,0.08)'; };
-				item.onmouseleave = function() { item.style.background = ''; };
-				item.onclick = function() { fn(); menu.remove(); };
-				menu.appendChild(item);
-			}
-
-			if (selText.length > 0) {
-				addItem('\u590D\u5236', function() { navigator.clipboard.writeText(selText); });
-				addItem('\u526A\u5207', function() { document.execCommand('cut'); });
-				addItem('\u7C98\u8D34', function() { navigator.clipboard.readText().then(function(t) { document.execCommand('insertText', false, t); }); });
-			} else {
-				addItem('\u5168\u9009', function() { el.focus(); el.select ? el.select() : document.execCommand('selectAll'); });
-				addItem('\u7C98\u8D34', function() { el.focus(); navigator.clipboard.readText().then(function(t) { document.execCommand('insertText', false, t); }); });
-			}
-
-			document.body.appendChild(menu);
-			setTimeout(function() {
-				function close(ev) { if(menu.parentNode && !menu.contains(ev.target)) { menu.remove(); document.removeEventListener('mousedown', close, true); } }
-				document.addEventListener('mousedown', close, true);
-			}, 0);
-			return false;
-		}, true);
-
-		// 5. 禁用拖拽文件 + 禁用非输入区文本选择
-		document.addEventListener('dragover', function(e) { e.preventDefault(); });
-		document.addEventListener('drop', function(e) { e.preventDefault(); });
-		document.addEventListener('selectstart', function(e) {
-			var el = e.target;
-			if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA' && !el.isContentEditable && !el.closest('.msg-content,.markdown-body,.tool-pre')) {
-				e.preventDefault();
-			}
-		});
-
-		// 6. 启动画面渲染后通知 Go 显示窗口
-		// Vue 挂载后 SplashScreen 立即渲染，此时通知显示
-		(function waitAndShow() {
-			var check = setInterval(function() {
-				var splash = document.querySelector('.splash-screen');
-				var app = document.getElementById('app');
-				if (splash || (app && app.children.length > 0)) {
-					clearInterval(check);
-					if (window.windowShowReady) window.windowShowReady();
-				}
-			}, 30);
-			// 最多等 3 秒，防止卡死
-			setTimeout(function() {
-				clearInterval(check);
-				if (window.windowShowReady) window.windowShowReady();
-			}, 3000);
-		})();
-	`)
-
-	w.Navigate(url)
-
-	// Windows: Navigate 后禁用 WebView2 原生右键菜单
-	if runtime.GOOS == "windows" {
-		// 获取 webview 内部 handle: interface 值的第二个 word 是指向 concrete struct 的指针
-		// webview struct = { handle uintptr }，所以解引用两次得到 handle
-		iface := *(*[2]uintptr)(unsafe.Pointer(&w))
-		wvHandle := *(*uintptr)(unsafe.Pointer(iface[1]))
-
-		go func() {
-			time.Sleep(1500 * time.Millisecond) // 等待 WebView2 引擎完全初始化
-			disableWebView2ContextMenu(wvHandle)
-		}()
-	}
-
-	w.Run()
-	log.Println("[Hi!XNS] 窗口已关闭")
-	os.Exit(0)
-}
-
-func openBrowser(url string) {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", url)
-	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", url)
-	default:
-		cmd = exec.Command("xdg-open", url)
-	}
-	if err := cmd.Start(); err != nil {
-		log.Printf("[Hi!XNS] 请手动打开浏览器访问: %s", url)
-	}
-}

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_图层_1" data-name=" 图层 1" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 467.1 467.1">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: url(#_未命名的渐变_5);
+      }
+
+      .cls-1, .cls-2, .cls-3, .cls-4, .cls-5 {
+        stroke-width: 0px;
+      }
+
+      .cls-2 {
+        fill: #000;
+      }
+
+      .cls-3 {
+        fill: url(#_未命名的渐变_10);
+      }
+
+      .cls-4 {
+        fill: url(#_未命名的渐变_4);
+      }
+
+      .cls-5 {
+        fill: #fff;
+      }
+    </style>
+    <linearGradient id="_未命名的渐变_10" data-name="未命名的渐变 10" x1="540.9" y1="-251.4" x2="187.4" y2="306.3" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity=".6"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="_未命名的渐变_5" data-name="未命名的渐变 5" x1="130.1" y1="432" x2="351.8" y2="667.2" gradientTransform="translate(0 -316.9)" gradientUnits="userSpaceOnUse">
+      <stop offset=".2" stop-color="#fff"/>
+      <stop offset=".3" stop-color="#fbfbfb"/>
+      <stop offset=".3" stop-color="#f0f0f0"/>
+      <stop offset=".3" stop-color="#ddd"/>
+      <stop offset=".4" stop-color="#c3c3c3"/>
+      <stop offset=".4" stop-color="#a1a1a1"/>
+      <stop offset=".5" stop-color="#777"/>
+      <stop offset=".5" stop-color="#464646"/>
+      <stop offset=".6" stop-color="#0e0e0e"/>
+      <stop offset=".6" stop-color="#000"/>
+      <stop offset=".6" stop-color="#1e1e1e"/>
+      <stop offset=".6" stop-color="#616161"/>
+      <stop offset=".7" stop-color="#999"/>
+      <stop offset=".7" stop-color="#c5c5c5"/>
+      <stop offset=".8" stop-color="#e4e4e4"/>
+      <stop offset=".8" stop-color="#f8f8f8"/>
+      <stop offset=".8" stop-color="#fff"/>
+    </linearGradient>
+    <linearGradient id="_未命名的渐变_4" data-name="未命名的渐变 4" x1="217" y1="453.8" x2="217" y2="639" gradientTransform="translate(0 -316.9)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000"/>
+      <stop offset=".1" stop-color="#212121"/>
+      <stop offset=".2" stop-color="#545454"/>
+      <stop offset=".3" stop-color="#828282"/>
+      <stop offset=".4" stop-color="#a8a8a8"/>
+      <stop offset=".5" stop-color="#c8c8c8"/>
+      <stop offset=".6" stop-color="#e0e0e0"/>
+      <stop offset=".7" stop-color="#f1f1f1"/>
+      <stop offset=".8" stop-color="#fbfbfb"/>
+      <stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+  </defs>
+  <path class="cls-2" d="M467.1,233.5c0,216.6-17,233.5-233.5,233.5S0,450.1,0,233.5,17,0,233.5,0s233.5,17,233.5,233.5Z"/>
+  <path class="cls-3" d="M467.1,233.5c0,216.6-17,233.5-233.5,233.5S0,450.1,0,233.5,17,0,233.5,0s233.5,17,233.5,233.5Z"/>
+  <g>
+    <path class="cls-1" d="M81.9,116.3l186.6,199.7c21,22.5,50.5,35.3,81.3,35.3h52.8l-193.1-206c-17.3-18.5-41.5-29-66.8-29h-60.9,0Z"/>
+    <g>
+      <path class="cls-5" d="M325.8,152.7c14-3.6,30.1-4.6,43.9-4.6l33-32.3h-50.9c-28.9,0-56.6,11.2-77.4,31.3l-109.9,106.3c23.1-17.1,43.2-31.9,60.6-44.2,39.7-28.2,68.2-48.1,100.6-56.4,0,0,0,0,0,0Z"/>
+      <path class="cls-4" d="M325.8,152.7c-32.4,8.3-60.9,28.3-100.6,56.4-17.5,12.4-37.5,27.2-60.6,44.2l-62.4,60.4-37.7,36.4h54.4c28.2,0,55.4-11.1,75.5-30.8l9.3-9.1,165.9-162.2c-13.7,0-29.8,1-43.9,4.6h0,0Z"/>
+    </g>
+  </g>
+</svg>

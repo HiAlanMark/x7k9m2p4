@@ -15,25 +15,14 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            goos: windows
-            goarch: amd64
-            ext: .exe
+            platform: windows/amd64
             asset: hixns-agent-windows-amd64.exe
           - os: ubuntu-latest
-            goos: linux
-            goarch: amd64
-            ext: ""
+            platform: linux/amd64
             asset: hixns-agent-linux-amd64
           - os: macos-latest
-            goos: darwin
-            goarch: amd64
-            ext: ""
-            asset: hixns-agent-macos-amd64
-          - os: macos-latest
-            goos: darwin
-            goarch: arm64
-            ext: ""
-            asset: hixns-agent-macos-arm64
+            platform: darwin/universal
+            asset: hixns-agent-macos-universal
 
     runs-on: ${{ matrix.os }}
 
@@ -45,229 +34,44 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
-          cache-dependency-path: agent-go/go.sum
+          go-version: '1.22'
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Build frontend
-        run: npm run build
-
-      - name: Copy frontend to Go embed dir
-        shell: bash
+      # Linux 依赖
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
         run: |
-          rm -rf agent-go/dist
-          cp -r dist agent-go/dist
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
 
-      - name: Bundle Hermes Agent with Embedded Python
-        shell: bash
-        run: |
-          PLATFORM="${{ matrix.goos }}"
-          ARCH="${{ matrix.goarch }}"
-          BUILD_BASE="build/${PLATFORM}-${ARCH}/bundled"
-          HERMES_DIR="${BUILD_BASE}/hermes-agent"
-          PYTHON_DIR="${BUILD_BASE}/python"
-          mkdir -p "$HERMES_DIR" "$PYTHON_DIR"
+      # 构建 Wails 应用
+      - name: Build Wails App
+        run: wails build -clean -trimpath -platform ${{ matrix.platform }} -o ${{ matrix.asset }}
 
-          # === 1. 下载嵌入式 Python (免安装运行时) ===
-          PY_VER="3.11.9"
-          if [ "$PLATFORM" = "windows" ]; then
-            # Windows: 官方嵌入式包
-            curl -sL "https://www.python.org/ftp/python/${PY_VER}/python-${PY_VER}-embed-amd64.zip" -o /tmp/python-embed.zip
-            unzip -q /tmp/python-embed.zip -d "$PYTHON_DIR"
-            # 启用 pip: 取消 python311._pth 中的 import site 注释
-            PTH_FILE=$(ls "$PYTHON_DIR"/python*._pth 2>/dev/null | head -1)
-            if [ -n "$PTH_FILE" ]; then
-              sed -i 's/#import site/import site/' "$PTH_FILE"
-            fi
-            # 安装 pip
-            curl -sL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
-            "$PYTHON_DIR/python.exe" /tmp/get-pip.py --no-warn-script-location
-            PYTHON="$PYTHON_DIR/python.exe"
-          elif [ "$PLATFORM" = "darwin" ]; then
-            # macOS: 用系统 python3 创建 standalone venv
-            python3 -m venv "$PYTHON_DIR"
-            PYTHON="$PYTHON_DIR/bin/python3"
-          else
-            # Linux: 用系统 python3 创建 standalone venv
-            python3 -m venv "$PYTHON_DIR"
-            PYTHON="$PYTHON_DIR/bin/python3"
-          fi
+      # Windows NSIS 安装器
+      - name: Build Windows NSIS Installer
+        if: runner.os == 'Windows'
+        run: wails build -clean -trimpath -platform windows/amd64 -nsis -o hixns-agent.exe
 
-          echo "Python: $("$PYTHON" --version 2>&1)"
-
-          # === 2. 安装 Hermes Agent ===
-          git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /tmp/hermes-src
-          "$PYTHON" -m pip install --upgrade pip 2>/dev/null || true
-          "$PYTHON" -m pip install /tmp/hermes-src --no-warn-script-location
-
-          # === 3. 复制核心源码 ===
-          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py; do
-            [ -f "/tmp/hermes-src/$f" ] && cp "/tmp/hermes-src/$f" "$HERMES_DIR/"
-          done
-          for d in agent tools hermes_cli gateway plugins cron acp_adapter tui_gateway skills; do
-            [ -d "/tmp/hermes-src/$d" ] && cp -r "/tmp/hermes-src/$d" "$HERMES_DIR/$d"
-          done
-          [ -f "/tmp/hermes-src/pyproject.toml" ] && cp "/tmp/hermes-src/pyproject.toml" "$HERMES_DIR/"
-
-          # === 4. 清理 ===
-          find "$BUILD_BASE" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
-          find "$BUILD_BASE" -name '*.pyc' -delete 2>/dev/null || true
-          rm -rf "$PYTHON_DIR/share" "$PYTHON_DIR/include" /tmp/hermes-src /tmp/python-embed.zip /tmp/get-pip.py 2>/dev/null || true
-
-          echo "=== Bundle sizes ==="
-          du -sh "$PYTHON_DIR" "$HERMES_DIR" "$BUILD_BASE"
-
-      - name: Build Windows resource (Windows only)
-        if: matrix.goos == 'windows'
-        shell: bash
-        run: |
-          cd agent-go
-          windres --preprocessor=cat resource.rc -o resource_windows_amd64.syso || echo "Using pre-built .syso"
-
-      - name: Build Go binary
-        env:
-          CGO_ENABLED: 0
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        shell: bash
-        run: |
-          cd agent-go
-          LDFLAGS="-s -w -X main.version=${{ github.ref_name }}"
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            LDFLAGS="$LDFLAGS -H windowsgui"
-          fi
-          go build -ldflags="$LDFLAGS" -o ../build/${{ matrix.asset }} .
-
-      - name: Upload binary artifact
+      # 上传产物
+      - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
-          path: build/${{ matrix.asset }}
+          path: build/bin/*
 
-      # === Windows Installer (Inno Setup) ===
-      - name: Build Windows Installer
-        if: matrix.goos == 'windows'
-        shell: cmd
-        run: |
-          mkdir build\windows-amd64 2>nul
-          copy build\%ASSET% build\windows-amd64\hixns-agent.exe
-          REM bundled 目录已在 Bundle Hermes 步骤中创建在 build\windows-amd64\bundled\
-          dir build\windows-amd64\bundled\ /s /b | find /c "." || echo "No bundled files"
-          mkdir build\installer 2>nul
-          "C:\Program Files (x86)\Inno Setup 6\iscc.exe" scripts\installer.iss
-        env:
-          ASSET: ${{ matrix.asset }}
-
-      - name: Upload Windows Installer
-        if: matrix.goos == 'windows'
+      - name: Upload NSIS installer
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: HiXNS-Setup-windows
-          path: build/installer/*.exe
-
-      # === macOS DMG ===
-      - name: Build macOS DMG
-        if: matrix.goos == 'darwin' && matrix.goarch == 'arm64'
-        shell: bash
-        run: |
-          APP_DIR="build/HiXNS.app/Contents"
-          mkdir -p "$APP_DIR/MacOS" "$APP_DIR/Resources"
-
-          # 复制二进制
-          cp build/${{ matrix.asset }} "$APP_DIR/MacOS/hixns-agent"
-          chmod +x "$APP_DIR/MacOS/hixns-agent"
-
-          # 复制 Hermes bundle
-          cp -r build/darwin-arm64/bundled "$APP_DIR/Resources/bundled" 2>/dev/null || true
-
-          # Info.plist
-          cat > "$APP_DIR/Info.plist" << 'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-            <key>CFBundleName</key><string>Hi!XNS</string>
-            <key>CFBundleExecutable</key><string>hixns-agent</string>
-            <key>CFBundleIdentifier</key><string>com.hixns.agent</string>
-            <key>CFBundleVersion</key><string>${{ github.ref_name }}</string>
-            <key>CFBundlePackageType</key><string>APPL</string>
-            <key>LSMinimumSystemVersion</key><string>11.0</string>
-          </dict></plist>
-          PLIST
-
-          # 创建 DMG
-          hdiutil create -volname "Hi!XNS" -srcfolder build/HiXNS.app -ov -format UDZO build/HiXNS-macos-arm64.dmg
-          ls -lh build/HiXNS-macos-arm64.dmg
-
-      - name: Upload macOS DMG
-        if: matrix.goos == 'darwin' && matrix.goarch == 'arm64'
-        uses: actions/upload-artifact@v4
-        with:
-          name: HiXNS-macos-dmg
-          path: build/HiXNS-macos-arm64.dmg
-
-      # === Linux AppImage ===
-      - name: Build Linux AppImage
-        if: matrix.goos == 'linux'
-        shell: bash
-        run: |
-          # 创建 AppDir 结构
-          APPDIR="build/HiXNS.AppDir"
-          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/bundled"
-
-          cp build/${{ matrix.asset }} "$APPDIR/usr/bin/hixns-agent"
-          chmod +x "$APPDIR/usr/bin/hixns-agent"
-
-          # 复制 Hermes bundle
-          cp -r build/linux-amd64/bundled "$APPDIR/usr/share/bundled" 2>/dev/null || true
-
-          # Desktop file
-          cat > "$APPDIR/hixns-agent.desktop" << 'DESK'
-          [Desktop Entry]
-          Name=Hi!XNS
-          Exec=hixns-agent
-          Icon=hixns-agent
-          Type=Application
-          Categories=Development;
-          DESK
-
-          # AppRun
-          cat > "$APPDIR/AppRun" << 'RUN'
-          #!/bin/bash
-          SELF=$(readlink -f "$0")
-          HERE=${SELF%/*}
-          exec "$HERE/usr/bin/hixns-agent" "$@"
-          RUN
-          chmod +x "$APPDIR/AppRun"
-
-          # 图标
-          cp src-tauri/icons/icon.png "$APPDIR/hixns-agent.png" 2>/dev/null || true
-
-          # 下载 appimagetool
-          curl -sL "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -o /tmp/appimagetool
-          chmod +x /tmp/appimagetool
-
-          ARCH=x86_64 /tmp/appimagetool --no-appstream "$APPDIR" build/HiXNS-linux-amd64.AppImage || true
-          ls -lh build/HiXNS-linux-amd64.AppImage 2>/dev/null || echo "AppImage build skipped"
-
-      - name: Upload Linux AppImage
-        if: matrix.goos == 'linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: HiXNS-linux-AppImage
-          path: build/HiXNS-linux-amd64.AppImage
-          if-no-files-found: ignore
+          path: build/bin/*-amd64-installer.exe
 
   release:
     needs: build
@@ -297,21 +101,25 @@ jobs:
           body: |
             ## Hi!XNS ${{ github.ref_name }}
 
+            ### 🚀 架构升级：迁移到 Wails v2
+
+            本版本从 go-webview 迁移到 Wails v2 框架，彻底解决窗口控制问题。
+
             ### 下载安装包
             | 平台 | 安装包 | 说明 |
             |------|--------|------|
-            | **Windows** | `HiXNS-Setup-*.exe` | 双击安装，自动检测旧版本并升级 |
-            | **macOS** | `HiXNS-macos-arm64.dmg` | 拖入应用文件夹 |
-            | **Linux** | `HiXNS-linux-amd64.AppImage` | chmod +x 后直接运行 |
+            | **Windows** | `*-installer.exe` | NSIS 安装器 |
+            | **macOS** | `*-macos-universal` | Intel + Apple Silicon |
+            | **Linux** | `*-linux-amd64` | chmod +x 后直接运行 |
 
-            ### 更新内容
-            - 最小窗口尺寸 900×600，禁止更小
-            - 顶部 20px 拖拽区域实现窗口移动
-            - 消除启动白屏闪烁
-            - 全局禁用右键菜单，输入框智能右键（复制/剪切/粘贴/全选）
-            - 安装包支持中文，自动检测旧版本升级
-            - 禁用文本选择（消息内容除外）
-            - 内嵌 Hermes Agent + Python 运行时
+            ### 改进
+            - ✅ 无边框窗口 — Wails `Frameless: true`
+            - ✅ 顶部拖拽 — CSS `--wails-draggable: drag`
+            - ✅ 禁用右键 — `EnableDefaultContextMenu: false`
+            - ✅ 无启动白屏 — `StartHidden: true` + DOM ready 后显示
+            - ✅ 最小窗口 900×600
+            - ✅ 自动跟随系统主题
+            - ✅ NSIS 安装器（替代 Inno Setup）
           files: release/*
           draft: false
           prerelease: false
