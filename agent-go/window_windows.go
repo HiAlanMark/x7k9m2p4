@@ -65,42 +65,30 @@ const (
 	htBottomRight = 17
 )
 
-type point struct {
-	X, Y int32
-}
-
-type rect struct {
-	Left, Top, Right, Bottom int32
-}
+type point struct{ X, Y int32 }
+type rect struct{ Left, Top, Right, Bottom int32 }
 
 var (
 	cachedHwnd  uintptr
 	origWndProc uintptr
 )
 
-// dragRegionHeight 拖拽区域高度（顶部20px）
-const dragRegionHeight = 20
-
-// resizeBorderWidth 边框拖拽调整大小的区域宽度
-const resizeBorderWidth = 6
-
-// titleBarButtonsWidth 右侧按钮区域宽度（不可拖拽）
-const titleBarButtonsWidth = 150
+const (
+	dragRegionHeight    = 20
+	resizeBorderWidth   = 6
+	titleBarButtonsWidth = 150
+)
 
 func findHiXNSWindow() uintptr {
 	if cachedHwnd != 0 {
 		return cachedHwnd
 	}
-
-	// 按标题查找
 	title, _ := syscall.UTF16PtrFromString("Hi!XNS")
 	hwnd, _, _ := procFindWindow.Call(0, uintptr(unsafe.Pointer(title)))
 	if hwnd != 0 {
 		cachedHwnd = hwnd
 		return hwnd
 	}
-
-	// 枚举当前进程的所有窗口
 	pid := syscall.Getpid()
 	procEnumWindows.Call(
 		syscall.NewCallback(func(hwnd uintptr, lParam uintptr) uintptr {
@@ -114,30 +102,23 @@ func findHiXNSWindow() uintptr {
 		}),
 		0,
 	)
-
 	return cachedHwnd
 }
 
-// customWndProc 窗口子类化核心
-// 1. WM_CONTEXTMENU → 返回0，阻止 WebView2 原生右键菜单
-// 2. WM_NCHITTEST → 顶部20px拖拽 + 边缘调整大小
+// customWndProc 窗口子类化
+// WM_NCHITTEST: 顶部20px拖拽 + 边缘调整大小
+// WM_CONTEXTMENU: 拦截 Win32 层右键菜单（兜底，主要靠 COM 禁用）
 func customWndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
-	// 拦截 WM_CONTEXTMENU — 彻底阻止 WebView2 原生右键菜单
 	if msg == wmContextMenu {
 		return 0
 	}
 
 	if msg == wmNCHitTest {
-		// 先调用原始窗口过程
 		result, _, _ := procCallWindowProc.Call(origWndProc, hwnd, msg, wParam, lParam)
-
-		// 保留原始边框调整大小结果
-		if result == htLeft || result == htRight || result == htTop || result == htBottom ||
-			result == htTopLeft || result == htTopRight || result == htBottomLeft || result == htBottomRight {
+		if result >= htLeft && result <= htBottomRight {
 			return result
 		}
 
-		// 鼠标屏幕坐标 → 客户区坐标
 		var pt point
 		pt.X = int32(int16(lParam & 0xFFFF))
 		pt.Y = int32(int16((lParam >> 16) & 0xFFFF))
@@ -145,40 +126,26 @@ func customWndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 
 		var rc rect
 		procGetClientRect.Call(hwnd, uintptr(unsafe.Pointer(&rc)))
-		clientW := rc.Right - rc.Left
-		clientH := rc.Bottom - rc.Top
+		cw := rc.Right - rc.Left
+		ch := rc.Bottom - rc.Top
 
-		// 边缘 → 调整大小
-		if pt.Y < int32(resizeBorderWidth) {
-			if pt.X < int32(resizeBorderWidth) {
-				return htTopLeft
-			}
-			if pt.X > clientW-int32(resizeBorderWidth) {
-				return htTopRight
-			}
+		b := int32(resizeBorderWidth)
+		if pt.Y < b {
+			if pt.X < b { return htTopLeft }
+			if pt.X > cw-b { return htTopRight }
 			return htTop
 		}
-		if pt.Y > clientH-int32(resizeBorderWidth) {
-			if pt.X < int32(resizeBorderWidth) {
-				return htBottomLeft
-			}
-			if pt.X > clientW-int32(resizeBorderWidth) {
-				return htBottomRight
-			}
+		if pt.Y > ch-b {
+			if pt.X < b { return htBottomLeft }
+			if pt.X > cw-b { return htBottomRight }
 			return htBottom
 		}
-		if pt.X < int32(resizeBorderWidth) {
-			return htLeft
-		}
-		if pt.X > clientW-int32(resizeBorderWidth) {
-			return htRight
-		}
+		if pt.X < b { return htLeft }
+		if pt.X > cw-b { return htRight }
 
-		// 顶部 20px（排除右侧按钮区）→ 标题栏拖拽
-		if pt.Y < int32(dragRegionHeight) && pt.X < clientW-int32(titleBarButtonsWidth) {
+		if pt.Y < int32(dragRegionHeight) && pt.X < cw-int32(titleBarButtonsWidth) {
 			return htCaption
 		}
-
 		return htClient
 	}
 
@@ -186,10 +153,8 @@ func customWndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 	return ret
 }
 
-// setupWindow 一次性完成所有窗口初始化（goroutine 中调用）
-// 顺序：等待窗口 → 隐藏 → 黑色背景 → 去标题栏 → 子类化
+// setupWindow 一次性窗口初始化（goroutine 中调用）
 func setupWindow() {
-	// 等待窗口出现
 	for i := 0; i < 150; i++ {
 		if findHiXNSWindow() != 0 {
 			break
@@ -201,7 +166,7 @@ func setupWindow() {
 		return
 	}
 
-	// 1. 立即隐藏（防止白屏闪烁）
+	// 1. 隐藏窗口（防白屏）
 	procShowWindow.Call(cachedHwnd, swHide)
 	log.Println("[Hi!XNS] 窗口已隐藏")
 
@@ -211,7 +176,7 @@ func setupWindow() {
 		procSetClassLongPtr.Call(cachedHwnd, gclHbrBackground, blackBrush)
 	}
 
-	// 3. 去掉系统标题栏
+	// 3. 去标题栏
 	style, _, _ := procGetWindowLong.Call(cachedHwnd, gwlStyle)
 	newStyle := style &^ wsCaption &^ wsSysMenu
 	newStyle = newStyle | wsThickFrame | wsMinimizeBox | wsMaximizeBox
@@ -219,18 +184,85 @@ func setupWindow() {
 	procSetWindowPos.Call(cachedHwnd, 0, 0, 0, 0, 0,
 		swpFrameChanged|swpNoMove|swpNoSize|swpNoZOrder|swpNoOwnerZOrder)
 
-	// 4. 子类化（WM_NCHITTEST 拖拽 + WM_CONTEXTMENU 拦截）
+	// 4. 子类化（拖拽+右键拦截）
 	origWndProc, _, _ = procGetWindowLong.Call(cachedHwnd, gwlWndProc)
 	if origWndProc != 0 {
 		newProc := syscall.NewCallback(customWndProc)
 		procSetWindowLong.Call(cachedHwnd, gwlWndProc, newProc)
-		log.Println("[Hi!XNS] 窗口子类化完成（拖拽+右键拦截）")
+		log.Println("[Hi!XNS] 窗口子类化完成")
 	}
 
-	log.Println("[Hi!XNS] 窗口初始化完成，等待前端信号显示")
+	log.Println("[Hi!XNS] 窗口初始化完成")
 }
 
-// showWindowWhenReady 前端启动画面就绪后显示窗口
+// disableWebView2ContextMenu 通过 WebView2 COM 接口禁用原生右键菜单
+// 调用链: webview_get_native_handle(w, 2) → ICoreWebView2Controller
+//         → vtable[25] get_CoreWebView2 → ICoreWebView2
+//         → vtable[3] get_Settings → ICoreWebView2Settings
+//         → vtable[14] put_AreDefaultContextMenusEnabled(FALSE)
+func disableWebView2ContextMenu(webviewHandle uintptr) {
+	// 加载 webview.dll 的 webview_get_native_handle 符号
+	webviewDLL := syscall.NewLazyDLL("webview.dll")
+	procGetNativeHandle := webviewDLL.NewProc("webview_get_native_handle")
+
+	// kind=2 → WEBVIEW_NATIVE_HANDLE_KIND_BROWSER_CONTROLLER → ICoreWebView2Controller*
+	controllerPtr, _, _ := procGetNativeHandle.Call(webviewHandle, 2)
+	if controllerPtr == 0 {
+		log.Println("[Hi!XNS] webview_get_native_handle 返回 NULL")
+		return
+	}
+	log.Printf("[Hi!XNS] ICoreWebView2Controller: %#x", controllerPtr)
+
+	// 读取 ICoreWebView2Controller 的 vtable
+	// controllerPtr 指向 COM 对象，对象的第一个 qword 是 vtable 指针
+	controllerVtable := *(*uintptr)(unsafe.Pointer(controllerPtr))
+
+	// vtable[25] = get_CoreWebView2(ICoreWebView2Controller* this, ICoreWebView2** result)
+	getCoreWebView2Fn := *(*uintptr)(unsafe.Pointer(controllerVtable + 25*unsafe.Sizeof(uintptr(0))))
+
+	var coreWebView2 uintptr
+	hr, _, _ := syscall.SyscallN(getCoreWebView2Fn, controllerPtr, uintptr(unsafe.Pointer(&coreWebView2)))
+	if hr != 0 || coreWebView2 == 0 {
+		log.Printf("[Hi!XNS] get_CoreWebView2 失败: hr=%#x", hr)
+		return
+	}
+	log.Printf("[Hi!XNS] ICoreWebView2: %#x", coreWebView2)
+
+	// 读取 ICoreWebView2 的 vtable
+	coreVtable := *(*uintptr)(unsafe.Pointer(coreWebView2))
+
+	// vtable[3] = get_Settings(ICoreWebView2* this, ICoreWebView2Settings** result)
+	getSettingsFn := *(*uintptr)(unsafe.Pointer(coreVtable + 3*unsafe.Sizeof(uintptr(0))))
+
+	var settings uintptr
+	hr, _, _ = syscall.SyscallN(getSettingsFn, coreWebView2, uintptr(unsafe.Pointer(&settings)))
+	if hr != 0 || settings == 0 {
+		log.Printf("[Hi!XNS] get_Settings 失败: hr=%#x", hr)
+		return
+	}
+	log.Printf("[Hi!XNS] ICoreWebView2Settings: %#x", settings)
+
+	// 读取 ICoreWebView2Settings 的 vtable
+	settingsVtable := *(*uintptr)(unsafe.Pointer(settings))
+
+	// vtable[14] = put_AreDefaultContextMenusEnabled(ICoreWebView2Settings* this, BOOL value)
+	putContextMenuFn := *(*uintptr)(unsafe.Pointer(settingsVtable + 14*unsafe.Sizeof(uintptr(0))))
+
+	// 调用: put_AreDefaultContextMenusEnabled(FALSE)
+	hr, _, _ = syscall.SyscallN(putContextMenuFn, settings, 0) // 0 = FALSE
+	if hr != 0 {
+		log.Printf("[Hi!XNS] put_AreDefaultContextMenusEnabled 失败: hr=%#x", hr)
+		return
+	}
+	log.Println("[Hi!XNS] ✓ WebView2 原生右键菜单已禁用")
+
+	// 同时禁用 DevTools（debug=false 时应该已经禁用，但保险起见）
+	// vtable[12] = put_AreDevToolsEnabled
+	putDevToolsFn := *(*uintptr)(unsafe.Pointer(settingsVtable + 12*unsafe.Sizeof(uintptr(0))))
+	syscall.SyscallN(putDevToolsFn, settings, 0)
+	log.Println("[Hi!XNS] ✓ WebView2 DevTools 已禁用")
+}
+
 func showWindowWhenReady() {
 	hwnd := findHiXNSWindow()
 	if hwnd != 0 {
@@ -259,14 +291,7 @@ func toggleMaximizeWindow() {
 	}
 }
 
-// startDragWindow 兼容旧 JS 调用（WM_NCHITTEST 已接管）
-func startDragWindow() {}
-
-// removeWindowFrame 兼容旧调用
-func removeWindowFrame() {}
-
-// setWindowBackgroundBlack 兼容旧调用
+func startDragWindow()        {}
+func removeWindowFrame()      {}
 func setWindowBackgroundBlack() {}
-
-// hideWindow 兼容旧调用
-func hideWindow() {}
+func hideWindow()             {}

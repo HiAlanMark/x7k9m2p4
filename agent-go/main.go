@@ -25,6 +25,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 
 	_ "modernc.org/sqlite"
 
@@ -2187,6 +2188,20 @@ func openDesktopWindow(url string) {
 	`)
 
 	w.Navigate(url)
+
+	// Windows: Navigate 后禁用 WebView2 原生右键菜单
+	if runtime.GOOS == "windows" {
+		// 获取 webview 内部 handle: interface 值的第二个 word 是指向 concrete struct 的指针
+		// webview struct = { handle uintptr }，所以解引用两次得到 handle
+		iface := *(*[2]uintptr)(unsafe.Pointer(&w))
+		wvHandle := *(*uintptr)(unsafe.Pointer(iface[1]))
+
+		go func() {
+			time.Sleep(1500 * time.Millisecond) // 等待 WebView2 引擎完全初始化
+			disableWebView2ContextMenu(wvHandle)
+		}()
+	}
+
 	w.Run()
 	log.Println("[Hi!XNS] 窗口已关闭")
 	os.Exit(0)
