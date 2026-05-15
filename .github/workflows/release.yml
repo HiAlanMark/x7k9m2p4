@@ -81,7 +81,7 @@ jobs:
         run: |
           EXTRA_FLAGS=""
           if [ "${{ runner.os }}" = "Windows" ]; then
-            EXTRA_FLAGS="-webview2 browser"
+            EXTRA_FLAGS="-webview2 browser -debug"
           fi
           wails build -clean -trimpath -s -skipbindings -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS
 
