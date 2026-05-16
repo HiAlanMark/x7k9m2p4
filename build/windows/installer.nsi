@@ -1,36 +1,38 @@
 ; Hi!XNS Windows Installer
-; Minimal NSIS — installs app + Hermes environment
-
-!include "FileFunc.nsh"
+; Run from project root: makensis build/windows/installer.nsi
 
 Name "Hi!XNS"
 OutFile "build\bin\HiXNS-Windows-x64-Setup.exe"
-InstallDir "$PROGRAMFILES64\HiXNS"
+InstallDir "$PROGRAMFILES64\Hi!XNS"
 RequestExecutionLevel admin
 ManifestDPIAware true
 ShowInstDetails show
 ShowUninstDetails show
 
+; CRITICAL: Change to project root so File paths resolve correctly
+; This script lives at build/windows/installer.nsi, so go up 2 levels
+!cd "..\.."
+
 Section "Install"
   SetOutPath "$INSTDIR"
 
-  ; Main application
+  ; Main application binary
   File "build\bin\hixns-agent.exe"
 
-  ; Hermes Agent (Python scripts)
+  ; Hermes Agent (Python source + scripts)
   SetOutPath "$INSTDIR\hermes-agent"
-  File /r /x __pycache__ /x *.pyc "build\bin\hermes-agent\*"
+  File /r /x __pycache__ /x *.pyc "build\bin\hermes-agent\*.*"
 
-  ; Hermes Python (embedded runtime + packages)
+  ; Hermes Python (embedded runtime + site-packages)
   SetOutPath "$INSTDIR\hermes-python"
-  File /r /x __pycache__ /x *.pyc "build\bin\hermes-python\*"
+  File /r /x __pycache__ /x *.pyc "build\bin\hermes-python\*.*"
 
   ; Start menu shortcut
-  CreateDirectory "$SMPROGRAMS\HiXNS"
-  CreateShortCut "$SMPROGRAMS\HiXNS\HiXNS.lnk" "$INSTDIR\hixns-agent.exe"
+  CreateDirectory "$SMPROGRAMS\Hi!XNS"
+  CreateShortCut "$SMPROGRAMS\Hi!XNS\Hi!XNS.lnk" "$INSTDIR\hixns-agent.exe"
 
   ; Desktop shortcut
-  CreateShortCut "$DESKTOP\HiXNS.lnk" "$INSTDIR\hixns-agent.exe"
+  CreateShortCut "$DESKTOP\Hi!XNS.lnk" "$INSTDIR\hixns-agent.exe"
 
   ; Uninstaller
   WriteUninstaller "$INSTDIR\Uninstall.exe"
@@ -51,9 +53,9 @@ Section "Uninstall"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
 
-  Delete "$SMPROGRAMS\HiXNS\HiXNS.lnk"
-  RMDir "$SMPROGRAMS\HiXNS"
-  Delete "$DESKTOP\HiXNS.lnk"
+  Delete "$SMPROGRAMS\Hi!XNS\Hi!XNS.lnk"
+  RMDir "$SMPROGRAMS\Hi!XNS"
+  Delete "$DESKTOP\Hi!XNS.lnk"
 
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS"
 SectionEnd
