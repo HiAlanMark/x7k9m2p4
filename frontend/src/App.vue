@@ -374,9 +374,12 @@ body {
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--color-border);
+  /* Soft edge instead of hard border — iOS style */
+  box-shadow: 
+    inset 0 0 0 1px var(--color-border),
+    1px 0 2px rgba(0, 0, 0, 0.08);
   user-select: none;
-  transition: background 0.4s var(--spring-smooth), border-color 0.4s;
+  transition: background 0.4s var(--spring-smooth), box-shadow 0.4s;
   position: relative;
   z-index: 2;
 }
@@ -872,6 +875,8 @@ body {
   position: relative;
   z-index: 1;
   transition: background 0.3s;
+  /* Subtle left edge for smooth transition from sidebar */
+  box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.02);
 }
 /* ===== Session list transition — q弹入场 ===== */
 .session-anim-enter-active {
