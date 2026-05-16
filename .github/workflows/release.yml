@@ -66,14 +66,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          choco install nsis -y --no-progress --limit-output
-          refreshenv
-          Write-Host "makensis at: $(Get-Command makensis.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)"
-          if (-not (Get-Command makensis.exe -ErrorAction SilentlyContinue)) {
-            $env:Path += ";${env:ProgramFiles(x86)}\NSIS"
-            Write-Host "Added NSIS to PATH"
-          }
-          makensis.exe /VERSION
+          Write-Host "NSIS will be downloaded in build step (avoids cross-step PATH issues)"
 
       # ── 前端 ──────────────────────────────────────────
       - name: Install frontend dependencies
@@ -209,7 +202,7 @@ jobs:
           echo "=== ${{ runner.os }} Hermes bundled ==="
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
 
-      # ── 4. 构建安装包 ─────────────────────────────────
+# ── 4. 构建安装包 ─────────────────────────────────
       # Windows: 构建二进制 + NSIS 打包（包含 Hermes）
       - name: Build Windows Installer
         if: runner.os == 'Windows'
@@ -217,35 +210,38 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
 
+          Write-Host "=== 0. Download NSIS (portable, no admin) ==="
+          $nsisDir = "$env:TEMP\nsis-portable"
+          if (-not (Test-Path "$nsisDir\makensis.exe")) {
+            $zip = "$env:TEMP\nsis.zip"
+            Invoke-WebRequest -Uri "https://sourceforge.net/projects/nsis/files/NSIS%203/3.10/nsis-3.10.zip/download" -OutFile $zip
+            Expand-Archive -Path $zip -DestinationPath $nsisDir -Force
+            Remove-Item $zip
+          }
+          $makensis = "$nsisDir\makensis.exe"
+          Write-Host "makensis: $makensis"
+          & $makensis /VERSION
+
           Write-Host "=== 1. Build Go binary ==="
           wails build -trimpath -s -skipbindings -platform windows/amd64 -webview2 embed -v 2
-          if (-not (Test-Path build\bin\hixns-agent.exe)) {
-            throw "Binary not found: build\bin\hixns-agent.exe"
-          }
-          Write-Host "Binary size: $([math]::Round((Get-Item build\bin\hixns-agent.exe).Length/1MB, 1))MB"
+          if ($LASTEXITCODE -ne 0) { throw "wails build failed: $LASTEXITCODE" }
+          $bin = Get-Item build\bin\hixns-agent.exe
+          Write-Host "Binary: $([math]::Round($bin.Length/1MB,1))MB"
 
-          Write-Host "=== 2. Verify Hermes env ==="
-          $agentCount = (Get-ChildItem build\bin\hermes-agent -Recurse -File 2>$null).Count
-          $pythonCount = (Get-ChildItem build\bin\hermes-python -Recurse -File 2>$null).Count
-          Write-Host "hermes-agent: $agentCount files"
-          Write-Host "hermes-python: $pythonCount files"
+          Write-Host "=== 2. Verify Hermes ==="
+          $af = (Get-ChildItem build\bin\hermes-agent -Recurse -File -ErrorAction SilentlyContinue).Count
+          $pf = (Get-ChildItem build\bin\hermes-python -Recurse -File -ErrorAction SilentlyContinue).Count
+          Write-Host "hermes-agent: $af files, hermes-python: $pf files"
 
           Write-Host "=== 3. Run NSIS ==="
-          $nsis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
-          if (-not (Test-Path $nsis)) {
-            $nsis = (Get-Command makensis.exe -ErrorAction Stop).Source
-          }
-          Write-Host "makensis: $nsis"
-          Write-Host "Script: build\windows\installer.nsi"
-
-          & $nsis build\windows\installer.nsi
-          if ($LASTEXITCODE -ne 0) {
-            throw "makensis failed with exit code $LASTEXITCODE"
-          }
+          $script = "build\windows\installer.nsi"
+          Write-Host "Script: $(Resolve-Path $script)"
+          & $makensis $script
+          if ($LASTEXITCODE -ne 0) { throw "makensis failed: $LASTEXITCODE" }
 
           Write-Host "=== 4. Result ==="
           $inst = Get-Item build\bin\HiXNS-Windows-x64-Setup.exe
-          Write-Host "Installer: $([math]::Round($inst.Length/1MB, 1))MB at $($inst.FullName)"
+          Write-Host "DONE: Installer $([math]::Round($inst.Length/1MB,1))MB at $($inst.FullName)"
 
       # Linux: 手动构建 AppImage
       - name: Build Linux AppImage
