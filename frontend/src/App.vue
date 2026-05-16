@@ -7,53 +7,23 @@
     <div class="window-drag-area"></div>
     <!-- 窗口控制按钮 (右上角固定) -->
     <TitleBar />
-    <!-- 全局多层科技背景 -->
-    <TechGrid
-      :grid-size="50"
-      :line-color="appStore.isDark ? '#0A84FF' : '#3b82f6'"
-      :line-opacity="appStore.isDark ? 0.12 : 0.08"
-      :glow-color="appStore.isDark ? '#0A84FF' : '#3b82f6'"
-      :speed="0.4"
-      :perspective="true"
-    />
-    <AuroraFlow
-      :band-count="3"
-      :colors="appStore.isDark ? ['#0A84FF', '#BF5AF2', '#30D158'] : ['#3b82f6', '#8b5cf6', '#10b981']"
-      :speed="0.5"
-      :blur="80"
-      :opacity="appStore.isDark ? 0.25 : 0.15"
-    />
-    <SoftAurora
-      :color1="appStore.isDark ? '#0A84FF' : '#3b82f6'"
-      :color2="appStore.isDark ? '#BF5AF2' : '#8b5cf6'"
-      :brightness="appStore.isDark ? 0.35 : 0.25"
-      :speed="0.3"
-    />
-    <ParticleNetwork
-      :count="60"
+    <!-- Pixel Blast 科技背景 (vue-bits) -->
+    <PixelBlast
+      :variant="appStore.isDark ? 'diamond' : 'circle'"
+      :pixel-size="appStore.isDark ? 4 : 5"
       :color="appStore.isDark ? '#0A84FF' : '#3b82f6'"
-      :speed="0.4"
-      :connectDistance="120"
-      :particle-size="1.2"
-      :opacity="appStore.isDark ? 0.5 : 0.3"
-    />
-    <GlowOrb
-      :color="appStore.isDark ? '#0A84FF' : '#3b82f6'"
-      :size="400"
-      x="20%"
-      y="30%"
-      :blur="100"
-      :opacity="appStore.isDark ? 0.15 : 0.08"
-      :duration="10"
-    />
-    <GlowOrb
-      :color="appStore.isDark ? '#BF5AF2' : '#8b5cf6'"
-      :size="350"
-      x="80%"
-      y="70%"
-      :blur="90"
-      :opacity="appStore.isDark ? 0.12 : 0.06"
-      :duration="12"
+      :pattern-scale="appStore.isDark ? 2.5 : 2"
+      :pattern-density="appStore.isDark ? 1.2 : 1"
+      :speed="appStore.isDark ? 0.6 : 0.5"
+      :edge-fade="0.3"
+      :enable-ripples="true"
+      :ripple-speed="0.4"
+      :ripple-thickness="0.15"
+      :liquid="appStore.isDark"
+      :liquid-strength="0.12"
+      :liquid-radius="1.2"
+      :liquid-wobble-speed="5"
+      :transparent="true"
     />
     <!-- Toast 通知 -->
     <HxToast ref="toastRef" />
@@ -195,11 +165,7 @@ import IconStar from './components/icons/IconStar.vue'
 import IconSun from './components/icons/IconSun.vue'
 import IconMoon from './components/icons/IconMoon.vue'
 import IconBrandLogo from './components/icons/IconBrandLogo.vue'
-import SoftAurora from './components/fx/SoftAurora.vue'
-import ParticleNetwork from './components/fx/ParticleNetwork.vue'
-import GlowOrb from './components/fx/GlowOrb.vue'
-import TechGrid from './components/fx/TechGrid.vue'
-import AuroraFlow from './components/fx/AuroraFlow.vue'
+import PixelBlast from './components/fx/PixelBlast.vue'
 import SplashScreen from './components/SplashScreen.vue'
 import TitleBar from './components/TitleBar.vue'
 import { HxToast } from './components/ui'

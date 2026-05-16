@@ -16,6 +16,8 @@
     "motion-v": "^2.2.1",
     "ogl": "^1.0.11",
     "pinia": "^2.3",
+    "postprocessing": "^6.39.1",
+    "three": "^0.184.0",
     "vue": "^3.5",
     "vue-router": "^4.5"
   },
