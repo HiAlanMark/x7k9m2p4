@@ -7,13 +7,41 @@
     <div class="window-drag-area"></div>
     <!-- 窗口控制按钮 (右上角固定) -->
     <TitleBar />
-    <!-- 全局极光背景 -->
+    <!-- 全局多层科技背景 -->
     <SoftAurora
       :color1="appStore.isDark ? '#0A84FF' : '#3b82f6'"
       :color2="appStore.isDark ? '#BF5AF2' : '#8b5cf6'"
       :brightness="appStore.isDark ? 0.35 : 0.25"
       :speed="0.3"
     />
+    <ParticleNetwork
+      :count="60"
+      :color="appStore.isDark ? '#0A84FF' : '#3b82f6'"
+      :speed="0.4"
+      :connectDistance="120"
+      :particle-size="1.2"
+      :opacity="appStore.isDark ? 0.5 : 0.3"
+    />
+    <GlowOrb
+      :color="appStore.isDark ? '#0A84FF' : '#3b82f6'"
+      :size="400"
+      x="20%"
+      y="30%"
+      :blur="100"
+      :opacity="appStore.isDark ? 0.15 : 0.08"
+      :duration="10"
+    />
+    <GlowOrb
+      :color="appStore.isDark ? '#BF5AF2' : '#8b5cf6'"
+      :size="350"
+      x="80%"
+      y="70%"
+      :blur="90"
+      :opacity="appStore.isDark ? 0.12 : 0.06"
+      :duration="12"
+    />
+    <!-- Toast 通知 -->
+    <HxToast ref="toastRef" />
     <aside class="sidebar">
       <!-- Brand -->
       <div class="sidebar-brand">
@@ -153,8 +181,12 @@ import IconSun from './components/icons/IconSun.vue'
 import IconMoon from './components/icons/IconMoon.vue'
 import IconBrandLogo from './components/icons/IconBrandLogo.vue'
 import SoftAurora from './components/fx/SoftAurora.vue'
+import ParticleNetwork from './components/fx/ParticleNetwork.vue'
+import GlowOrb from './components/fx/GlowOrb.vue'
 import SplashScreen from './components/SplashScreen.vue'
 import TitleBar from './components/TitleBar.vue'
+import { HxToast } from './components/ui'
+import { setToastInstance } from './composables/useToast'
 
 const gfwStore = useGfwStore()
 const chatStore = useChatStore()
@@ -165,6 +197,7 @@ const { selectedModel } = storeToRefs(chatStore)
 const confirmDeleteId = ref('')
 const modelDropdownOpen = ref(false)
 const showSplash = ref(true)
+const toastRef = ref()
 
 const selectedModelDisplay = computed(() => {
   const m = featuredModels.value.find(m => m.model_code === selectedModel.value)
@@ -189,6 +222,8 @@ const activeModelDisplay = computed(() => {
 
 onMounted(async () => {
   document.addEventListener('click', handleGlobalClick)
+  // Register global toast instance
+  setToastInstance(toastRef.value)
   try {
     await gfwStore.fetchUserInfo()
     await gfwStore.fetchModels()

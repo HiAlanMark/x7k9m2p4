@@ -3,7 +3,7 @@
     <div class="messages" ref="messagesRef" @scroll="onMessagesScroll">
       <!-- Empty state -->
       <div v-if="messages.length === 0" class="empty-state">
-        <div class="empty-inner">
+        <div class="empty-inner animate-spring-in">
           <div class="terminal-header">
             <span class="terminal-dot red"></span>
             <span class="terminal-dot yellow"></span>
@@ -17,7 +17,7 @@
               <span class="t-flag">--interactive</span>
             </div>
             <div class="terminal-line output">
-              <span class="t-text">Hi!XNS Agent v0.3.0</span>
+              <span class="t-text">Hi!XNS Agent v0.5.0</span>
             </div>
             <div class="terminal-line output">
               <span class="t-text dim">56+ 模型可用 · gfw.net</span>
@@ -27,20 +27,20 @@
               <span class="t-cursor">_</span>
             </div>
           </div>
-          <div class="quick-actions">
-            <div class="quick-item" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
+          <div class="quick-actions stagger-children">
+            <div class="quick-item hover-lift" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
               <span class="qa-icon">></span>
               <span class="qa-text">快速排序 · Python</span>
             </div>
-            <div class="quick-item" @click="quickAsk('解释 TCP 三次握手的工作原理')">
+            <div class="quick-item hover-lift" @click="quickAsk('解释 TCP 三次握手的工作原理')">
               <span class="qa-icon">></span>
               <span class="qa-text">TCP 三次握手</span>
             </div>
-            <div class="quick-item" @click="quickAsk('审查这段代码的性能问题: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
+            <div class="quick-item hover-lift" @click="quickAsk('审查这段代码的性能问题: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
               <span class="qa-icon">></span>
               <span class="qa-text">代码审查 · 斐波那契</span>
             </div>
-            <div class="quick-item" @click="quickAsk('生成一个 Node.js 应用的多阶段构建 Dockerfile')">
+            <div class="quick-item hover-lift" @click="quickAsk('生成一个 Node.js 应用的多阶段构建 Dockerfile')">
               <span class="qa-icon">></span>
               <span class="qa-text">Dockerfile · 多阶段构建</span>
             </div>
@@ -209,11 +209,9 @@
         </button>
       </div>
       <div class="input-status">
-        <span class="status-item">{{ chatStore.getActiveConfig().model || '未选择模型' }}</span>
-        <span class="status-sep">/</span>
-        <span class="status-item">{{ chatStore.providerMode === 'custom' ? '自定义' : 'gfw' }}</span>
-        <span class="status-sep">/</span>
-        <span class="status-item" :class="{ active: isStreaming }">{{ isStreaming ? '生成中' : '就绪' }}</span>
+        <HxBadge variant="info" size="sm">{{ chatStore.getActiveConfig().model || '未选择模型' }}</HxBadge>
+        <HxBadge :variant="chatStore.providerMode === 'custom' ? 'warning' : 'success'" size="sm">{{ chatStore.providerMode === 'custom' ? '自定义' : 'gfw' }}</HxBadge>
+        <HxBadge :variant="isStreaming ? 'primary' : 'default'" size="sm" :dot="isStreaming">{{ isStreaming ? '生成中' : '就绪' }}</HxBadge>
         <span v-if="messages.length > 0" class="status-sep">·</span>
         <button v-if="messages.length > 0" class="export-btn" @click="exportChat" title="导出为 Markdown">导出</button>
       </div>
@@ -241,6 +239,10 @@ import IconUser from '../components/icons/IconUser.vue'
 import IconSettings from '../components/icons/IconSettings.vue'
 import IconChevronDown from '../components/icons/IconChevronDown.vue'
 import { SpotlightCard, FadeIn, ShinyText } from '../components/fx'
+import { HxBadge } from '../components/ui'
+import { useToast } from '../composables/useToast'
+
+const toast = useToast()
 
 const chatStore = useChatStore()
 const appStore = useAppStore()
@@ -401,7 +403,9 @@ function onMessagesScroll() {
 }
 
 function copyMessage(content: string) {
-  navigator.clipboard.writeText(content).catch(() => {})
+  navigator.clipboard.writeText(content).then(() => {
+    toast.success('已复制', undefined, 1500)
+  }).catch(() => {})
 }
 
 async function regenerateMessage(idx: number) {
@@ -504,6 +508,7 @@ function exportChat() {
   a.download = `${title.replace(/[/\\:*?"<>|]/g, '_')}_${new Date().toISOString().slice(0, 10)}.md`
   a.click()
   URL.revokeObjectURL(url)
+  toast.success('导出成功', '对话已保存为 Markdown 文件', 3000)
 }
 </script>
 
@@ -1406,7 +1411,7 @@ function exportChat() {
   z-index: 10;
   background: linear-gradient(to top,
     var(--color-bg-page) 0%,
-    var(--color-bg-page) 20%,
+    var(--color-bg-page) 30%,
     transparent 100%
   );
 }
@@ -1418,7 +1423,7 @@ function exportChat() {
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border: 1px solid var(--color-border);
-  border-radius: 18px;
+  border-radius: 20px;
   padding: 12px 16px;
   gap: 10px;
   box-shadow: var(--glass-shadow-inset), var(--shadow-float);
@@ -1430,8 +1435,9 @@ function exportChat() {
 .input-box.focused {
   border-color: var(--color-primary);
   box-shadow: var(--glass-shadow-inset),
-              0 4px 24px rgba(10,132,255,0.12),
-              0 0 0 3px rgba(10,132,255,0.06);
+              0 4px 24px rgba(10,132,255,0.15),
+              0 0 0 3px rgba(10,132,255,0.08),
+              0 0 20px rgba(10,132,255,0.05);
   transform: translateY(-1px);
 }
 

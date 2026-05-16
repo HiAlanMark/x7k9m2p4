@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import '@fontsource/noto-sans-sc/400.css'
 import '@fontsource/noto-sans-sc/500.css'
 import '@fontsource/noto-sans-sc/700.css'
+import './styles/enhancements.css'
 import App from './App.vue'
 import router from './router'
 

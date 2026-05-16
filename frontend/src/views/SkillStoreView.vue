@@ -33,48 +33,45 @@
 
     <!-- Search + Filters -->
     <div class="search-bar">
-      <span class="search-icon"><IconSearch :size="16" /></span>
-      <input
+      <HxInput
         v-model="searchQuery"
-        @input="debounceSearch"
         placeholder="搜索技能名称、描述、标签..."
-        class="search-input"
+        :icon="IconSearch"
+        @input="debounceSearch"
       />
       <kbd v-if="!searchQuery" class="search-hint">/</kbd>
     </div>
     <div class="filter-bar">
-      <button
-        v-for="cat in categories"
-        :key="cat.value"
-        :class="['filter-chip', { active: selectedCategory === cat.value }]"
-        @click="selectedCategory = cat.value; loadSkills()"
-      >{{ cat.label }}</button>
+      <div class="filter-chips">
+        <HxButton
+          v-for="cat in categories"
+          :key="cat.value"
+          :variant="selectedCategory === cat.value ? 'primary' : 'ghost'"
+          size="sm"
+          @click="selectedCategory = cat.value; loadSkills()"
+        >{{ cat.label }}</HxButton>
+      </div>
       <div class="filter-spacer"></div>
-      <select v-model="sortBy" @change="loadSkills()" class="sort-select">
-        <option value="downloads">下载量</option>
-        <option value="rating">评分</option>
-        <option value="latest">最新</option>
-      </select>
+      <HxSelect v-model="sortBy" @change="loadSkills()" :options="sortOptions" />
     </div>
 
     <!-- Rate limit warning -->
     <div v-if="rateLimited" class="rate-warning">
       <span class="warn-icon">!</span>
-      <span>请求过于频繁，建议前往 <button class="link-btn" @click="goSettings">设置</button> 绑定 2x CLI Token 以解除限制</span>
+      <span>请求过于频繁，建议前往 <HxButton variant="ghost" size="sm" @click="goSettings">设置</HxButton> 绑定 2x CLI Token 以解除限制</span>
     </div>
 
     <!-- Loading -->
-    <div v-if="loading && skills.length === 0" class="loading-state">
-      <span class="spinner"></span>
-      <span>加载中...</span>
-    </div>
+    <!-- Loading -->
+    <HxSpinner v-if="loading && skills.length === 0" label="加载中..." />
 
     <!-- Empty -->
-    <div v-else-if="!loading && skills.length === 0" class="empty-state">
-      <span class="empty-icon">~</span>
-      <span v-if="searchQuery">未找到匹配「{{ searchQuery }}」的技能</span>
-      <span v-else>暂无技能数据</span>
-    </div>
+    <HxEmpty v-else-if="!loading && skills.length === 0">
+      <template #default>
+        <span v-if="searchQuery">未找到匹配「{{ searchQuery }}」的技能</span>
+        <span v-else>暂无技能数据</span>
+      </template>
+    </HxEmpty>
 
     <!-- Skill grid -->
     <div v-else class="skill-grid">
@@ -95,11 +92,11 @@
               <span>{{ skill.average_rating.toFixed(1) }}</span>
             </div>
           </div>
-          <span class="card-version" v-if="skill.current_version">v{{ skill.current_version }}</span>
+          <HxBadge v-if="skill.current_version" variant="info" size="sm">v{{ skill.current_version }}</HxBadge>
         </div>
         <p class="card-desc">{{ skill.summary || skill.description }}</p>
         <div class="card-meta">
-          <span class="meta-tag" v-if="skill.category">{{ skill.category }}</span>
+          <HxBadge v-if="skill.category" variant="secondary" size="sm">{{ skill.category }}</HxBadge>
           <span class="meta-stat">
             <IconDownload :size="11" />
             {{ formatNum(skill.total_downloads) }}
@@ -113,19 +110,19 @@
           <span v-for="tag in skill.tags.slice(0, 4)" :key="tag" class="tag">{{ tag }}</span>
         </div>
         <div class="card-actions" @click.stop>
-          <button class="action-btn" @click="installSkill(skill)">
+          <HxButton variant="primary" size="sm" @click="installSkill(skill)">
             <IconDownload :size="13" />
             <span>安装</span>
-          </button>
+          </HxButton>
         </div>
       </div>
     </div>
 
     <!-- Load more -->
     <div v-if="skills.length > 0 && hasMore" class="load-more">
-      <button @click="loadMore" :disabled="loading" class="load-more-btn">
+      <HxButton @click="loadMore" :loading="loading" variant="secondary">
         {{ loading ? '加载中...' : '加载更多' }}
-      </button>
+      </HxButton>
     </div>
 
     </template>
@@ -134,27 +131,26 @@
     <template v-if="activeTab === 'installed'">
       <!-- Installed search -->
       <div class="search-bar">
-        <span class="search-icon"><IconSearch :size="16" /></span>
-        <input v-model="installedSearch" placeholder="搜索已安装技能..." class="search-input" />
+        <HxInput v-model="installedSearch" placeholder="搜索已安装技能..." :icon="IconSearch" />
       </div>
 
       <!-- Source filter -->
       <div class="filter-bar">
-        <button :class="['filter-chip', { active: installedFilter === 'all' }]" @click="installedFilter = 'all'">全部</button>
-        <button :class="['filter-chip', { active: installedFilter === 'builtin' }]" @click="installedFilter = 'builtin'">内置</button>
-        <button :class="['filter-chip', { active: installedFilter === '2x' }]" @click="installedFilter = '2x'">商店安装</button>
+        <div class="filter-chips">
+          <HxButton :variant="installedFilter === 'all' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = 'all'">全部</HxButton>
+          <HxButton :variant="installedFilter === 'builtin' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = 'builtin'">内置</HxButton>
+          <HxButton :variant="installedFilter === '2x' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = '2x'">商店安装</HxButton>
+        </div>
       </div>
 
-      <div v-if="installedLoading" class="loading-state">
-        <span class="spinner"></span>
-        <span>扫描已安装技能...</span>
-      </div>
+      <HxSpinner v-if="installedLoading" label="扫描已安装技能..." />
 
-      <div v-else-if="filteredInstalled.length === 0" class="empty-state">
-        <span class="empty-icon">~</span>
-        <span v-if="installedSearch">未找到匹配的已安装技能</span>
-        <span v-else>暂无已安装技能</span>
-      </div>
+      <HxEmpty v-else-if="filteredInstalled.length === 0">
+        <template #default>
+          <span v-if="installedSearch">未找到匹配的已安装技能</span>
+          <span v-else>暂无已安装技能</span>
+        </template>
+      </HxEmpty>
 
       <div v-else class="installed-list">
         <div v-for="sk in filteredInstalled" :key="sk.slug + sk.category" class="installed-item">
@@ -164,11 +160,11 @@
           <div class="installed-info">
             <div class="installed-name">
               {{ sk.name || sk.slug }}
-              <span v-if="sk.hasUpdate" class="update-badge">可更新</span>
+              <HxBadge v-if="sk.hasUpdate" variant="warning" size="sm">可更新</HxBadge>
             </div>
             <div class="installed-meta">
-              <span class="meta-tag" v-if="sk.category">{{ sk.category }}</span>
-              <span class="source-badge" :class="sk.source">{{ sk.source === '2x' ? '商店' : '内置' }}</span>
+              <HxBadge v-if="sk.category" variant="secondary" size="sm">{{ sk.category }}</HxBadge>
+              <HxBadge :variant="sk.source === '2x' ? 'success' : 'info'" size="sm">{{ sk.source === '2x' ? '商店' : '内置' }}</HxBadge>
               <span v-if="sk.version" class="installed-ver">v{{ sk.version }}</span>
               <span v-if="sk.hasUpdate" class="update-ver">→ v{{ sk.storeVersion }}</span>
               <span class="installed-files">{{ sk.files }} 文件</span>
@@ -176,8 +172,8 @@
             <div class="installed-desc" v-if="sk.description">{{ sk.description }}</div>
           </div>
           <div class="installed-actions">
-            <button v-if="sk.hasUpdate" class="update-btn" @click="updateSkill(sk)" :title="'更新到 v' + sk.storeVersion">更新</button>
-            <button class="uninstall-btn" @click="uninstallSkill(sk)" :title="'卸载 ' + sk.slug">卸载</button>
+            <HxButton v-if="sk.hasUpdate" variant="primary" size="sm" @click="updateSkill(sk)">更新</HxButton>
+            <HxButton variant="danger" size="sm" @click="uninstallSkill(sk)">卸载</HxButton>
           </div>
         </div>
       </div>
@@ -198,7 +194,7 @@
               </div>
             </div>
           </div>
-          <button class="modal-close" @click="detailSkill = null">x</button>
+          <HxButton variant="ghost" size="sm" class="modal-close" @click="detailSkill = null">✕</HxButton>
         </div>
 
         <div class="modal-stats">
@@ -244,10 +240,10 @@
         </div>
 
         <div class="modal-footer">
-          <button class="install-btn" @click="installSkill(detailSkill); detailSkill = null">
+          <HxButton variant="primary" @click="installSkill(detailSkill); detailSkill = null">
             <IconDownload :size="15" />
             <span>安装技能</span>
-          </button>
+          </HxButton>
         </div>
       </div>
     </div>
@@ -268,6 +264,10 @@ import IconSearch from '../components/icons/IconSearch.vue'
 import IconStar from '../components/icons/IconStar.vue'
 import IconDownload from '../components/icons/IconDownload.vue'
 import IconHeart from '../components/icons/IconHeart.vue'
+import { HxButton, HxInput, HxSelect, HxCard, HxBadge, HxModal, HxSpinner, HxEmpty } from '../components/ui'
+import { useToast } from '../composables/useToast'
+
+const toast = useToast()
 
 const router = useRouter()
 
@@ -275,6 +275,11 @@ const activeTab = ref<'store' | 'installed'>('store')
 const searchQuery = ref('')
 const selectedCategory = ref('')
 const sortBy = ref('downloads')
+const sortOptions = [
+  { label: '下载量', value: 'downloads' },
+  { label: '评分', value: 'rating' },
+  { label: '最新', value: 'latest' },
+]
 const skills = ref<TwoXSkill[]>([])
 const loading = ref(false)
 const rateLimited = ref(false)
@@ -394,7 +399,7 @@ async function loadSkills() {
     const msg = e?.message || String(e)
     if (msg.includes('429') || msg.includes('rate') || msg.includes('limit')) {
       rateLimited.value = true
-      showToast('请求频率受限，请绑定 2x Token', 'warn')
+      toast.error('请求受限', '请绑定 2x Token')
     } else {
       console.error('加载技能失败:', e)
     }
@@ -419,7 +424,7 @@ async function openDetail(skill: TwoXSkill) {
     const msg = e?.message || String(e)
     if (msg.includes('429') || msg.includes('rate') || msg.includes('limit')) {
       rateLimited.value = true
-      showToast('查询频繁，建议绑定 2x Token', 'warn')
+      toast.error('查询频繁', '建议绑定 2x Token')
     }
   } finally {
     detailLoading.value = false
@@ -427,7 +432,7 @@ async function openDetail(skill: TwoXSkill) {
 }
 
 async function installSkill(skill: TwoXSkill) {
-  showToast(`正在安装 ${skill.name}...`, 'success')
+  toast.info('安装中...', skill.name)
   try {
     const isDev = import.meta.env?.DEV ?? false
     const agentUrl = isDev ? '/proxy/agent' : ''
@@ -438,20 +443,19 @@ async function installSkill(skill: TwoXSkill) {
     })
     const data = await r.json()
     if (data.success) {
-      showToast(`${skill.name} 安装成功 (${data.files} 个文件)`, 'success')
-      // 刷新已安装列表
+      toast.success('安装成功', `${skill.name} (${data.files} 个文件)`)
       loadInstalled()
     } else {
       const errMsg = data.error || '未知错误'
       if (errMsg.includes('429') || errMsg.includes('401') || errMsg.includes('403')) {
         rateLimited.value = true
-        showToast('下载受限，请前往设置绑定 2x CLI Token', 'warn')
+        toast.error('下载受限', '请前往设置绑定 2x CLI Token')
       } else {
-        showToast(`安装失败: ${errMsg}`, 'error')
+        toast.error('安装失败', errMsg)
       }
     }
   } catch (e: any) {
-    showToast(`安装失败: Agent 未启动或网络错误`, 'error')
+    toast.error('安装失败', 'Agent 未启动或网络错误')
   }
 }
 
@@ -471,7 +475,7 @@ async function loadInstalled() {
     // 异步检查商店技能是否有更新
     checkUpdates()
   } catch {
-    showToast('无法获取已安装技能列表，请确认 Agent 已启动', 'error')
+    toast.error('加载失败', '无法获取已安装技能列表，请确认 Agent 已启动')
   } finally {
     installedLoading.value = false
   }
@@ -505,12 +509,12 @@ async function updateSkill(sk: InstalledSkill) {
       sk.hasUpdate = false
       sk.version = sk.storeVersion
       sk.storeVersion = undefined
-      showToast(`${sk.name || sk.slug} 已更新到 v${sk.version}`, 'success')
+      toast.success('更新成功', `${sk.name || sk.slug} 已更新到 v${sk.version}`)
     } else {
-      showToast(`更新失败: ${data.error || '未知错误'}`, 'error')
+      toast.error('更新失败', data.error || '未知错误')
     }
   } catch {
-    showToast('更新失败: Agent 未启动或网络错误', 'error')
+    toast.error('更新失败', 'Agent 未启动或网络错误')
   }
 }
 
@@ -526,13 +530,13 @@ async function uninstallSkill(sk: InstalledSkill) {
     })
     const data = await r.json()
     if (data.success) {
-      showToast(`${sk.name || sk.slug} 已卸载`, 'success')
+      toast.success('已卸载', sk.name || sk.slug)
       installedSkills.value = installedSkills.value.filter(s => !(s.slug === sk.slug && s.category === sk.category))
     } else {
-      showToast(`卸载失败: ${data.error}`, 'error')
+      toast.error('卸载失败', data.error)
     }
   } catch {
-    showToast('卸载失败: Agent 未启动', 'error')
+    toast.error('卸载失败', 'Agent 未启动')
   }
 }
 

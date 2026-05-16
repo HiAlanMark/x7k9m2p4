@@ -28,26 +28,26 @@
         <div v-if="activeSection === 'account'" class="content-section">
           <h2 class="section-title">gfw.net 账户</h2>
 
-          <div v-if="!isLoggedIn" class="card">
-            <div class="card-body">
+          <div v-if="!isLoggedIn">
+            <HxCard>
               <div class="form-row">
                 <label class="form-label">邮箱</label>
-                <input v-model="email" type="email" placeholder="请输入邮箱" class="form-input" />
+                <HxInput v-model="email" type="email" placeholder="请输入邮箱" />
               </div>
               <div class="form-row">
                 <label class="form-label">密码</label>
-                <input v-model="password" type="password" placeholder="请输入密码" class="form-input" />
+                <HxInput v-model="password" type="password" placeholder="请输入密码" />
               </div>
               <div class="form-actions">
-                <button @click="handleLogin" :disabled="loading" class="btn-primary">
+                <HxButton variant="primary" :loading="loading" @click="handleLogin">
                   {{ loading ? '登录中...' : '登录' }}
-                </button>
+                </HxButton>
               </div>
-            </div>
+            </HxCard>
           </div>
 
-          <div v-else class="card">
-            <div class="card-body">
+          <div v-else>
+            <HxCard>
               <div class="user-profile-row">
                 <div class="user-avatar">
                   <IconUser :size="24" />
@@ -56,7 +56,7 @@
                   <div class="user-name">{{ user?.nickname || user?.email }}</div>
                   <div class="user-group">{{ userInfo?.group_name || 'Standard' }}</div>
                 </div>
-                <button @click="logout" class="btn-danger-outline">登出</button>
+                <HxButton variant="danger" size="sm" @click="logout">登出</HxButton>
               </div>
               <div class="stats-grid">
                 <div class="stat-item">
@@ -68,7 +68,7 @@
                   <span class="stat-value">{{ userInfo?.group_name || '-' }}</span>
                 </div>
               </div>
-            </div>
+            </HxCard>
           </div>
         </div>
 
@@ -77,169 +77,158 @@
           <h2 class="section-title">模型设置</h2>
 
           <!-- Provider 选择 -->
-          <div class="card" style="margin-bottom: 20px;">
-            <div class="card-body">
-              <div class="provider-tabs">
-                <button
-                  :class="['provider-tab', { active: providerMode === 'gfw' }]"
-                  @click="providerMode = 'gfw'; chatStore.setProviderMode('gfw')"
-                >
-                  <svg width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/><path d="M482.56 54.4a42.666667 42.666667 0 0 0 0 1.536 42.666667 42.666667 0 0 0-1.493333 0c-242.944 255.061333-242.944 657.066667 0 912.128a42.666667 42.666667 0 0 0 61.866666 0c242.944-255.061333 242.944-657.066667 0-912.128a42.666667 42.666667 0 0 0-1.536 0 42.666667 42.666667 0 0 0 0-1.536 42.666667 42.666667 0 0 0-29.397333 0.768 42.666667 42.666667 0 0 0-29.44-0.768z m29.44 99.84a571.690667 571.690667 0 0 1 0 715.52 571.690667 571.690667 0 0 1 0-715.52z"/><path d="M85.333333 469.333333a42.666667 42.666667 0 0 0-42.666666 42.666667 42.666667 42.666667 0 0 0 42.666666 42.666667h853.333334a42.666667 42.666667 0 0 0 42.666666-42.666667 42.666667 42.666667 0 0 0-42.666666-42.666667z"/></svg>
-                  <span>GFW.NET 内置</span>
-                </button>
-                <button
-                  :class="['provider-tab', { active: providerMode === 'custom' }]"
-                  @click="providerMode = 'custom'; chatStore.setProviderMode('custom')"
-                >
-                  <svg width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor"><path d="M673.152 42.496c-190.72 6.144-334.165333 201.130667-271.317333 391.424l-320.170667 320.170667c-28.842667 28.842667-42.410667 66.176-40.405333 100.565333 2.005333 34.432 17.706667 64.981333 40.405333 87.68 22.698667 22.698667 53.162667 38.4 87.594667 40.405333 34.389333 2.048 71.765333-11.477333 100.693333-40.32l320.128-320.170666c218.88 72.277333 444.117333-129.536 380.757333-359.936a68.096 68.096 0 0 0-50.176-47.232 69.418667 69.418667 0 0 0-63.146666 19.2L725.333333 366.293333 657.664 298.666667l132.266667-132.181334a42.666667 42.666667 0 0 0 0.085333-0.085333 69.546667 69.546667 0 0 0 18.986667-63.061333 68.266667 68.266667 0 0 0-47.36-50.176 297.258667 297.258667 0 0 0-88.490667-10.666667z m26.496 93.568l-102.656 102.528a42.666667 42.666667 0 0 0-0.256 0.341333 86.016 86.016 0 0 0 0 119.466667 42.666667 42.666667 0 0 0 0.256 0.256l68.352 68.352a42.666667 42.666667 0 0 0 0.256 0.256c32.853333 32.170667 86.613333 32.170667 119.466667 0a42.666667 42.666667 0 0 0 0.256-0.256l102.613333-102.570667c13.525333 157.866667-139.008 281.173333-293.12 211.413334a42.666667 42.666667 0 0 0-47.744 8.746666l-337.493333 337.408c-13.781333 13.781333-24.32 16.213333-35.242667 15.573334a52.053333 52.053333 0 0 1-32.341333-15.573334 52.053333 52.053333 0 0 1-15.573334-32.341333c-0.64-10.922667 1.792-21.461333 15.573334-35.242667l337.493333-337.493333a42.666667 42.666667 0 0 0 8.661333-47.786667c-69.717333-154.112 53.546667-306.645333 211.498667-293.077333z"/></svg>
-                  <span>自定义提供商</span>
-                </button>
-              </div>
+          <HxCard style="margin-bottom: 20px;">
+            <div class="provider-tabs">
+              <button
+                :class="['provider-tab', { active: providerMode === 'gfw' }]"
+                @click="providerMode = 'gfw'; chatStore.setProviderMode('gfw')"
+              >
+                <svg width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/><path d="M482.56 54.4a42.666667 42.666667 0 0 0 0 1.536 42.666667 42.666667 0 0 0-1.493333 0c-242.944 255.061333-242.944 657.066667 0 912.128a42.666667 42.666667 0 0 0 61.866666 0c242.944-255.061333 242.944-657.066667 0-912.128a42.666667 42.666667 0 0 0-1.536 0 42.666667 42.666667 0 0 0 0-1.536 42.666667 42.666667 0 0 0-29.397333 0.768 42.666667 42.666667 0 0 0-29.44-0.768z m29.44 99.84a571.690667 571.690667 0 0 1 0 715.52 571.690667 571.690667 0 0 1 0-715.52z"/><path d="M85.333333 469.333333a42.666667 42.666667 0 0 0-42.666666 42.666667 42.666667 42.666667 0 0 0 42.666666 42.666667h853.333334a42.666667 42.666667 0 0 0 42.666666-42.666667 42.666667 42.666667 0 0 0-42.666666-42.666667z"/></svg>
+                <span>GFW.NET 内置</span>
+              </button>
+              <button
+                :class="['provider-tab', { active: providerMode === 'custom' }]"
+                @click="providerMode = 'custom'; chatStore.setProviderMode('custom')"
+              >
+                <svg width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor"><path d="M673.152 42.496c-190.72 6.144-334.165333 201.130667-271.317333 391.424l-320.170667 320.170667c-28.842667 28.842667-42.410667 66.176-40.405333 100.565333 2.005333 34.432 17.706667 64.981333 40.405333 87.68 22.698667 22.698667 53.162667 38.4 87.594667 40.405333 34.389333 2.048 71.765333-11.477333 100.693333-40.32l320.128-320.170666c218.88 72.277333 444.117333-129.536 380.757333-359.936a68.096 68.096 0 0 0-50.176-47.232 69.418667 69.418667 0 0 0-63.146666 19.2L725.333333 366.293333 657.664 298.666667l132.266667-132.181334a42.666667 42.666667 0 0 0 0.085333-0.085333 69.546667 69.546667 0 0 0 18.986667-63.061333 68.266667 68.266667 0 0 0-47.36-50.176 297.258667 297.258667 0 0 0-88.490667-10.666667z m26.496 93.568l-102.656 102.528a42.666667 42.666667 0 0 0-0.256 0.341333 86.016 86.016 0 0 0 0 119.466667 42.666667 42.666667 0 0 0 0.256 0.256l68.352 68.352a42.666667 42.666667 0 0 0 0.256 0.256c32.853333 32.170667 86.613333 32.170667 119.466667 0a42.666667 42.666667 0 0 0 0.256-0.256l102.613333-102.570667c13.525333 157.866667-139.008 281.173333-293.12 211.413334a42.666667 42.666667 0 0 0-47.744 8.746666l-337.493333 337.408c-13.781333 13.781333-24.32 16.213333-35.242667 15.573334a52.053333 52.053333 0 0 1-32.341333-15.573334 52.053333 52.053333 0 0 1-15.573334-32.341333c-0.64-10.922667 1.792-21.461333 15.573334-35.242667l337.493333-337.493333a42.666667 42.666667 0 0 0 8.661333-47.786667c-69.717333-154.112 53.546667-306.645333 211.498667-293.077333z"/></svg>
+                <span>自定义提供商</span>
+              </button>
             </div>
-          </div>
+          </HxCard>
 
           <!-- GFW.NET 模式 -->
-          <div v-if="providerMode === 'gfw'" class="card">
-            <div class="card-header">
-              <span class="card-header-tag default">GFW.NET</span>
-              <span>内置模型服务</span>
+          <HxCard v-if="providerMode === 'gfw'">
+            <template #header>
+              <HxBadge variant="blue">GFW.NET</HxBadge>
+              <span style="margin-left:8px;">内置模型服务</span>
+            </template>
+            <div class="form-row">
+              <label class="form-label">GFW API Key</label>
+              <HxInput v-model="gfwApiKey" type="password" placeholder="gfw-..." />
+              <p class="form-hint">在 gfw.net 控制台获取 API Key</p>
             </div>
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">GFW API Key</label>
-                <input v-model="gfwApiKey" type="password" placeholder="gfw-..." class="form-input" />
-                <p class="form-hint">在 gfw.net 控制台获取 API Key</p>
-              </div>
 
-              <div class="form-row">
-                <label class="form-label">
-                  提供商
-                  <button class="sync-btn" @click="syncGfwModels" :disabled="gfwSyncing" title="从 GFW.NET 同步模型列表">
-                    {{ gfwSyncing ? '同步中...' : '同步' }}
-                  </button>
-                </label>
-                <div v-if="gfwProviders.length > 0" class="provider-chips">
-                  <button
-                    :class="['chip', { active: !selectedProvider }]"
-                    @click="selectedProvider = ''"
-                  >全部</button>
-                  <button
-                    v-for="p in gfwProviders"
-                    :key="p"
-                    :class="['chip', { active: selectedProvider === p }]"
-                    @click="selectedProvider = p"
-                  >{{ p }} <span class="chip-count">{{ providerModelCount(p) }}</span></button>
-                </div>
-                <p v-else class="form-hint">点击「同步」获取提供商列表</p>
+            <div class="form-row">
+              <label class="form-label">
+                提供商
+                <HxButton variant="ghost" size="sm" :loading="gfwSyncing" @click="syncGfwModels" style="margin-left:8px;">
+                  {{ gfwSyncing ? '同步中...' : '同步' }}
+                </HxButton>
+              </label>
+              <div v-if="gfwProviders.length > 0" class="provider-chips">
+                <button
+                  :class="['chip', { active: !selectedProvider }]"
+                  @click="selectedProvider = ''"
+                >全部</button>
+                <button
+                  v-for="p in gfwProviders"
+                  :key="p"
+                  :class="['chip', { active: selectedProvider === p }]"
+                  @click="selectedProvider = p"
+                >{{ p }} <span class="chip-count">{{ providerModelCount(p) }}</span></button>
               </div>
+              <p v-else class="form-hint">点击「同步」获取提供商列表</p>
+            </div>
 
-              <div class="form-row">
-                <label class="form-label">模型</label>
-                <select v-model="selectedModel" class="form-select" v-if="filteredGfwModels.length > 0">
-                  <option v-for="m in filteredGfwModels" :key="m.model_code" :value="m.model_code">
-                    {{ m.model_name }}{{ !selectedProvider ? ' (' + m.provider + ')' : '' }} {{ m.input_price ? '¥' + m.input_price + '/M' : '' }}
-                  </option>
-                </select>
-                <input v-else v-model="selectedModel" type="text" placeholder="输入模型名称" class="form-input" />
+            <div class="form-row">
+              <label class="form-label">模型</label>
+              <HxSelect v-model="selectedModel" v-if="filteredGfwModels.length > 0">
+                <option v-for="m in filteredGfwModels" :key="m.model_code" :value="m.model_code">
+                  {{ m.model_name }}{{ !selectedProvider ? ' (' + m.provider + ')' : '' }} {{ m.input_price ? '¥' + m.input_price + '/M' : '' }}
+                </option>
+              </HxSelect>
+              <HxInput v-else v-model="selectedModel" placeholder="输入模型名称" />
+            </div>
+
+            <!-- 当前选中模型的详情 -->
+            <div v-if="selectedGfwModel" class="model-detail">
+              <div class="detail-row">
+                <span class="detail-label">provider</span>
+                <span class="detail-value">{{ selectedGfwModel.provider }}</span>
               </div>
-
-              <!-- 当前选中模型的详情 -->
-              <div v-if="selectedGfwModel" class="model-detail">
-                <div class="detail-row">
-                  <span class="detail-label">provider</span>
-                  <span class="detail-value">{{ selectedGfwModel.provider }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">model</span>
-                  <span class="detail-value">{{ selectedGfwModel.model_code }}</span>
-                </div>
-                <div class="detail-row" v-if="selectedGfwModel.input_price">
-                  <span class="detail-label">price</span>
-                  <span class="detail-value">¥{{ selectedGfwModel.input_price }}/M in · ¥{{ selectedGfwModel.output_price }}/M out</span>
-                </div>
-                <div class="detail-row" v-if="selectedGfwModel.context_length">
-                  <span class="detail-label">context</span>
-                  <span class="detail-value">{{ formatContext(selectedGfwModel.context_length) }}</span>
-                </div>
+              <div class="detail-row">
+                <span class="detail-label">model</span>
+                <span class="detail-value">{{ selectedGfwModel.model_code }}</span>
+              </div>
+              <div class="detail-row" v-if="selectedGfwModel.input_price">
+                <span class="detail-label">price</span>
+                <span class="detail-value">¥{{ selectedGfwModel.input_price }}/M in · ¥{{ selectedGfwModel.output_price }}/M out</span>
+              </div>
+              <div class="detail-row" v-if="selectedGfwModel.context_length">
+                <span class="detail-label">context</span>
+                <span class="detail-value">{{ formatContext(selectedGfwModel.context_length) }}</span>
               </div>
             </div>
-          </div>
+          </HxCard>
 
           <!-- 自定义提供商模式 -->
-          <div v-if="providerMode === 'custom'" class="card">
-            <div class="card-header">
-              <span class="card-header-tag custom">自定义</span>
-              <span>自定义 API 提供商</span>
-            </div>
-            <div class="card-body">
-              <!-- 上游选择 -->
-              <div class="form-row">
-                <label class="form-label">上游提供商</label>
-                <div class="provider-chips">
-                  <button
-                    v-for="preset in providerPresets"
-                    :key="preset.name"
-                    :class="['chip', { active: customUpstream === preset.name }]"
-                    @click="selectUpstream(preset)"
-                  >{{ preset.name }}</button>
-                  <button
-                    :class="['chip', { active: customUpstream === '__manual__' }]"
-                    @click="customUpstream = '__manual__'"
-                  >手动输入</button>
-                </div>
+          <HxCard v-if="providerMode === 'custom'">
+            <template #header>
+              <HxBadge variant="purple">自定义</HxBadge>
+              <span style="margin-left:8px;">自定义 API 提供商</span>
+            </template>
+            <!-- 上游选择 -->
+            <div class="form-row">
+              <label class="form-label">上游提供商</label>
+              <div class="provider-chips">
+                <button
+                  v-for="preset in providerPresets"
+                  :key="preset.name"
+                  :class="['chip', { active: customUpstream === preset.name }]"
+                  @click="selectUpstream(preset)"
+                >{{ preset.name }}</button>
+                <button
+                  :class="['chip', { active: customUpstream === '__manual__' }]"
+                  @click="customUpstream = '__manual__'"
+                >手动输入</button>
               </div>
+            </div>
 
-              <div class="form-row" v-if="customUpstream === '__manual__'">
-                <label class="form-label">提供商名称</label>
-                <input v-model="customName" type="text" placeholder="my-provider" class="form-input" />
-              </div>
-              <div class="form-row">
-                <label class="form-label">API Base URL</label>
-                <input v-model="customBaseUrl" type="text" placeholder="https://api.openai.com/v1" class="form-input" :disabled="customUpstream !== '__manual__'" />
-              </div>
-              <div class="form-row">
-                <label class="form-label">API Key</label>
-                <input v-model="customApiKey" type="password" placeholder="sk-..." class="form-input" />
-              </div>
-              <div class="form-row">
-                <label class="form-label">
-                  模型
-                  <button
-                    v-if="customUpstream !== '__manual__'"
-                    class="sync-btn"
-                    @click="fetchUpstreamModels"
-                    :disabled="upstreamModelsSyncing"
-                  >{{ upstreamModelsSyncing ? '获取中...' : '获取模型列表' }}</button>
-                </label>
-                <select v-if="upstreamModels.length > 0" v-model="customModel" class="form-select">
-                  <option v-for="m in upstreamModels" :key="m" :value="m">{{ m }}</option>
-                </select>
-                <input v-else v-model="customModel" type="text" placeholder="gpt-4o / deepseek-chat / qwen-plus" class="form-input" />
-                <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
-              </div>
-              <div class="form-row">
-                <label class="form-label">上下文长度</label>
-                <input v-model.number="contextLength" type="number" class="form-input" style="max-width: 200px;" />
-              </div>
+            <div class="form-row" v-if="customUpstream === '__manual__'">
+              <label class="form-label">提供商名称</label>
+              <HxInput v-model="customName" placeholder="my-provider" />
             </div>
-          </div>
+            <div class="form-row">
+              <label class="form-label">API Base URL</label>
+              <HxInput v-model="customBaseUrl" placeholder="https://api.openai.com/v1" :disabled="customUpstream !== '__manual__'" />
+            </div>
+            <div class="form-row">
+              <label class="form-label">API Key</label>
+              <HxInput v-model="customApiKey" type="password" placeholder="sk-..." />
+            </div>
+            <div class="form-row">
+              <label class="form-label">
+                模型
+                <HxButton v-if="customUpstream !== '__manual__'" variant="ghost" size="sm" :loading="upstreamModelsSyncing" @click="fetchUpstreamModels" style="margin-left:8px;">
+                  {{ upstreamModelsSyncing ? '获取中...' : '获取模型列表' }}
+                </HxButton>
+              </label>
+              <HxSelect v-if="upstreamModels.length > 0" v-model="customModel">
+                <option v-for="m in upstreamModels" :key="m" :value="m">{{ m }}</option>
+              </HxSelect>
+              <HxInput v-else v-model="customModel" placeholder="gpt-4o / deepseek-chat / qwen-plus" />
+              <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
+            </div>
+            <div class="form-row">
+              <label class="form-label">上下文长度</label>
+              <HxInput v-model.number="contextLength" type="number" style="max-width: 200px;" />
+            </div>
+          </HxCard>
 
           <!-- 连接测试 + 保存 -->
-          <div class="card" style="margin-top: 16px;">
-            <div class="card-body">
-              <div class="test-row">
-                <button @click="testConnection" :disabled="testing" class="btn-secondary">
-                  {{ testing ? '测试中...' : '测试连接' }}
-                </button>
-                <span v-if="testResult" :class="['test-result', testResult.ok ? 'success' : 'error']">
-                  {{ testResult.message }}
-                </span>
-              </div>
+          <HxCard style="margin-top: 16px;">
+            <div class="test-row">
+              <HxButton variant="secondary" :loading="testing" @click="testConnection">
+                {{ testing ? '测试中...' : '测试连接' }}
+              </HxButton>
+              <span v-if="testResult" :class="['test-result', testResult.ok ? 'success' : 'error']">
+                {{ testResult.message }}
+              </span>
             </div>
-          </div>
+          </HxCard>
 
           <div class="form-actions" style="margin-top: 20px;">
-            <button @click="saveModelSettings" class="btn-primary">保存设置</button>
+            <HxButton variant="primary" @click="saveModelSettings">保存设置</HxButton>
             <span v-if="saveSuccess" class="save-feedback">设置已保存</span>
           </div>
         </div>
@@ -248,8 +237,8 @@
         <div v-if="activeSection === 'apikeys'" class="content-section">
           <h2 class="section-title">API Key 管理</h2>
 
-          <div class="card">
-            <div class="card-body no-padding">
+          <HxCard>
+            <div class="no-padding">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -275,37 +264,35 @@
                 </tbody>
               </table>
             </div>
-          </div>
+          </HxCard>
 
           <div style="margin-top: 16px;">
-            <button @click="showCreateKey = !showCreateKey" class="btn-secondary">
+            <HxButton variant="secondary" @click="showCreateKey = !showCreateKey">
               + 创建新 Key
-            </button>
+            </HxButton>
           </div>
 
-          <div v-if="showCreateKey" class="card" style="margin-top: 12px;">
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">Key 名称</label>
-                <input v-model="newKeyName" placeholder="例如: Desktop Key" class="form-input" style="max-width: 300px;" />
-              </div>
-              <div class="form-row">
-                <label class="form-label">G 币限额</label>
-                <input v-model.number="newKeyLimit" type="number" class="form-input" style="max-width: 200px;" />
-              </div>
-              <div class="form-actions">
-                <button @click="createKey" class="btn-primary">创建</button>
-              </div>
+          <HxCard v-if="showCreateKey" style="margin-top: 12px;">
+            <div class="form-row">
+              <label class="form-label">Key 名称</label>
+              <HxInput v-model="newKeyName" placeholder="例如: Desktop Key" style="max-width: 300px;" />
             </div>
-          </div>
+            <div class="form-row">
+              <label class="form-label">G 币限额</label>
+              <HxInput v-model.number="newKeyLimit" type="number" style="max-width: 200px;" />
+            </div>
+            <div class="form-actions">
+              <HxButton variant="primary" @click="createKey">创建</HxButton>
+            </div>
+          </HxCard>
         </div>
 
         <!-- Usage section -->
         <div v-if="activeSection === 'usage'" class="content-section">
           <h2 class="section-title">用量统计 (近 7 天)</h2>
 
-          <div class="card">
-            <div class="card-body no-padding">
+          <HxCard>
+            <div class="no-padding">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -330,7 +317,7 @@
                 </tbody>
               </table>
             </div>
-          </div>
+          </HxCard>
         </div>
 
         <!-- Recharge section -->
@@ -349,7 +336,7 @@
               <div class="package-price">{{ pkg.price }}</div>
               <div class="package-amount">{{ pkg.gcoin_amount }} G币</div>
               <div v-if="pkg.bonus_gcoin > 0" class="package-bonus">+{{ pkg.bonus_gcoin }} 赠送</div>
-              <button class="btn-primary package-btn">立即充值</button>
+              <HxButton variant="primary" class="package-btn">立即充值</HxButton>
             </div>
           </div>
         </div>
@@ -358,79 +345,61 @@
         <div v-if="activeSection === 'agent'" class="content-section">
           <h2 class="section-title">Agent 设置</h2>
 
-          <div class="card" style="margin-bottom: 16px;">
-            <div class="card-header">
-              <span class="card-header-tag default">对话</span>
-              <span>对话行为</span>
+          <HxCard style="margin-bottom: 16px;">
+            <template #header>
+              <HxBadge variant="blue">对话</HxBadge>
+              <span style="margin-left:8px;">对话行为</span>
+            </template>
+            <div class="form-row">
+              <label class="form-label">最大轮次</label>
+              <HxInput v-model.number="agentSettings.maxTurns" type="number" style="max-width: 120px;" />
+              <p class="form-hint">Agent 单次对话的最大工具调用轮次 (默认 90)</p>
             </div>
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">最大轮次</label>
-                <input v-model.number="agentSettings.maxTurns" type="number" class="form-input" style="max-width: 120px;" />
-                <p class="form-hint">Agent 单次对话的最大工具调用轮次 (默认 90)</p>
-              </div>
-              <div class="form-row">
-                <label class="form-label">系统提示词</label>
-                <textarea v-model="agentSettings.systemPrompt" class="form-textarea" rows="4" placeholder="自定义系统提示词（留空使用默认）"></textarea>
-                <p class="form-hint">追加到 Agent 默认系统提示词之后</p>
-              </div>
+            <div class="form-row">
+              <label class="form-label">系统提示词</label>
+              <HxTextarea v-model="agentSettings.systemPrompt" :rows="4" placeholder="自定义系统提示词（留空使用默认）"></HxTextarea>
+              <p class="form-hint">追加到 Agent 默认系统提示词之后</p>
             </div>
-          </div>
+          </HxCard>
 
-          <div class="card" style="margin-bottom: 16px;">
-            <div class="card-header">
-              <span class="card-header-tag default">上下文</span>
-              <span>上下文压缩</span>
+          <HxCard style="margin-bottom: 16px;">
+            <template #header>
+              <HxBadge variant="green">上下文</HxBadge>
+              <span style="margin-left:8px;">上下文压缩</span>
+            </template>
+            <div class="form-row">
+              <label class="form-label">自动压缩</label>
+              <HxToggle v-model="agentSettings.compressionEnabled" :label="agentSettings.compressionEnabled ? '已启用' : '已禁用'" />
             </div>
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">自动压缩</label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="agentSettings.compressionEnabled" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ agentSettings.compressionEnabled ? '已启用' : '已禁用' }}</span>
-                </label>
-              </div>
-              <div class="form-row">
-                <label class="form-label">压缩阈值</label>
-                <input v-model.number="agentSettings.compressionThreshold" type="number" step="0.05" min="0.1" max="0.95" class="form-input" style="max-width: 120px;" />
-                <p class="form-hint">上下文使用超过此比例时触发压缩 (默认 0.50)</p>
-              </div>
-              <div class="form-row">
-                <label class="form-label">目标压缩率</label>
-                <input v-model.number="agentSettings.compressionTarget" type="number" step="0.05" min="0.05" max="0.5" class="form-input" style="max-width: 120px;" />
-                <p class="form-hint">压缩后保留的上下文比例 (默认 0.20)</p>
-              </div>
+            <div class="form-row">
+              <label class="form-label">压缩阈值</label>
+              <HxInput v-model.number="agentSettings.compressionThreshold" type="number" step="0.05" min="0.1" max="0.95" style="max-width: 120px;" />
+              <p class="form-hint">上下文使用超过此比例时触发压缩 (默认 0.50)</p>
             </div>
-          </div>
+            <div class="form-row">
+              <label class="form-label">目标压缩率</label>
+              <HxInput v-model.number="agentSettings.compressionTarget" type="number" step="0.05" min="0.05" max="0.5" style="max-width: 120px;" />
+              <p class="form-hint">压缩后保留的上下文比例 (默认 0.20)</p>
+            </div>
+          </HxCard>
 
-          <div class="card">
-            <div class="card-header">
-              <span class="card-header-tag default">记忆</span>
-              <span>持久记忆</span>
+          <HxCard>
+            <template #header>
+              <HxBadge variant="purple">记忆</HxBadge>
+              <span style="margin-left:8px;">持久记忆</span>
+            </template>
+            <div class="form-row">
+              <label class="form-label">记忆系统</label>
+              <HxToggle v-model="agentSettings.memoryEnabled" :label="agentSettings.memoryEnabled ? '已启用' : '已禁用'" />
             </div>
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">记忆系统</label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="agentSettings.memoryEnabled" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ agentSettings.memoryEnabled ? '已启用' : '已禁用' }}</span>
-                </label>
-              </div>
-              <div class="form-row">
-                <label class="form-label">用户画像</label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="agentSettings.userProfileEnabled" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ agentSettings.userProfileEnabled ? '已启用' : '已禁用' }}</span>
-                </label>
-              </div>
+            <div class="form-row">
+              <label class="form-label">用户画像</label>
+              <HxToggle v-model="agentSettings.userProfileEnabled" :label="agentSettings.userProfileEnabled ? '已启用' : '已禁用'" />
             </div>
-          </div>
+          </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <button @click="saveAgentSettings" class="btn-primary">保存设置</button>
+            <HxButton variant="primary" @click="saveAgentSettings">保存设置</HxButton>
             <span v-if="agentSaveOk" class="save-feedback">已保存</span>
           </div>
         </div>
@@ -439,79 +408,73 @@
         <div v-if="activeSection === 'terminal'" class="content-section">
           <h2 class="section-title">终端设置</h2>
 
-          <div class="card" style="margin-bottom: 16px;">
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">终端后端</label>
-                <select v-model="terminalSettings.backend" class="form-select" style="max-width: 200px;">
-                  <option value="local">本地 (local)</option>
-                  <option value="docker">Docker</option>
-                  <option value="ssh">SSH 远程</option>
-                </select>
-                <p class="form-hint">命令执行环境</p>
-              </div>
-              <div class="form-row">
-                <label class="form-label">工作目录</label>
-                <input v-model="terminalSettings.cwd" type="text" placeholder="留空使用当前目录" class="form-input" />
-                <p class="form-hint">Agent 的默认工作目录</p>
-              </div>
-              <div class="form-row">
-                <label class="form-label">命令超时 (秒)</label>
-                <input v-model.number="terminalSettings.timeout" type="number" class="form-input" style="max-width: 120px;" />
-                <p class="form-hint">前台命令最大执行时间 (默认 180)</p>
-              </div>
-              <div class="form-row">
-                <label class="form-label">命令审批</label>
-                <select v-model="terminalSettings.approvalMode" class="form-select" style="max-width: 200px;">
-                  <option value="manual">手动审批 (manual)</option>
-                  <option value="smart">智能审批 (smart)</option>
-                  <option value="off">关闭审批 (YOLO)</option>
-                </select>
-                <p class="form-hint">危险命令的审批方式</p>
-              </div>
+          <HxCard style="margin-bottom: 16px;">
+            <div class="form-row">
+              <label class="form-label">终端后端</label>
+              <HxSelect v-model="terminalSettings.backend" style="max-width: 200px;">
+                <option value="local">本地 (local)</option>
+                <option value="docker">Docker</option>
+                <option value="ssh">SSH 远程</option>
+              </HxSelect>
+              <p class="form-hint">命令执行环境</p>
             </div>
-          </div>
+            <div class="form-row">
+              <label class="form-label">工作目录</label>
+              <HxInput v-model="terminalSettings.cwd" placeholder="留空使用当前目录" />
+              <p class="form-hint">Agent 的默认工作目录</p>
+            </div>
+            <div class="form-row">
+              <label class="form-label">命令超时 (秒)</label>
+              <HxInput v-model.number="terminalSettings.timeout" type="number" style="max-width: 120px;" />
+              <p class="form-hint">前台命令最大执行时间 (默认 180)</p>
+            </div>
+            <div class="form-row">
+              <label class="form-label">命令审批</label>
+              <HxSelect v-model="terminalSettings.approvalMode" style="max-width: 200px;">
+                <option value="manual">手动审批 (manual)</option>
+                <option value="smart">智能审批 (smart)</option>
+                <option value="off">关闭审批 (YOLO)</option>
+              </HxSelect>
+              <p class="form-hint">危险命令的审批方式</p>
+            </div>
+          </HxCard>
 
-          <div v-if="terminalSettings.backend === 'ssh'" class="card" style="margin-bottom: 16px;">
-            <div class="card-header">
-              <span class="card-header-tag custom">SSH</span>
-              <span>远程连接配置</span>
+          <HxCard v-if="terminalSettings.backend === 'ssh'" style="margin-bottom: 16px;">
+            <template #header>
+              <HxBadge variant="orange">SSH</HxBadge>
+              <span style="margin-left:8px;">远程连接配置</span>
+            </template>
+            <div class="form-row">
+              <label class="form-label">主机</label>
+              <HxInput v-model="terminalSettings.sshHost" placeholder="user@host" />
             </div>
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">主机</label>
-                <input v-model="terminalSettings.sshHost" type="text" placeholder="user@host" class="form-input" />
-              </div>
-              <div class="form-row">
-                <label class="form-label">端口</label>
-                <input v-model.number="terminalSettings.sshPort" type="number" class="form-input" style="max-width: 120px;" />
-              </div>
-              <div class="form-row">
-                <label class="form-label">密钥路径</label>
-                <input v-model="terminalSettings.sshKey" type="text" placeholder="~/.ssh/id_rsa" class="form-input" />
-              </div>
+            <div class="form-row">
+              <label class="form-label">端口</label>
+              <HxInput v-model.number="terminalSettings.sshPort" type="number" style="max-width: 120px;" />
             </div>
-          </div>
+            <div class="form-row">
+              <label class="form-label">密钥路径</label>
+              <HxInput v-model="terminalSettings.sshKey" placeholder="~/.ssh/id_rsa" />
+            </div>
+          </HxCard>
 
-          <div v-if="terminalSettings.backend === 'docker'" class="card" style="margin-bottom: 16px;">
-            <div class="card-header">
-              <span class="card-header-tag custom">Docker</span>
-              <span>容器配置</span>
+          <HxCard v-if="terminalSettings.backend === 'docker'" style="margin-bottom: 16px;">
+            <template #header>
+              <HxBadge variant="cyan">Docker</HxBadge>
+              <span style="margin-left:8px;">容器配置</span>
+            </template>
+            <div class="form-row">
+              <label class="form-label">镜像</label>
+              <HxInput v-model="terminalSettings.dockerImage" placeholder="ubuntu:22.04" />
             </div>
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">镜像</label>
-                <input v-model="terminalSettings.dockerImage" type="text" placeholder="ubuntu:22.04" class="form-input" />
-              </div>
-              <div class="form-row">
-                <label class="form-label">挂载目录</label>
-                <input v-model="terminalSettings.dockerMount" type="text" placeholder="/home/user/project" class="form-input" />
-              </div>
+            <div class="form-row">
+              <label class="form-label">挂载目录</label>
+              <HxInput v-model="terminalSettings.dockerMount" placeholder="/home/user/project" />
             </div>
-          </div>
+          </HxCard>
 
           <div class="form-actions">
-            <button @click="saveTerminalSettings" class="btn-primary">保存设置</button>
+            <HxButton variant="primary" @click="saveTerminalSettings">保存设置</HxButton>
             <span v-if="terminalSaveOk" class="save-feedback">已保存</span>
           </div>
         </div>
@@ -520,56 +483,38 @@
         <div v-if="activeSection === 'display'" class="content-section">
           <h2 class="section-title">显示设置</h2>
 
-          <div class="card">
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">工具调用详情</label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="displaySettings.showToolProgress" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ displaySettings.showToolProgress ? '显示' : '隐藏' }}</span>
-                </label>
-                <p class="form-hint">是否显示工具调用的输入参数和输出结果</p>
-              </div>
-              <div class="form-row">
-                <label class="form-label">推理过程</label>
-                <select v-model="displaySettings.showReasoning" class="form-select" style="max-width: 200px;">
-                  <option value="none">不显示</option>
-                  <option value="show">展开显示</option>
-                  <option value="hide">折叠显示</option>
-                </select>
-                <p class="form-hint">模型的 thinking/reasoning 内容</p>
-              </div>
-              <div class="form-row">
-                <label class="form-label">显示费用</label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="displaySettings.showCost" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ displaySettings.showCost ? '显示' : '隐藏' }}</span>
-                </label>
-                <p class="form-hint">在消息底部显示 token 用量和费用</p>
-              </div>
-              <div class="form-row">
-                <label class="form-label">Markdown 渲染</label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="displaySettings.renderMarkdown" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ displaySettings.renderMarkdown ? '已启用' : '纯文本' }}</span>
-                </label>
-              </div>
-              <div class="form-row">
-                <label class="form-label">代码高亮</label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="displaySettings.syntaxHighlight" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ displaySettings.syntaxHighlight ? '已启用' : '已禁用' }}</span>
-                </label>
-              </div>
+          <HxCard>
+            <div class="form-row">
+              <label class="form-label">工具调用详情</label>
+              <HxToggle v-model="displaySettings.showToolProgress" :label="displaySettings.showToolProgress ? '显示' : '隐藏'" />
+              <p class="form-hint">是否显示工具调用的输入参数和输出结果</p>
             </div>
-          </div>
+            <div class="form-row">
+              <label class="form-label">推理过程</label>
+              <HxSelect v-model="displaySettings.showReasoning" style="max-width: 200px;">
+                <option value="none">不显示</option>
+                <option value="show">展开显示</option>
+                <option value="hide">折叠显示</option>
+              </HxSelect>
+              <p class="form-hint">模型的 thinking/reasoning 内容</p>
+            </div>
+            <div class="form-row">
+              <label class="form-label">显示费用</label>
+              <HxToggle v-model="displaySettings.showCost" :label="displaySettings.showCost ? '显示' : '隐藏'" />
+              <p class="form-hint">在消息底部显示 token 用量和费用</p>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Markdown 渲染</label>
+              <HxToggle v-model="displaySettings.renderMarkdown" :label="displaySettings.renderMarkdown ? '已启用' : '纯文本'" />
+            </div>
+            <div class="form-row">
+              <label class="form-label">代码高亮</label>
+              <HxToggle v-model="displaySettings.syntaxHighlight" :label="displaySettings.syntaxHighlight ? '已启用' : '已禁用'" />
+            </div>
+          </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <button @click="saveDisplaySettings" class="btn-primary">保存设置</button>
+            <HxButton variant="primary" @click="saveDisplaySettings">保存设置</HxButton>
             <span v-if="displaySaveOk" class="save-feedback">已保存</span>
           </div>
         </div>
@@ -578,67 +523,59 @@
         <div v-if="activeSection === 'voice'" class="content-section">
           <h2 class="section-title">语音设置</h2>
 
-          <div class="card" style="margin-bottom: 16px;">
-            <div class="card-header">
-              <span class="card-header-tag default">STT</span>
-              <span>语音转文字</span>
+          <HxCard style="margin-bottom: 16px;">
+            <template #header>
+              <HxBadge variant="green">STT</HxBadge>
+              <span style="margin-left:8px;">语音转文字</span>
+            </template>
+            <div class="form-row">
+              <label class="form-label">启用 STT</label>
+              <HxToggle v-model="voiceSettings.sttEnabled" :label="voiceSettings.sttEnabled ? '已启用' : '已禁用'" />
             </div>
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">启用 STT</label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="voiceSettings.sttEnabled" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ voiceSettings.sttEnabled ? '已启用' : '已禁用' }}</span>
-                </label>
-              </div>
-              <div class="form-row">
-                <label class="form-label">STT 提供商</label>
-                <select v-model="voiceSettings.sttProvider" class="form-select" style="max-width: 200px;">
-                  <option value="local">本地 Whisper (免费)</option>
-                  <option value="groq">Groq Whisper</option>
-                  <option value="openai">OpenAI Whisper</option>
-                  <option value="mistral">Mistral Voxtral</option>
-                </select>
-              </div>
-              <div v-if="voiceSettings.sttProvider === 'local'" class="form-row">
-                <label class="form-label">Whisper 模型</label>
-                <select v-model="voiceSettings.whisperModel" class="form-select" style="max-width: 200px;">
-                  <option value="tiny">tiny (最快)</option>
-                  <option value="base">base (推荐)</option>
-                  <option value="small">small</option>
-                  <option value="medium">medium</option>
-                  <option value="large-v3">large-v3 (最准)</option>
-                </select>
-              </div>
+            <div class="form-row">
+              <label class="form-label">STT 提供商</label>
+              <HxSelect v-model="voiceSettings.sttProvider" style="max-width: 200px;">
+                <option value="local">本地 Whisper (免费)</option>
+                <option value="groq">Groq Whisper</option>
+                <option value="openai">OpenAI Whisper</option>
+                <option value="mistral">Mistral Voxtral</option>
+              </HxSelect>
             </div>
-          </div>
+            <div v-if="voiceSettings.sttProvider === 'local'" class="form-row">
+              <label class="form-label">Whisper 模型</label>
+              <HxSelect v-model="voiceSettings.whisperModel" style="max-width: 200px;">
+                <option value="tiny">tiny (最快)</option>
+                <option value="base">base (推荐)</option>
+                <option value="small">small</option>
+                <option value="medium">medium</option>
+                <option value="large-v3">large-v3 (最准)</option>
+              </HxSelect>
+            </div>
+          </HxCard>
 
-          <div class="card">
-            <div class="card-header">
-              <span class="card-header-tag custom">TTS</span>
-              <span>文字转语音</span>
+          <HxCard>
+            <template #header>
+              <HxBadge variant="purple">TTS</HxBadge>
+              <span style="margin-left:8px;">文字转语音</span>
+            </template>
+            <div class="form-row">
+              <label class="form-label">TTS 提供商</label>
+              <HxSelect v-model="voiceSettings.ttsProvider" style="max-width: 200px;">
+                <option value="edge">Edge TTS (免费)</option>
+                <option value="elevenlabs">ElevenLabs</option>
+                <option value="openai">OpenAI TTS</option>
+                <option value="minimax">MiniMax</option>
+                <option value="mistral">Mistral</option>
+              </HxSelect>
             </div>
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">TTS 提供商</label>
-                <select v-model="voiceSettings.ttsProvider" class="form-select" style="max-width: 200px;">
-                  <option value="edge">Edge TTS (免费)</option>
-                  <option value="elevenlabs">ElevenLabs</option>
-                  <option value="openai">OpenAI TTS</option>
-                  <option value="minimax">MiniMax</option>
-                  <option value="mistral">Mistral</option>
-                </select>
-              </div>
-              <div v-if="voiceSettings.ttsProvider !== 'edge'" class="form-row">
-                <label class="form-label">TTS API Key</label>
-                <input v-model="voiceSettings.ttsApiKey" type="password" placeholder="API Key" class="form-input" />
-              </div>
+            <div v-if="voiceSettings.ttsProvider !== 'edge'" class="form-row">
+              <label class="form-label">TTS API Key</label>
+              <HxInput v-model="voiceSettings.ttsApiKey" type="password" placeholder="API Key" />
             </div>
-          </div>
+          </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <button @click="saveVoiceSettings" class="btn-primary">保存设置</button>
+            <HxButton variant="primary" @click="saveVoiceSettings">保存设置</HxButton>
             <span v-if="voiceSaveOk" class="save-feedback">已保存</span>
           </div>
         </div>
@@ -647,62 +584,44 @@
         <div v-if="activeSection === 'security'" class="content-section">
           <h2 class="section-title">安全设置</h2>
 
-          <div class="card" style="margin-bottom: 16px;">
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">密钥脱敏</label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="securitySettings.redactSecrets" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ securitySettings.redactSecrets ? '已启用' : '已禁用' }}</span>
-                </label>
-                <p class="form-hint">自动遮盖工具输出中的 API Key、Token 等敏感信息</p>
-              </div>
-              <div class="form-row">
-                <label class="form-label">PII 脱敏</label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="securitySettings.redactPii" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ securitySettings.redactPii ? '已启用' : '已禁用' }}</span>
-                </label>
-                <p class="form-hint">对用户 ID、手机号等个人信息进行哈希处理</p>
-              </div>
+          <HxCard style="margin-bottom: 16px;">
+            <div class="form-row">
+              <label class="form-label">密钥脱敏</label>
+              <HxToggle v-model="securitySettings.redactSecrets" :label="securitySettings.redactSecrets ? '已启用' : '已禁用'" />
+              <p class="form-hint">自动遮盖工具输出中的 API Key、Token 等敏感信息</p>
             </div>
-          </div>
+            <div class="form-row">
+              <label class="form-label">PII 脱敏</label>
+              <HxToggle v-model="securitySettings.redactPii" :label="securitySettings.redactPii ? '已启用' : '已禁用'" />
+              <p class="form-hint">对用户 ID、手机号等个人信息进行哈希处理</p>
+            </div>
+          </HxCard>
 
-          <div class="card" style="margin-bottom: 16px;">
-            <div class="card-header">
-              <span class="card-header-tag default">网站</span>
-              <span>访问限制</span>
+          <HxCard style="margin-bottom: 16px;">
+            <template #header>
+              <HxBadge variant="red">网站</HxBadge>
+              <span style="margin-left:8px;">访问限制</span>
+            </template>
+            <div class="form-row">
+              <label class="form-label">网站黑名单</label>
+              <HxTextarea v-model="securitySettings.blocklist" :rows="3" placeholder="每行一个域名，如：&#10;example.com&#10;malware.test"></HxTextarea>
+              <p class="form-hint">Agent 禁止访问的域名列表</p>
             </div>
-            <div class="card-body">
-              <div class="form-row">
-                <label class="form-label">网站黑名单</label>
-                <textarea v-model="securitySettings.blocklist" class="form-textarea" rows="3" placeholder="每行一个域名，如：&#10;example.com&#10;malware.test"></textarea>
-                <p class="form-hint">Agent 禁止访问的域名列表</p>
-              </div>
-            </div>
-          </div>
+          </HxCard>
 
-          <div class="card">
-            <div class="card-header">
-              <span class="card-header-tag default">工具</span>
-              <span>工具权限</span>
+          <HxCard>
+            <template #header>
+              <HxBadge variant="orange">工具</HxBadge>
+              <span style="margin-left:8px;">工具权限</span>
+            </template>
+            <div class="form-row" v-for="ts in toolsetList" :key="ts.id">
+              <label class="form-label">{{ ts.label }}</label>
+              <HxToggle v-model="ts.enabled" :label="ts.enabled ? '启用' : '禁用'" />
             </div>
-            <div class="card-body">
-              <div class="form-row" v-for="ts in toolsetList" :key="ts.id">
-                <label class="form-label">{{ ts.label }}</label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="ts.enabled" />
-                  <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ ts.enabled ? '启用' : '禁用' }}</span>
-                </label>
-              </div>
-            </div>
-          </div>
+          </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <button @click="saveSecuritySettings" class="btn-primary">保存设置</button>
+            <HxButton variant="primary" @click="saveSecuritySettings">保存设置</HxButton>
             <span v-if="securitySaveOk" class="save-feedback">已保存</span>
           </div>
         </div>
@@ -719,6 +638,10 @@ import { storeToRefs } from 'pinia'
 import { hermesConfigSet, hermesToolsList, hermesToolsEnable, hermesToolsDisable, hermesMemoryGet, hermesMemoryEdit } from '../api'
 import IconUser from '../components/icons/IconUser.vue'
 import IconSettings from '../components/icons/IconSettings.vue'
+import { HxButton, HxInput, HxTextarea, HxSelect, HxToggle, HxCard, HxBadge, HxModal } from '../components/ui'
+import { useToast } from '../composables/useToast'
+
+const toast = useToast()
 
 const gfwStore = useGfwStore()
 const chatStore = useChatStore()
@@ -970,14 +893,18 @@ async function testConnection() {
       const data = await r.json()
       const model = data?.model || config.model || '未知'
       testResult.value = { ok: true, message: `连接成功! 模型: ${model}` }
+      toast.success('连接成功', `模型: ${model}`)
     } else if (r.status === 401) {
       testResult.value = { ok: false, message: 'API Key 无效 (401 Unauthorized)' }
+      toast.error('API Key 无效')
     } else if (r.status === 404) {
       testResult.value = { ok: false, message: 'API 地址错误，端点不存在 (404)' }
+      toast.error('API 地址错误')
     } else {
       let errText = ''
       try { errText = await r.text() } catch {}
       testResult.value = { ok: false, message: `HTTP ${r.status}: ${errText.slice(0, 120)}` }
+      toast.error('连接失败', `HTTP ${r.status}`)
     }
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -988,13 +915,13 @@ async function testConnection() {
     } else {
       testResult.value = { ok: false, message: `连接失败: ${msg}` }
     }
+    toast.error('连接失败', msg.slice(0, 80))
   }
   testing.value = false
 }
 
 function saveModelSettings() {
   if (providerMode.value === 'gfw') {
-    // 保存 GFW API Key
     localStorage.setItem('gfw_api_key', gfwApiKey.value)
   } else if (providerMode.value === 'custom') {
     chatStore.setCustomProvider({
@@ -1008,6 +935,7 @@ function saveModelSettings() {
   chatStore.setProviderMode(providerMode.value)
   saveSuccess.value = true
   setTimeout(() => { saveSuccess.value = false }, 2000)
+  toast.success('模型设置已保存')
 }
 
 const featuredModels = computed(() => {
@@ -1021,22 +949,33 @@ function formatContext(tokens: number): string {
 }
 
 async function handleLogin() {
-  await gfwStore.login(email.value, password.value)
-  await gfwStore.fetchUserInfo()
-  await gfwStore.fetchModels()
-  await gfwStore.fetchApiKeys()
-  await gfwStore.fetchDailyUsage()
-  await gfwStore.fetchRechargePackages()
+  try {
+    await gfwStore.login(email.value, password.value)
+    await gfwStore.fetchUserInfo()
+    await gfwStore.fetchModels()
+    await gfwStore.fetchApiKeys()
+    await gfwStore.fetchDailyUsage()
+    await gfwStore.fetchRechargePackages()
+    toast.success('登录成功', '欢迎回来！')
+  } catch (e: any) {
+    toast.error('登录失败', e?.message || '请检查邮箱和密码')
+  }
 }
 
 function logout() {
   gfwStore.logout()
+  toast.info('已登出')
 }
 
 async function createKey() {
-  await gfwStore.createApiKey(newKeyName.value || 'Desktop Key', newKeyLimit.value)
-  showCreateKey.value = false
-  newKeyName.value = ''
+  try {
+    await gfwStore.createApiKey(newKeyName.value || 'Desktop Key', newKeyLimit.value)
+    showCreateKey.value = false
+    newKeyName.value = ''
+    toast.success('Key 创建成功')
+  } catch (e: any) {
+    toast.error('创建失败', e?.message)
+  }
 }
 
 function saveSettings() {
@@ -1071,7 +1010,10 @@ async function saveAgentSettings() {
     }
     agentSaveOk.value = true
     setTimeout(() => { agentSaveOk.value = false }, 2000)
-  } catch (e) { console.error('保存 Agent 设置失败:', e) }
+    toast.success('Agent 设置已保存')
+  } catch (e: any) {
+    toast.error('保存失败', e?.message)
+  }
 }
 
 // ===== Terminal Settings =====
@@ -1099,7 +1041,10 @@ async function saveTerminalSettings() {
     if (s.cwd) await hermesConfigSet('terminal.cwd', s.cwd)
     terminalSaveOk.value = true
     setTimeout(() => { terminalSaveOk.value = false }, 2000)
-  } catch (e) { console.error('保存终端设置失败:', e) }
+    toast.success('终端设置已保存')
+  } catch (e: any) {
+    toast.error('保存失败', e?.message)
+  }
 }
 
 // ===== Display Settings =====
@@ -1122,7 +1067,10 @@ async function saveDisplaySettings() {
     ])
     displaySaveOk.value = true
     setTimeout(() => { displaySaveOk.value = false }, 2000)
-  } catch (e) { console.error('保存显示设置失败:', e) }
+    toast.success('显示设置已保存')
+  } catch (e: any) {
+    toast.error('保存失败', e?.message)
+  }
 }
 
 // ===== Voice Settings =====
@@ -1146,7 +1094,10 @@ async function saveVoiceSettings() {
     if (s.sttProvider === 'local') await hermesConfigSet('stt.local.model', s.whisperModel)
     voiceSaveOk.value = true
     setTimeout(() => { voiceSaveOk.value = false }, 2000)
-  } catch (e) { console.error('保存语音设置失败:', e) }
+    toast.success('语音设置已保存')
+  } catch (e: any) {
+    toast.error('保存失败', e?.message)
+  }
 }
 
 // ===== Security Settings =====
@@ -1181,7 +1132,7 @@ async function saveSecuritySettings() {
       hermesConfigSet('security.redact_secrets', String(s.redactSecrets)),
       hermesConfigSet('privacy.redact_pii', String(s.redactPii)),
     ])
-    // 保存 toolset 开关 — 调用真实 hermes tools enable/disable
+    // 保存 toolset 开关 — 调用真实 Hermes API
     for (const t of toolsetList.value) {
       if (t.enabled) {
         await hermesToolsEnable(t.id)
@@ -1191,7 +1142,10 @@ async function saveSecuritySettings() {
     }
     securitySaveOk.value = true
     setTimeout(() => { securitySaveOk.value = false }, 2000)
-  } catch (e) { console.error('保存安全设置失败:', e) }
+    toast.success('安全设置已保存')
+  } catch (e: any) {
+    toast.error('保存失败', e?.message)
+  }
 }
 
 // 从真实 Hermes API 加载 toolset 开关状态

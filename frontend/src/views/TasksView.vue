@@ -4,117 +4,130 @@
     <div class="tasks-header">
       <div class="header-left">
         <h1 class="tasks-title">任务中心</h1>
-        <span class="tasks-count">{{ allTasks.length }} 个任务</span>
+        <HxBadge variant="info" size="sm">{{ allTasks.length }} 个任务</HxBadge>
       </div>
-      <button class="btn-create" @click="showCreate = !showCreate">
+      <HxButton variant="primary" @click="showCreate = !showCreate">
         <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/> <path d="M341.333333 469.333333a42.666667 42.666667 0 0 0-42.666666 42.666667 42.666667 42.666667 0 0 0 42.666666 42.666667h341.333334a42.666667 42.666667 0 0 0 42.666666-42.666667 42.666667 42.666667 0 0 0-42.666666-42.666667z"/> <path d="M512 298.666667a42.666667 42.666667 0 0 0-42.666667 42.666666v341.333334a42.666667 42.666667 0 0 0 42.666667 42.666666 42.666667 42.666667 0 0 0 42.666667-42.666666V341.333333a42.666667 42.666667 0 0 0-42.666667-42.666666z"/></svg>
         新建定时任务
-      </button>
+      </HxButton>
     </div>
 
     <!-- Create form -->
-    <div v-if="showCreate" class="card create-card">
-      <div class="card-header">
-        <span class="card-header-tag">NEW</span>
+    <HxCard v-if="showCreate" class="create-card">
+      <template #header>
+        <HxBadge variant="success" size="sm">NEW</HxBadge>
         <span>创建定时任务</span>
-      </div>
+      </template>
       <div class="card-body">
         <div class="form-row">
           <label class="form-label">任务名称</label>
-          <input v-model="newTask.name" type="text" placeholder="例如: 每日数据报告" class="form-input" />
+          <HxInput v-model="newTask.name" placeholder="例如: 每日数据报告" />
         </div>
         <div class="form-row">
           <label class="form-label">执行计划</label>
-          <input v-model="newTask.schedule" type="text" placeholder="30m / every 2h / 0 9 * * * / ISO时间" class="form-input" />
+          <HxInput v-model="newTask.schedule" placeholder="30m / every 2h / 0 9 * * * / ISO时间" />
           <p class="form-hint">支持: 30m, every 2h, cron表达式(0 9 * * *), ISO时间戳</p>
         </div>
         <div class="form-row">
           <label class="form-label">提示词</label>
-          <textarea v-model="newTask.prompt" class="form-textarea" rows="3" placeholder="任务要执行的提示词内容"></textarea>
+          <HxTextarea v-model="newTask.prompt" placeholder="任务要执行的提示词内容" :rows="3" />
         </div>
         <div class="form-row">
           <label class="form-label">技能 (可选)</label>
-          <input v-model="newTask.skills" type="text" placeholder="skill-a, skill-b (逗号分隔)" class="form-input" />
+          <HxInput v-model="newTask.skills" placeholder="skill-a, skill-b (逗号分隔)" />
         </div>
         <div class="form-actions">
-          <button class="btn-primary" @click="createTask">创建</button>
-          <button class="btn-secondary" @click="showCreate = false">取消</button>
+          <HxButton variant="primary" @click="createTask">创建</HxButton>
+          <HxButton variant="ghost" @click="showCreate = false">取消</HxButton>
         </div>
       </div>
-    </div>
+    </HxCard>
 
     <!-- Edit form (inline) -->
-    <div v-if="editingTask" class="card create-card">
-      <div class="card-header">
-        <span class="card-header-tag" style="background: var(--color-warning); color: #000;">EDIT</span>
+    <HxCard v-if="editingTask" class="create-card">
+      <template #header>
+        <HxBadge variant="warning" size="sm">EDIT</HxBadge>
         <span>编辑任务 · {{ editingTask.id.substring(0, 8) }}</span>
-      </div>
+      </template>
       <div class="card-body">
         <div class="form-row">
           <label class="form-label">任务名称</label>
-          <input v-model="editForm.name" type="text" class="form-input" />
+          <HxInput v-model="editForm.name" />
         </div>
         <div class="form-row">
           <label class="form-label">执行计划</label>
-          <input v-model="editForm.schedule" type="text" class="form-input" />
+          <HxInput v-model="editForm.schedule" />
           <p class="form-hint">支持: 30m, every 2h, cron表达式(0 9 * * *), ISO时间戳</p>
         </div>
         <div class="form-row">
           <label class="form-label">提示词</label>
-          <textarea v-model="editForm.prompt" class="form-textarea" rows="3"></textarea>
+          <HxTextarea v-model="editForm.prompt" :rows="3" />
         </div>
         <div class="form-actions">
-          <button class="btn-primary" @click="saveEdit">保存修改</button>
-          <button class="btn-secondary" @click="editingTask = null">取消</button>
+          <HxButton variant="primary" @click="saveEdit">保存修改</HxButton>
+          <HxButton variant="ghost" @click="editingTask = null">取消</HxButton>
         </div>
       </div>
-    </div>
+    </HxCard>
 
     <!-- Tabs -->
     <div class="tabs">
-      <button :class="['tab', { active: activeTab === 'cron' }]" @click="activeTab = 'cron'">
-        定时任务
-        <span class="tab-count">{{ cronTasks.length }}</span>
-      </button>
-      <button :class="['tab', { active: activeTab === 'running' }]" @click="activeTab = 'running'">
-        运行中
-        <span class="tab-count" :class="{ live: runningTasks.length > 0 }">{{ runningTasks.length }}</span>
-      </button>
-      <button :class="['tab', { active: activeTab === 'history' }]" @click="activeTab = 'history'">
-        执行历史
-        <span class="tab-count">{{ historyTasks.length }}</span>
-      </button>
+      <div class="tab-chips">
+        <HxButton :variant="activeTab === 'cron' ? 'primary' : 'ghost'" size="sm" @click="activeTab = 'cron'">
+          定时任务
+          <HxBadge variant="info" size="sm" class="tab-count">{{ cronTasks.length }}</HxBadge>
+        </HxButton>
+        <HxButton :variant="activeTab === 'running' ? 'primary' : 'ghost'" size="sm" @click="activeTab = 'running'">
+          运行中
+          <HxBadge :variant="runningTasks.length > 0 ? 'success' : 'info'" size="sm" class="tab-count">{{ runningTasks.length }}</HxBadge>
+        </HxButton>
+        <HxButton :variant="activeTab === 'history' ? 'primary' : 'ghost'" size="sm" @click="activeTab = 'history'">
+          执行历史
+          <HxBadge variant="info" size="sm" class="tab-count">{{ historyTasks.length }}</HxBadge>
+        </HxButton>
+      </div>
     </div>
 
     <!-- Cron tasks list -->
     <template v-if="activeTab === 'cron'">
-      <div v-if="cronTasks.length === 0" class="empty-state">
-        <div class="empty-icon"><svg width="32" height="32" viewBox="0 0 1024 1024" fill="currentColor"><path d="M426.666667 42.666667a42.666667 42.666667 0 0 0 0 85.333333h170.666666a42.666667 42.666667 0 0 0 0-85.333333z"/><path d="M512 213.333333c-211.584 0-384 172.416-384 384s172.416 384 384 384 384-172.416 384-384-172.416-384-384-384z m0 85.333334c165.461333 0 298.666667 133.205333 298.666667 298.666666s-133.205333 298.666667-298.666667 298.666667-298.666667-133.205333-298.666667-298.666667S346.538667 298.666667 512 298.666667z m0 85.333333a42.666667 42.666667 0 0 0-42.666667 42.666667v170.666666a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V426.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/></svg></div>
-        <div class="empty-text">暂无定时任务</div>
-        <div class="empty-hint">点击「新建定时任务」创建你的第一个自动化任务</div>
-      </div>
+      <HxEmpty v-if="cronTasks.length === 0">
+        <template #default>
+          <div class="empty-text">暂无定时任务</div>
+          <div class="empty-hint">点击「新建定时任务」创建你的第一个自动化任务</div>
+        </template>
+      </HxEmpty>
       <div v-else class="task-list">
         <div v-for="task in cronTasks" :key="task.id" class="task-card" :class="{ paused: task.status === 'paused' }">
           <div class="task-top">
             <span :class="['task-dot', task.status]"></span>
             <span class="task-name">{{ task.name }}</span>
             <span class="task-schedule">{{ task.schedule }}</span>
-            <span :class="['task-status-tag', task.status]">{{ statusLabel(task.status) }}</span>
+            <HxBadge :variant="task.status === 'active' ? 'success' : task.status === 'paused' ? 'warning' : 'info'" size="sm">{{ statusLabel(task.status) }}</HxBadge>
           </div>
           <div class="task-prompt">{{ task.prompt }}</div>
           <div v-if="task.skills" class="task-skills">
-            <span v-for="s in task.skills.split(',')" :key="s" class="skill-tag">{{ s.trim() }}</span>
+            <HxBadge v-for="s in task.skills.split(',')" :key="s" variant="secondary" size="sm">{{ s.trim() }}</HxBadge>
           </div>
           <div class="task-bottom">
             <span class="task-meta" v-if="task.lastRun">上次: {{ formatTime(task.lastRun) }}</span>
             <span class="task-meta" v-if="task.nextRun">下次: {{ formatTime(task.nextRun) }}</span>
             <span class="task-meta">运行 {{ task.runCount || 0 }} 次</span>
             <div class="task-actions">
-              <button class="act-btn" @click="editTask(task)" title="编辑"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-              <button v-if="task.status === 'active'" class="act-btn" @click="pauseTask(task)" title="暂停"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M640 85.333333c-46.506667 0-85.333333 38.826667-85.333333 85.333334v682.666666c0 46.506667 38.826667 85.333333 85.333333 85.333334h128c46.506667 0 85.333333-38.826667 85.333333-85.333334V170.666667c0-46.506667-38.826667-85.333333-85.333333-85.333334z m-384 0c-46.506667 0-85.333333 38.826667-85.333333 85.333334v682.666666c0 46.506667 38.826667 85.333333 85.333333 85.333334h128c46.506667 0 85.333333-38.826667 85.333333-85.333334V170.666667c0-46.506667-38.826667-85.333333-85.333333-85.333334z"/></svg></button>
-              <button v-if="task.status === 'paused'" class="act-btn" @click="resumeTask(task)" title="恢复"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M297.813333 85.845333C231.936 87.424 170.666667 140.8 170.666667 213.333333v597.333334c0 96.725333 108.928 159.36 192.512 110.592l512-298.666667c83.029333-48.384 82.986667-172.970667-0.085334-221.269333l-512-298.666667c-18.858667-11.008-39.552-16.768-65.28-16.810667z"/></svg></button>
-              <button class="act-btn" @click="runTask(task)" title="立即执行"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.053333 0 384 171.946667 384 384s-171.946667 384-384 384S128 724.053333 128 512s171.946667-384 384-384z"/><path d="M427.264 299.349333c-44.202667 0.853333-86.058667 36.608-85.930667 84.906667v255.573333c-0.128 64.298667 74.24 106.453333 129.322667 73.258667l213.077333-127.744c53.888-32.128 53.888-114.56 0-146.688l-213.077333-127.786667c-12.8-7.68-27.52-11.52-43.392-11.52z"/></svg></button>
-              <button class="act-btn danger" @click="deleteTask(task)" title="删除"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/> <path d="M640 341.333333a42.666667 42.666667 0 0 0-30.165333 12.501334l-256 256a42.666667 42.666667 0 0 0 0 60.330666 42.666667 42.666667 0 0 0 60.330666 0l256-256a42.666667 42.666667 0 0 0 0-60.330666A42.666667 42.666667 0 0 0 640 341.333333z"/> <path d="M384 341.333333a42.666667 42.666667 0 0 0-30.165333 12.501334 42.666667 42.666667 0 0 0 0 60.330666l256 256a42.666667 42.666667 0 0 0 60.330666 0 42.666667 42.666667 0 0 0 0-60.330666l-256-256A42.666667 42.666667 0 0 0 384 341.333333z"/></svg></button>
+              <HxButton variant="ghost" size="sm" @click="editTask(task)" title="编辑">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </HxButton>
+              <HxButton v-if="task.status === 'active'" variant="ghost" size="sm" @click="pauseTask(task)" title="暂停">
+                <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M640 85.333333c-46.506667 0-85.333333 38.826667-85.333333 85.333334v682.666666c0 46.506667 38.826667 85.333333 85.333333 85.333334h128c46.506667 0 85.333333-38.826667 85.333333-85.333334V170.666667c0-46.506667-38.826667-85.333333-85.333333-85.333334z m-384 0c-46.506667 0-85.333333 38.826667-85.333333 85.333334v682.666666c0 46.506667 38.826667 85.333333 85.333333 85.333334h128c46.506667 0 85.333333-38.826667 85.333333-85.333334V170.666667c0-46.506667-38.826667-85.333333-85.333333-85.333334z"/></svg>
+              </HxButton>
+              <HxButton v-if="task.status === 'paused'" variant="ghost" size="sm" @click="resumeTask(task)" title="恢复">
+                <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M297.813333 85.845333C231.936 87.424 170.666667 140.8 170.666667 213.333333v597.333334c0 96.725333 108.928 159.36 192.512 110.592l512-298.666667c83.029333-48.384 82.986667-172.970667-0.085334-221.269333l-512-298.666667c-18.858667-11.008-39.552-16.768-65.28-16.810667z"/></svg>
+              </HxButton>
+              <HxButton variant="ghost" size="sm" @click="runTask(task)" title="立即执行">
+                <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.053333 0 384 171.946667 384 384s-171.946667 384-384 384S128 724.053333 128 512s171.946667-384 384-384z"/><path d="M427.264 299.349333c-44.202667 0.853333-86.058667 36.608-85.930667 84.906667v255.573333c-0.128 64.298667 74.24 106.453333 129.322667 73.258667l213.077333-127.744c53.888-32.128 53.888-114.56 0-146.688l-213.077333-127.786667c-12.8-7.68-27.52-11.52-43.392-11.52z"/></svg>
+              </HxButton>
+              <HxButton variant="danger" size="sm" @click="deleteTask(task)" title="删除">
+                <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/> <path d="M640 341.333333a42.666667 42.666667 0 0 0-30.165333 12.501334l-256 256a42.666667 42.666667 0 0 0 0 60.330666 42.666667 42.666667 0 0 0 60.330666 0l256-256a42.666667 42.666667 0 0 0 0-60.330666A42.666667 42.666667 0 0 0 640 341.333333z"/> <path d="M384 341.333333a42.666667 42.666667 0 0 0-30.165333 12.501334 42.666667 42.666667 0 0 0 0 60.330666l256 256a42.666667 42.666667 0 0 0 60.330666 0 42.666667 42.666667 0 0 0 0-60.330666l-256-256A42.666667 42.666667 0 0 0 384 341.333333z"/></svg>
+              </HxButton>
             </div>
           </div>
         </div>
@@ -123,14 +136,15 @@
 
     <!-- Running tasks -->
     <template v-if="activeTab === 'running'">
-      <div v-if="runningTasks.length === 0" class="empty-state">
-        <div class="empty-icon"><svg width="32" height="32" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/><path d="M426.666667 341.333333a42.666667 42.666667 0 0 0-42.666667 42.666667v256a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666666-42.666667V384a42.666667 42.666667 0 0 0-42.666666-42.666667zM597.333333 341.333333a42.666667 42.666667 0 0 0-42.666666 42.666667v256a42.666667 42.666667 0 0 0 42.666666 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V384a42.666667 42.666667 0 0 0-42.666667-42.666667z"/></svg></div>
-        <div class="empty-text">没有正在运行的任务</div>
-      </div>
+      <HxEmpty v-if="runningTasks.length === 0">
+        <template #default>
+          <div class="empty-text">没有正在运行的任务</div>
+        </template>
+      </HxEmpty>
       <div v-else class="task-list">
         <div v-for="task in runningTasks" :key="task.id" class="task-card running">
           <div class="task-top">
-            <span class="task-spinner"></span>
+            <HxSpinner size="sm" />
             <span class="task-name">{{ task.name }}</span>
             <span class="task-elapsed">{{ formatElapsed(task.startedAt) }}</span>
           </div>
@@ -147,17 +161,18 @@
 
     <!-- History -->
     <template v-if="activeTab === 'history'">
-      <div v-if="historyTasks.length === 0" class="empty-state">
-        <div class="empty-icon"><svg width="32" height="32" viewBox="0 0 1024 1024" fill="currentColor"><path d="M85.333333 469.333333a42.666667 42.666667 0 0 0-42.666666 42.666667 42.666667 42.666667 0 0 0 42.666666 42.666667h233.173334l72.661333 109.013333A42.666667 42.666667 0 0 0 426.666667 682.666667h170.666666a42.666667 42.666667 0 0 0 35.498667-18.986667L705.493333 554.666667H938.666667a42.666667 42.666667 0 0 0 42.666666-42.666667 42.666667 42.666667 0 0 0-42.666666-42.666667h-256a42.666667 42.666667 0 0 0-35.498667 18.986667L574.506667 597.333333h-125.013334l-72.661333-109.013333A42.666667 42.666667 0 0 0 341.333333 469.333333z"/><path d="M308.906667 128c-48.469333 0-93.013333 27.562667-114.56 70.997333l-147.2 293.930667A42.666667 42.666667 0 0 0 42.666667 512v256c0 70.186667 57.813333 128 128 128h682.666666c70.186667 0 128-57.813333 128-128v-256a42.666667 42.666667 0 0 0-4.48-19.072l-147.285333-293.973333A128.170667 128.170667 0 0 0 715.093333 128z m0 85.333333h406.186666c16.256 0 30.890667 9.088 38.144 23.68a42.666667 42.666667 0 0 0 0.085334 0.170667L896 522.069333V768c0 24.064-18.602667 42.666667-42.666667 42.666667H170.666667c-24.064 0-42.666667-18.602667-42.666667-42.666667v-245.930667L270.677333 237.226667a42.666667 42.666667 0 0 0 0.085334-0.170667A42.410667 42.410667 0 0 1 308.906667 213.333333z"/></svg></div>
-        <div class="empty-text">暂无执行记录</div>
-      </div>
+      <HxEmpty v-if="historyTasks.length === 0">
+        <template #default>
+          <div class="empty-text">暂无执行记录</div>
+        </template>
+      </HxEmpty>
       <div v-else class="task-list">
         <div v-for="task in historyTasks" :key="task.id" class="task-card history" :class="task.result">
           <div class="task-top">
             <span :class="['result-dot', task.result]"></span>
             <span class="task-name">{{ task.name }}</span>
             <span class="task-time">{{ formatTime(task.finishedAt) }}</span>
-            <span :class="['result-tag', task.result]">{{ task.result === 'success' ? '成功' : '失败' }}</span>
+            <HxBadge :variant="task.result === 'success' ? 'success' : 'danger'" size="sm">{{ task.result === 'success' ? '成功' : '失败' }}</HxBadge>
           </div>
           <div v-if="task.output" class="task-output">
             <pre>{{ task.output.substring(0, 500) }}{{ task.output.length > 500 ? '...' : '' }}</pre>
@@ -175,6 +190,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { hermesCronList, hermesCronCreate, hermesCronPause, hermesCronResume, hermesCronRemove, hermesCronRun, hermesCronUpdate } from '../api'
+import { HxButton, HxInput, HxTextarea, HxCard, HxBadge, HxSpinner, HxEmpty } from '../components/ui'
+import { useToast } from '../composables/useToast'
+
+const toast = useToast()
 
 interface CronTask {
   id: string
@@ -241,28 +260,45 @@ async function loadTasks() {
 }
 
 async function createTask() {
-  if (!newTask.value.schedule || !newTask.value.prompt) return
+  if (!newTask.value.schedule || !newTask.value.prompt) {
+    toast.error('参数不完整', '请填写执行计划和提示词')
+    return
+  }
   try {
     await hermesCronCreate(newTask.value.schedule, newTask.value.prompt, newTask.value.name || undefined)
+    toast.success('任务创建成功', newTask.value.name || '定时任务')
     newTask.value = { name: '', schedule: '', prompt: '', skills: '' }
     showCreate.value = false
     await loadTasks()
-  } catch (e) { console.error('创建任务失败:', e) }
+  } catch (e: any) {
+    toast.error('创建任务失败', e?.message || String(e))
+  }
 }
 
 async function pauseTask(task: CronTask) {
-  await hermesCronPause(task.id)
-  await loadTasks()
+  try {
+    await hermesCronPause(task.id)
+    toast.info('任务已暂停', task.name)
+    await loadTasks()
+  } catch (e: any) {
+    toast.error('暂停失败', e?.message || String(e))
+  }
 }
 
 async function resumeTask(task: CronTask) {
-  await hermesCronResume(task.id)
-  await loadTasks()
+  try {
+    await hermesCronResume(task.id)
+    toast.success('任务已恢复', task.name)
+    await loadTasks()
+  } catch (e: any) {
+    toast.error('恢复失败', e?.message || String(e))
+  }
 }
 
 async function runTask(task: CronTask) {
   try {
     await hermesCronRun(task.id)
+    toast.success('已触发执行', task.name)
     historyTasks.value.unshift({
       id: 'run-' + Date.now(),
       name: task.name,
@@ -272,12 +308,19 @@ async function runTask(task: CronTask) {
       trigger: '手动触发',
     })
     await loadTasks()
-  } catch (e) { console.error('执行失败:', e) }
+  } catch (e: any) {
+    toast.error('执行失败', e?.message || String(e))
+  }
 }
 
 async function deleteTask(task: CronTask) {
-  await hermesCronRemove(task.id)
-  await loadTasks()
+  try {
+    await hermesCronRemove(task.id)
+    toast.info('任务已删除', task.name)
+    await loadTasks()
+  } catch (e: any) {
+    toast.error('删除失败', e?.message || String(e))
+  }
 }
 
 function editTask(task: CronTask) {
@@ -298,9 +341,12 @@ async function saveEdit() {
       schedule: editForm.value.schedule || undefined,
       prompt: editForm.value.prompt || undefined,
     })
+    toast.success('任务已更新', editForm.value.name || editingTask.value.name)
     editingTask.value = null
     await loadTasks()
-  } catch (e) { console.error('更新任务失败:', e) }
+  } catch (e: any) {
+    toast.error('更新任务失败', e?.message || String(e))
+  }
 }
 
 onMounted(() => { loadTasks() })
