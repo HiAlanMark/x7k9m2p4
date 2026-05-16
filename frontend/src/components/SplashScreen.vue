@@ -1,6 +1,20 @@
 <template>
   <transition name="splash-fade">
     <div v-if="visible" class="splash-screen">
+      <!-- Color Bends 动态背景 -->
+      <VueBitsColorBends
+        :colors="['#0A84FF', '#BF5AF2', '#30D158', '#FF9F0A']"
+        :rotation="0"
+        :auto-rotate="5"
+        :speed="0.5"
+        :scale="1.5"
+        :frequency="1.2"
+        :warp-strength="1.5"
+        :mouse-influence="0"
+        :parallax="0"
+        :noise="0.05"
+        :transparent="false"
+      />
       <div class="splash-content">
         <!-- Logo with pulse animation -->
         <div class="splash-logo" :class="{ 'logo-enter': logoVisible }">
@@ -27,6 +41,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import VueBitsColorBends from '@/components/fx/VueBitsColorBends.vue'
 
 const props = withDefaults(defineProps<{
   duration?: number
@@ -61,15 +76,17 @@ onMounted(() => {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: #000;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   -webkit-app-region: drag;
+  overflow: hidden;
 }
 
 .splash-content {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;

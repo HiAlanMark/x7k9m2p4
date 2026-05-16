@@ -7,23 +7,13 @@
     <div class="window-drag-area"></div>
     <!-- 窗口控制按钮 (右上角固定) -->
     <TitleBar />
-    <!-- Pixel Blast 科技背景 (vue-bits) -->
-    <PixelBlast
-      :variant="appStore.isDark ? 'diamond' : 'circle'"
-      :pixel-size="appStore.isDark ? 4 : 5"
-      :color="appStore.isDark ? '#0A84FF' : '#3b82f6'"
-      :pattern-scale="appStore.isDark ? 2.5 : 2"
-      :pattern-density="appStore.isDark ? 1.2 : 1"
-      :speed="appStore.isDark ? 0.6 : 0.5"
-      :edge-fade="0.3"
-      :enable-ripples="true"
-      :ripple-speed="0.4"
-      :ripple-thickness="0.15"
-      :liquid="appStore.isDark"
-      :liquid-strength="0.12"
-      :liquid-radius="1.2"
-      :liquid-wobble-speed="5"
-      :transparent="true"
+    <!-- Vue Bits Aurora 背景 (暗色/亮色主题不同配色) -->
+    <VueBitsAurora
+      :color-stops="appStore.isDark ? ['#0A84FF', '#BF5AF2', '#30D158'] : ['#3b82f6', '#8b5cf6', '#10b981']"
+      :amplitude="appStore.isDark ? 1.2 : 0.9"
+      :blend="appStore.isDark ? 0.6 : 0.5"
+      :speed="appStore.isDark ? 1.2 : 0.8"
+      :intensity="appStore.isDark ? 0.8 : 0.5"
     />
     <!-- Toast 通知 -->
     <HxToast ref="toastRef" />
@@ -165,7 +155,7 @@ import IconStar from './components/icons/IconStar.vue'
 import IconSun from './components/icons/IconSun.vue'
 import IconMoon from './components/icons/IconMoon.vue'
 import IconBrandLogo from './components/icons/IconBrandLogo.vue'
-import PixelBlast from './components/fx/PixelBlast.vue'
+import VueBitsAurora from './components/fx/VueBitsAurora.vue'
 import SplashScreen from './components/SplashScreen.vue'
 import TitleBar from './components/TitleBar.vue'
 import { HxToast } from './components/ui'
