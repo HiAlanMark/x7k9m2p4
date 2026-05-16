@@ -20,15 +20,12 @@ jobs:
           - os: windows-latest
             platform: windows/amd64
             asset: hixns-agent.exe
-            nsis_asset: HiXNS-Windows-x64-Setup.exe
           - os: ubuntu-22.04
             platform: linux/amd64
             asset: hixns-agent
-            appimage_asset: HiXNS-Linux-x86_64.AppImage
           - os: macos-latest
             platform: darwin/universal
             asset: hixns-agent
-            dmg_asset: HiXNS-macos.dmg
 
     runs-on: ${{ matrix.os }}
 
@@ -52,7 +49,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev fuse libfuse2
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev libfuse2
 
       - name: Install Windows C compiler
         if: runner.os == 'Windows'
@@ -86,7 +83,7 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      # ── 1. 先构建 Wails 二进制 ────────────────────────
+      # ── 1. 构建 Wails 二进制 ──────────────────────────
       - name: Build Wails binary
         shell: bash
         run: |
@@ -100,7 +97,7 @@ jobs:
             exit ${PIPESTATUS[0]}
           fi
           echo "=== Build output ==="
-          find build/bin -type f -o -type d | sort
+          find build/bin -type f | sort
 
       # ── 2. 克隆 Hermes 源码 ───────────────────────────
       - name: Clone Hermes source
@@ -109,7 +106,6 @@ jobs:
           git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /tmp/hermes-src
 
       # ── 3. 构建 Hermes 完整运行环境 ───────────────────
-      # Windows: 嵌入式 Python + pip 安装依赖
       - name: Build Hermes Environment (Windows)
         if: runner.os == 'Windows'
         shell: bash
@@ -161,7 +157,6 @@ jobs:
           echo "=== Windows Hermes bundled ==="
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
 
-      # Linux/macOS: venv + pip 安装依赖
       - name: Build Hermes Environment (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
@@ -210,42 +205,42 @@ jobs:
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
 
       # ── 4. 构建安装包 ─────────────────────────────────
-      # Windows NSIS (不加 -clean，复用已有 build/bin)
+      # Windows: 用 Wails NSIS + makensis 打包
       - name: Build Windows NSIS Installer
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          # 注意：不加 -clean，保留 Hermes 文件
-          wails build -trimpath -s -skipbindings -platform windows/amd64 -nsis -o installer.exe 2>&1 | tee nsis.log
-          echo "=== NSIS output ==="
-          find build/bin -name "*.exe" -type f 2>/dev/null
-          find build/bin -name "*installer*" -type f 2>/dev/null
-          find build/bin -name "*nsis*" -type f 2>/dev/null
-          # 列出所有 build/bin 内容
-          ls -laR build/bin/
+          BUILD_DIR="build/bin"
 
-      - name: Rename Windows Installer
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          # Wails NSIS 生成各种格式的安装包，全部搜索
-          INSTaller=$(find build/bin -name "*.exe" -type f ! -name "installer.exe" ! -name "hixns-agent.exe" | head -1)
-          if [ -n "$INSTaller" ]; then
-            cp "$INSTaller" "build/bin/${{ matrix.nsis_asset }}"
-            echo "Installer: $INSTaller -> ${{ matrix.nsis_asset }}"
+          # 安装 NSIS
+          choco install nsis -y 2>/dev/null || true
+
+          # 用 Wails 生成 NSIS 安装包（不加 -clean，保留 Hermes 文件）
+          wails build -trimpath -s -skipbindings -platform windows/amd64 -nsis -o installer.exe 2>&1 | tee nsis.log
+          echo "=== Wails NSIS output ==="
+          find "$BUILD_DIR" -name "*.exe" -type f | sort
+          find "$BUILD_DIR" -name "*installer*" -type f | sort
+
+          # 查找生成的安装包（Wails 可能生成多种命名）
+          INST=$(find "$BUILD_DIR" -name "*.exe" -type f ! -name "hixns-agent.exe" ! -name "installer.exe" | head -1)
+          if [ -n "$INST" ]; then
+            cp "$INST" "$BUILD_DIR/HiXNS-Windows-x64-Setup.exe"
+            echo "Installer found: $INST"
           else
-            echo "::error::NSIS installer not found, listing all exe files:"
-            find build/bin -name "*.exe" -type f
+            echo "::error::No installer found. All exe files:"
+            find "$BUILD_DIR" -name "*.exe" -type f
             exit 1
           fi
+          ls -lh "$BUILD_DIR/HiXNS-Windows-x64-Setup.exe"
 
-      # Linux AppImage
+      # Linux: 手动构建 AppImage
       - name: Build Linux AppImage
         if: runner.os == 'Linux'
         shell: bash
         run: |
           BINARY="build/bin/${{ matrix.asset }}"
           APPDIR="$GITHUB_WORKSPACE/AppDir"
+          rm -rf "$APPDIR"
           mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/icons/hicolor/256x256/apps"
 
           # 复制二进制
@@ -268,7 +263,7 @@ jobs:
           # 图标
           cp build/appicon.png "$APPDIR/HiXNS.png" 2>/dev/null || true
 
-          # 创建 AppRun
+          # AppRun
           cat > "$APPDIR/AppRun" << 'EOF'
           #!/bin/bash
           HERE="$(dirname "$(readlink -f "${0}")")"
@@ -278,44 +273,22 @@ jobs:
           EOF
           chmod +x "$APPDIR/AppRun"
 
-          # 下载并提取 linuxdeploy (避免 FUSE)
-          curl -fsSL "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -o /tmp/linuxdeploy.AppImage
-          chmod +x /tmp/linuxdeploy.AppImage
-          cd /tmp
-          ./linuxdeploy.AppImage --appimage-extract 2>/dev/null || true
-          LINUXDEPLOY="/tmp/squashfs-root/AppRun"
-          if [ ! -f "$LINUXDEPLOY" ]; then
-            # 备用：直接运行 AppImage
-            LINUXDEPLOY="/tmp/linuxdeploy.AppImage"
-          fi
+          # 下载 appimagetool
+          curl -fsSL "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -o /tmp/appimagetool
+          chmod +x /tmp/appimagetool
+          cd /tmp && ./appimagetool --appimage-extract && cd "$GITHUB_WORKSPACE"
 
           # 打包
-          cd "$GITHUB_WORKSPACE"
-          APPIMAGE_EXE_NAME="HiXNS-Linux-x86_64" "$LINUXDEPLOY" \
-            --appdir "$APPDIR" \
-            --output appimage \
-            --desktop-file "$APPDIR/HiXNS.desktop" \
-            --icon-file "$APPDIR/HiXNS.png" \
-            --icon-name HiXNS \
+          APPIMAGE_EXE_NAME="HiXNS-Linux-x86_64" /tmp/squashfs-root/AppRun \
+            "$APPDIR" \
+            "build/bin/HiXNS-Linux-x86_64.AppImage" \
             2>&1 | tail -20
 
-          echo "=== linuxdeploy output ==="
-          find "$GITHUB_WORKSPACE" -name "*.AppImage" -type f 2>/dev/null
-          find /tmp -name "*.AppImage" -type f 2>/dev/null
+          echo "=== AppImage output ==="
+          ls -lh "build/bin/HiXNS-Linux-x86_64.AppImage" 2>/dev/null || echo "AppImage not found"
+          find build/bin -name "*.AppImage" -type f
 
-          # 查找 AppImage
-          APPIMAGE=$(find "$GITHUB_WORKSPACE" /tmp -name "*.AppImage" -type f 2>/dev/null | head -1)
-          if [ -n "$APPIMAGE" ]; then
-            cp "$APPIMAGE" "build/bin/${{ matrix.appimage_asset }}"
-            echo "AppImage: $APPIMAGE -> build/bin/${{ matrix.appimage_asset }}"
-          else
-            echo "::error::AppImage not found"
-            echo "=== AppDir contents ==="
-            ls -la "$APPDIR/"
-            exit 1
-          fi
-
-      # macOS DMG
+      # macOS: 用 create-dmg
       - name: Build macOS DMG
         if: runner.os == 'macOS'
         shell: bash
@@ -323,14 +296,12 @@ jobs:
           # Wails 在 macOS 上生成 .app bundle
           APP_BUNDLE="build/bin/${{ matrix.asset }}.app"
           if [ ! -d "$APP_BUNDLE" ]; then
-            # 如果没生成 .app，尝试直接二进制
             BINARY="build/bin/${{ matrix.asset }}"
             if [ -f "$BINARY" ]; then
               echo "Binary found, creating .app bundle manually"
               APP_BUNDLE="build/bin/HiXNS.app"
               mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
               cp "$BINARY" "$APP_BUNDLE/Contents/MacOS/hixns-agent"
-              # Info.plist
               cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -364,16 +335,15 @@ jobs:
           # 安装 create-dmg
           brew install create-dmg 2>/dev/null || true
 
-          # 创建 DMG (简化参数，避免 exit code 64)
-          DMG_OUTPUT="build/bin/${{ matrix.dmg_asset }}"
+          # 创建 DMG
           create-dmg \
             --volname "Hi!XNS" \
             --window-size 600 400 \
-            "$DMG_OUTPUT" \
+            "build/bin/HiXNS-macos.dmg" \
             "$APP_BUNDLE" 2>&1
 
           echo "=== DMG output ==="
-          ls -lh "$DMG_OUTPUT" 2>/dev/null || echo "DMG not found at $DMG_OUTPUT"
+          ls -lh "build/bin/HiXNS-macos.dmg" 2>/dev/null || echo "DMG not found"
           find build/bin -name "*.dmg" -type f
 
       # ── 5. 上传产物 ───────────────────────────────────
@@ -384,28 +354,27 @@ jobs:
           name: build-log-${{ runner.os }}
           path: |
             build.log
-            nsis.log
 
       - name: Upload Installer (Windows)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: HiXNS-Windows-x64-Setup.exe
-          path: build/bin/${{ matrix.nsis_asset }}
+          path: build/bin/HiXNS-Windows-x64-Setup.exe
 
       - name: Upload Installer (Linux)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
           name: HiXNS-Linux-x86_64.AppImage
-          path: build/bin/${{ matrix.appimage_asset }}
+          path: build/bin/HiXNS-Linux-x86_64.AppImage
 
       - name: Upload Installer (macOS)
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: HiXNS-macos.dmg
-          path: build/bin/${{ matrix.dmg_asset }}
+          path: build/bin/HiXNS-macos.dmg
 
   release:
     needs: build
