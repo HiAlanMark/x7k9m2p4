@@ -7,15 +7,8 @@
     <div class="window-drag-area"></div>
     <!-- 窗口控制按钮 (右上角固定) -->
     <TitleBar />
-    <!-- Vue Bits Prism 棱镜背景 (动态透明度) -->
-    <VueBitsPrism
-      :colors="appStore.isDark ? ['#0A84FF', '#BF5AF2', '#30D158'] : ['#3b82f6', '#8b5cf6', '#10b981']"
-      :speed="0.4"
-      :scale="1.2"
-      :rotation-speed="0.3"
-      :opacity="backgroundOpacity"
-      :transparent="true"
-    />
+    <!-- 柔和渐变流动背景 -->
+    <SoftGradientBg />
     <!-- Toast 通知 -->
     <HxToast ref="toastRef" />
     <aside class="sidebar">
@@ -156,7 +149,7 @@ import IconStar from './components/icons/IconStar.vue'
 import IconSun from './components/icons/IconSun.vue'
 import IconMoon from './components/icons/IconMoon.vue'
 import IconBrandLogo from './components/icons/IconBrandLogo.vue'
-import VueBitsPrism from './components/fx/VueBitsPrism.vue'
+import SoftGradientBg from './components/fx/SoftGradientBg.vue'
 import SplashScreen from './components/SplashScreen.vue'
 import TitleBar from './components/TitleBar.vue'
 import { HxToast } from './components/ui'
@@ -172,24 +165,6 @@ const confirmDeleteId = ref('')
 const modelDropdownOpen = ref(false)
 const showSplash = ref(true)
 const toastRef = ref()
-
-// 背景透明度：根据路由和会话状态动态调整
-const backgroundOpacity = computed(() => {
-  const isActiveRoute = router.currentRoute.value.path === '/'
-  const hasActiveSession = chatStore.sessions.length > 0 && chatStore.activeSessionId
-  const hasMessages = hasActiveSession && chatStore.sessions.find(s => s.id === chatStore.activeSessionId)?.messages.length > 0
-  
-  // 首页且有会话进行时：透明度降低 (淡背景)
-  if (isActiveRoute && hasMessages) {
-    return 0.25
-  }
-  // 其他页面 (设置、技能商店、任务)：透明度降低
-  if (!isActiveRoute) {
-    return 0.3
-  }
-  // 默认：正常透明度
-  return appStore.isDark ? 0.6 : 0.5
-})
 
 const selectedModelDisplay = computed(() => {
   const m = featuredModels.value.find(m => m.model_code === selectedModel.value)
