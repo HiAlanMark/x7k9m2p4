@@ -158,8 +158,6 @@ const setup = () => {
   renderer.domElement.style.display = 'block'
   container.appendChild(renderer.domElement)
 
-  const clock = new THREE.Clock()
-
   const handleResize = () => {
     const w = container.clientWidth || 1
     const h = container.clientHeight || 1
@@ -176,8 +174,10 @@ const setup = () => {
     window.addEventListener('resize', handleResize)
   }
 
+  const startTime = performance.now()
+
   const loop = () => {
-    const elapsed = clock.getElapsedTime()
+    const elapsed = (performance.now() - startTime) / 1000
     material.uniforms.uTime.value = elapsed * props.speed
     material.uniforms.uScale.value = props.scale
     material.uniforms.uRotationSpeed.value = props.rotationSpeed
@@ -207,7 +207,6 @@ watch(
     const renderer = rendererRef.value
     if (!material) return
 
-    material.uniforms.uSpeed.value = props.speed
     material.uniforms.uScale.value = props.scale
     material.uniforms.uRotationSpeed.value = props.rotationSpeed
 
@@ -222,7 +221,10 @@ watch(
 
     const arr = (props.colors || []).slice(0, 3).map(toVec3)
     for (let i = 0; i < 3; i++) {
-      ;(material.uniforms.uColors.value as THREE.Vector3[])[i].copy(arr[i] || new THREE.Vector3(0, 0, 0))
+      const uColorsValue = material.uniforms.uColors.value as THREE.Vector3[]
+      if (uColorsValue && uColorsValue[i]) {
+        uColorsValue[i].copy(arr[i] || new THREE.Vector3(0, 0, 0))
+      }
     }
   },
   { deep: true }

@@ -197,7 +197,8 @@ const setup = () => {
   renderer.domElement.style.display = 'block'
   container.appendChild(renderer.domElement)
 
-  const clock = new THREE.Clock()
+  const startTime = performance.now()
+  let lastTime = startTime
 
   const handleResize = () => {
     const w = container.clientWidth || 1
@@ -217,8 +218,11 @@ const setup = () => {
   }
 
   const loop = () => {
-    const dt = clock.getDelta()
-    const elapsed = clock.elapsedTime
+    const now = performance.now()
+    const dt = (now - lastTime) / 1000
+    const elapsed = (now - startTime) / 1000
+    lastTime = now
+    
     material.uniforms.uTime.value = elapsed
 
     const deg = (rotationRef.value % 360) + autoRotateRef.value * elapsed
