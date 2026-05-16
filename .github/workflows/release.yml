@@ -91,13 +91,16 @@ jobs:
           if [ "${{ runner.os }}" = "Linux" ]; then
             pkg-config --exists webkit2gtk-4.1 && EXTRA_FLAGS="-tags webkit2_41" || true
           fi
-          wails build -clean -trimpath -s -skipbindings -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS 2>&1 | tee build.log
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then
-            echo "::error::Wails build failed"
-            exit ${PIPESTATUS[0]}
+          # Windows 不构建裸二进制，直接让 NSIS 步骤处理
+          if [ "${{ runner.os }}" != "Windows" ]; then
+            wails build -clean -trimpath -s -skipbindings -platform ${{ matrix.platform }} -o ${{ matrix.asset }} $EXTRA_FLAGS 2>&1 | tee build.log
+            if [ ${PIPESTATUS[0]} -ne 0 ]; then
+              echo "::error::Wails build failed"
+              exit ${PIPESTATUS[0]}
+            fi
+            echo "=== Build output ==="
+            find build/bin -type f | sort
           fi
-          echo "=== Build output ==="
-          find build/bin -type f | sort
 
       # ── 2. 克隆 Hermes 源码 ───────────────────────────
       - name: Clone Hermes source
@@ -211,27 +214,34 @@ jobs:
         shell: bash
         run: |
           BUILD_DIR="build/bin"
-
+          
+          # 先构建裸二进制（包含 Hermes 文件）
+          wails build -trimpath -s -skipbindings -platform windows/amd64 2>&1 | tee build.log
+          echo "=== After initial build ==="
+          find "$BUILD_DIR" -type f | head -30
+          
           # 安装 NSIS
           choco install nsis -y 2>/dev/null || true
-
+          
           # 用 Wails 生成 NSIS 安装包（不加 -clean，保留 Hermes 文件）
-          wails build -trimpath -s -skipbindings -platform windows/amd64 -nsis -o installer.exe 2>&1 | tee nsis.log
-          echo "=== Wails NSIS output ==="
+          # Wails 生成格式：<outputfilename>-installer-<platform>.exe
+          wails build -trimpath -s -skipbindings -platform windows/amd64 -nsis 2>&1 | tee nsis.log
+          
+          echo "=== All exe files in build/bin ==="
           find "$BUILD_DIR" -name "*.exe" -type f | sort
-          find "$BUILD_DIR" -name "*installer*" -type f | sort
-
-          # 查找生成的安装包（Wails 可能生成多种命名）
-          INST=$(find "$BUILD_DIR" -name "*.exe" -type f ! -name "hixns-agent.exe" ! -name "installer.exe" | head -1)
+          ls -lh "$BUILD_DIR"/*.exe 2>/dev/null || true
+          
+          # Wails NSIS 输出命名：hixns-agent-installer-windows/amd64.exe
+          INST=$(find "$BUILD_DIR" -name "*installer*.exe" -type f | head -1)
           if [ -n "$INST" ]; then
             cp "$INST" "$BUILD_DIR/HiXNS-Windows-x64-Setup.exe"
             echo "Installer found: $INST"
+            ls -lh "$BUILD_DIR/HiXNS-Windows-x64-Setup.exe"
           else
-            echo "::error::No installer found. All exe files:"
+            echo "::error::No installer found. Looking for *installer*.exe"
             find "$BUILD_DIR" -name "*.exe" -type f
             exit 1
           fi
-          ls -lh "$BUILD_DIR/HiXNS-Windows-x64-Setup.exe"
 
       # Linux: 手动构建 AppImage
       - name: Build Linux AppImage
