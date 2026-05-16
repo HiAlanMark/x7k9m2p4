@@ -1,5 +1,5 @@
 /* ===== Hi!XNS Global Enhancements ===== */
-/* Advanced animations, utility classes, and interaction polish */
+/* VueBits-inspired animations, utilities, and interaction polish */
 
 /* ===== Page transitions ===== */
 .page-fade-enter-active,
@@ -46,19 +46,25 @@
   50% { opacity: 0.5; }
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
 }
 
-@keyframes glow {
-  0%, 100% { box-shadow: 0 0 5px var(--color-primary), 0 0 10px rgba(10,132,255,0.2); }
-  50% { box-shadow: 0 0 15px var(--color-primary), 0 0 30px rgba(10,132,255,0.3); }
+/* VueBits border glow pulse */
+@keyframes borderGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--color-primary-glow), 0 0 16px rgba(10, 132, 255, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 12px var(--color-primary-glow), 0 0 24px rgba(10, 132, 255, 0.18);
+  }
+}
+
+/* VueBits subtle shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* ===== Utility animation classes ===== */
@@ -69,7 +75,7 @@
   animation: springInUp 0.5s var(--spring-smooth) both;
 }
 .animate-fade-in {
-  animation: fadeIn 0.4s ease both;
+  animation: fadeIn 0.4s var(--ease-out-expo) both;
 }
 .animate-slide-right {
   animation: slideInRight 0.35s var(--spring-smooth) both;
@@ -83,8 +89,8 @@
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
-.animate-glow {
-  animation: glow 2s ease-in-out infinite;
+.animate-border-glow {
+  animation: borderGlow 2.5s ease-in-out infinite;
 }
 
 /* Staggered children animation */
@@ -103,12 +109,12 @@
 .stagger-children > *:nth-child(9) { animation-delay: 400ms; }
 .stagger-children > *:nth-child(10) { animation-delay: 450ms; }
 
-/* ===== Hover effects ===== */
+/* ===== Hover effects (VueBits style) ===== */
 .hover-lift {
-  transition: transform 0.3s var(--spring-bounce), box-shadow 0.3s ease;
+  transition: transform 0.35s var(--spring-bounce), box-shadow 0.35s ease;
 }
 .hover-lift:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-card-hover);
 }
 
@@ -116,17 +122,17 @@
   transition: transform 0.25s var(--spring-bounce);
 }
 .hover-scale:hover {
-  transform: scale(1.03);
+  transform: scale(1.02);
 }
 
 .hover-glow {
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.35s var(--ease-out-expo);
 }
 .hover-glow:hover {
-  box-shadow: 0 0 20px rgba(10,132,255,0.2), 0 0 40px rgba(10,132,255,0.1);
+  box-shadow: var(--shadow-glow-md);
 }
 
-/* ===== Glass card mixin ===== */
+/* ===== VueBits Glass card mixin ===== */
 .glass-card {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -134,41 +140,13 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-card);
   box-shadow: var(--glass-shadow-inset), var(--shadow-card);
+  transition: all 0.35s var(--spring-smooth);
 }
 
-/* ===== Scrollbar polish ===== */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
-  transition: background 0.2s;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-tertiary);
-}
-
-/* ===== Focus styles ===== */
-*:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 4px var(--color-primary-light);
-  border-radius: 4px;
-}
-
-button:focus-visible,
-a:focus-visible {
-  border-radius: var(--radius-btn);
-}
-
-/* ===== Selection ===== */
-::selection {
-  background: var(--color-primary);
-  color: #fff;
+.glass-card:hover {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border-strong);
+  box-shadow: var(--glass-shadow-inset), var(--shadow-card-hover);
 }
 
 /* ===== Loading spinner ===== */
@@ -214,18 +192,18 @@ a:focus-visible {
 }
 .status-dot--online {
   background: var(--color-success);
-  box-shadow: 0 0 6px rgba(48,209,88,0.4);
+  box-shadow: 0 0 6px rgba(48, 209, 88, 0.3);
 }
 .status-dot--offline {
   background: var(--color-text-tertiary);
 }
 .status-dot--busy {
   background: var(--color-error);
-  box-shadow: 0 0 6px rgba(255,69,58,0.4);
+  box-shadow: 0 0 6px rgba(255, 69, 58, 0.3);
 }
 .status-dot--away {
   background: var(--color-warning);
-  box-shadow: 0 0 6px rgba(255,159,10,0.4);
+  box-shadow: 0 0 6px rgba(255, 159, 10, 0.3);
 }
 
 /* ===== Tooltips (CSS-only) ===== */

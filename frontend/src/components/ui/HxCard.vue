@@ -45,7 +45,7 @@ const cardStyle = computed(() => ({
   border: 1px solid var(--color-border);
   border-radius: var(--card-radius, var(--radius-card));
   box-shadow: var(--shadow-card);
-  transition: all 0.3s var(--spring-smooth);
+  transition: all 0.35s var(--ease-out-expo);
   overflow: hidden;
 }
 
@@ -60,10 +60,12 @@ const cardStyle = computed(() => ({
 .hixns-card--hover:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-card-hover);
-  border-color: var(--color-primary);
+  border-color: var(--color-border-light);
 }
 
 .hixns-card--glass.hixns-card--hover:hover {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border-strong);
   box-shadow: var(--glass-shadow-inset), var(--shadow-card-hover);
 }
 

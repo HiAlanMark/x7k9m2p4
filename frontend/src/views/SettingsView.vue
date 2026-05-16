@@ -1217,7 +1217,7 @@ onMounted(async () => {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border-right: 1px solid var(--glass-border);
+  border-right: 1px solid var(--color-border);
   padding: 20px 0;
   overflow-y: auto;
 }
@@ -1286,8 +1286,12 @@ onMounted(async () => {
 .settings-nav-item.active {
   background: var(--color-bg-input);
   color: var(--color-text-primary);
-  border-left-color: var(--color-text-primary);
+  border-left-color: rgba(10,132,255,0.6);
+  box-shadow: 
+    0 0 12px rgba(10,132,255,0.25),
+    inset 0 0 8px rgba(10,132,255,0.05);
   font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ===== Right Content ===== */
@@ -1648,10 +1652,14 @@ onMounted(async () => {
 }
 
 .provider-tab.active {
-  border-color: var(--color-text-primary);
+  border-color: rgba(10,132,255,0.6);
   background: var(--color-bg-input);
   color: var(--color-text-primary);
+  box-shadow: 
+    0 0 12px rgba(10,132,255,0.25),
+    inset 0 0 8px rgba(10,132,255,0.05);
   font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Card header */

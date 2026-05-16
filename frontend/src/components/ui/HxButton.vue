@@ -67,14 +67,10 @@ function onClick(e: MouseEvent) {
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
-  transition: all 0.25s var(--spring-bounce);
+  transition: all 0.3s var(--ease-out-expo);
   position: relative;
   overflow: hidden;
   outline: none;
-}
-
-.hixns-btn:focus-visible {
-  box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 4px var(--color-primary-light);
 }
 
 /* Sizes */
@@ -84,29 +80,32 @@ function onClick(e: MouseEvent) {
 .hixns-btn--lg { padding: 12px 24px; font-size: 15px; border-radius: 14px; }
 .hixns-btn--icon { padding: 8px; aspect-ratio: 1; }
 
-/* Primary */
+/* Primary - VueBits style */
 .hixns-btn--primary {
   background: var(--color-primary);
   color: #fff;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1), 0 2px 8px rgba(0,112,255,0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(10, 132, 255, 0.12);
 }
 .hixns-btn--primary:hover {
   background: var(--color-primary-dark);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,112,255,0.25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(10, 132, 255, 0.18);
 }
 .hixns-btn--primary:active {
   transform: translateY(0) scale(0.97);
 }
 
-/* Secondary */
+/* Secondary - VueBits glass */
 .hixns-btn--secondary {
-  background: var(--color-bg-input);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--glass-border);
 }
 .hixns-btn--secondary:hover {
-  background: var(--color-border);
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border-strong);
   transform: translateY(-1px);
 }
 .hixns-btn--secondary:active {
@@ -121,7 +120,7 @@ function onClick(e: MouseEvent) {
 .hixns-btn--danger:hover {
   background: #FF3B30;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255,69,58,0.25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(255, 69, 58, 0.18);
 }
 .hixns-btn--danger:active {
   transform: translateY(0) scale(0.97);
@@ -133,7 +132,7 @@ function onClick(e: MouseEvent) {
   color: var(--color-text-secondary);
 }
 .hixns-btn--ghost:hover {
-  background: var(--color-bg-input);
+  background: var(--color-bg-hover);
   color: var(--color-text-primary);
 }
 
@@ -149,7 +148,7 @@ function onClick(e: MouseEvent) {
 
 /* Disabled */
 .hixns-btn--disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -169,7 +168,7 @@ function onClick(e: MouseEvent) {
   position: absolute;
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
+  border: 2px solid rgba(255, 255, 255, 0.25);
   border-top-color: #fff;
   border-radius: 50%;
   animation: btnSpin 0.6s linear infinite;

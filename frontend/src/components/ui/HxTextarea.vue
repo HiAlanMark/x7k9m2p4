@@ -86,12 +86,12 @@ defineExpose({ focus: () => areaRef.value?.focus(), blur: () => areaRef.value?.b
   border: 1px solid var(--color-border);
   border-radius: var(--radius-input);
   padding: 10px 12px;
-  transition: all 0.2s var(--spring-smooth);
+  transition: all 0.3s var(--ease-out-expo);
 }
 
 .hixns-textarea-wrap.focused .hixns-textarea-inner {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-light);
+  border-color: var(--color-border-glow);
+  box-shadow: var(--shadow-glow-sm);
   background: var(--color-bg-card);
 }
 

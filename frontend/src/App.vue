@@ -374,8 +374,7 @@ body {
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow-inset), 1px 0 0 rgba(255,255,255,0.02);
+  border-right: 1px solid var(--color-border);
   user-select: none;
   transition: background 0.4s var(--spring-smooth), border-color 0.4s;
   position: relative;
@@ -483,6 +482,11 @@ body {
 .nav-item.active {
   background: var(--color-bg-input);
   color: var(--color-text-primary);
+  border-color: rgba(10,132,255,0.4);
+  box-shadow: 
+    0 0 12px rgba(10,132,255,0.3),
+    inset 0 0 8px rgba(10,132,255,0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nav-item.router-link-active .nav-icon,
@@ -561,6 +565,11 @@ body {
 
 .session-item.active {
   background: var(--color-bg-input);
+  border-color: rgba(10,132,255,0.4);
+  box-shadow: 
+    0 0 12px rgba(10,132,255,0.25),
+    inset 0 0 8px rgba(10,132,255,0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .session-item-title {
