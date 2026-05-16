@@ -1433,12 +1433,9 @@ function exportChat() {
 }
 
 .input-box.focused {
-  border-color: var(--color-primary);
-  box-shadow: var(--glass-shadow-inset),
-              0 4px 24px rgba(10,132,255,0.15),
-              0 0 0 3px rgba(10,132,255,0.08),
-              0 0 20px rgba(10,132,255,0.05);
-  transform: translateY(-1px);
+  border-color: var(--color-border);
+  box-shadow: var(--glass-shadow-inset), var(--shadow-float);
+  transform: none;
 }
 
 .input-chevron {
@@ -1450,10 +1447,6 @@ function exportChat() {
   padding-top: 2px;
   user-select: none;
   flex-shrink: 0;
-}
-
-.input-box.focused .input-chevron {
-  color: var(--color-primary);
 }
 
 textarea {
