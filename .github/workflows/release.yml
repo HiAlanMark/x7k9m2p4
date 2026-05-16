@@ -87,6 +87,7 @@ jobs:
       - name: Build Wails binary
         shell: bash
         run: |
+          set +o pipefail
           EXTRA_FLAGS=""
           if [ "${{ runner.os }}" = "Linux" ]; then
             pkg-config --exists webkit2gtk-4.1 && EXTRA_FLAGS="-tags webkit2_41" || true
@@ -113,6 +114,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
+          set +o pipefail
           BUILD_DIR="build/bin"
           HERMES_DIR="$BUILD_DIR/hermes-agent"
           PYTHON_DIR="$BUILD_DIR/hermes-python"
@@ -164,6 +166,7 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
+          set +o pipefail
           BUILD_DIR="build/bin"
           HERMES_DIR="$BUILD_DIR/hermes-agent"
           PYTHON_DIR="$BUILD_DIR/hermes-python"
@@ -213,24 +216,25 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
+          set +o pipefail
           BUILD_DIR="build/bin"
-          
+
           # 先构建裸二进制（包含 Hermes 文件）
           wails build -trimpath -s -skipbindings -platform windows/amd64
           echo "=== After initial build ==="
           find "$BUILD_DIR" -type f | head -30
-          
+
           # 安装 NSIS
           choco install nsis -y --no-progress 2>&1 || true
-          
+
           # 用 Wails 生成 NSIS 安装包（不加 -clean，保留 Hermes 文件）
           # Wails 生成格式：<outputfilename>-installer-<platform>.exe
           wails build -trimpath -s -skipbindings -platform windows/amd64 -nsis
-          
+
           echo "=== All exe files in build/bin ==="
           find "$BUILD_DIR" -name "*.exe" -type f | sort
           ls -lh "$BUILD_DIR"/*.exe 2>/dev/null || true
-          
+
           # Wails NSIS 输出命名：hixns-agent-installer-windows/amd64.exe
           INST=$(find "$BUILD_DIR" -name "*installer*.exe" -type f | head -1)
           if [ -n "$INST" ]; then
@@ -248,6 +252,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
+          set +o pipefail
           BINARY="build/bin/${{ matrix.asset }}"
           APPDIR="$GITHUB_WORKSPACE/AppDir"
           rm -rf "$APPDIR"
@@ -303,6 +308,7 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
+          set +o pipefail
           # Wails 在 macOS 上生成 .app bundle
           APP_BUNDLE="build/bin/${{ matrix.asset }}.app"
           if [ ! -d "$APP_BUNDLE" ]; then
@@ -364,6 +370,7 @@ jobs:
           name: build-log-${{ runner.os }}
           path: |
             build.log
+            nsis.log
 
       - name: Upload Installer (Windows)
         if: runner.os == 'Windows'
