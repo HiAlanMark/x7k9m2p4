@@ -1,12 +1,12 @@
 <template>
-  <div class="tech-grid" ref="gridRef">
+  <div class="tech-grid" ref="gridRef" :key="themeKey">
     <canvas ref="canvasRef" class="tech-grid-canvas"></canvas>
     <div class="tech-grid-overlay"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const props = withDefaults(defineProps<{
   gridSize?: number
@@ -24,13 +24,20 @@ const props = withDefaults(defineProps<{
   perspective: true,
 })
 
+// Force re-render on theme change
+const themeKey = computed(() => `${props.lineColor}-${props.glowColor}-${props.lineOpacity}`)
+
 const gridRef = ref<HTMLElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let animationId: number | null = null
 let time = 0
 
 const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  // Full clear with explicit reset
+  ctx.save()
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
   ctx.clearRect(0, 0, width, height)
+  ctx.restore()
   
   const { gridSize, lineColor, lineOpacity, glowColor, speed, perspective } = props
   const baseColor = hexToRgba(lineColor, lineOpacity)
@@ -38,6 +45,7 @@ const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) 
   
   ctx.strokeStyle = baseColor
   ctx.lineWidth = 1
+  ctx.shadowBlur = 0 // Reset shadow first
   
   // Draw moving horizontal lines
   const offset = (time * speed * 50) % gridSize

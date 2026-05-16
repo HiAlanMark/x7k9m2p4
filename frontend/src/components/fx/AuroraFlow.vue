@@ -1,5 +1,5 @@
 <template>
-  <div class="aurora-flow" ref="containerRef">
+  <div class="aurora-flow" ref="containerRef" :key="themeKey">
     <div 
       v-for="(band, index) in bands" 
       :key="index"
@@ -26,6 +26,9 @@ const props = withDefaults(defineProps<{
   blur: 60,
   opacity: 0.3,
 })
+
+// Force re-render on theme change
+const themeKey = computed(() => `${props.colors.join('-')}-${props.opacity}`)
 
 const containerRef = ref<HTMLElement | null>(null)
 
