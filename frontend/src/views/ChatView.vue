@@ -190,6 +190,23 @@
     <div class="input-area">
       <div class="input-box" :class="{ focused: inputFocused }">
         <span class="input-chevron">></span>
+        
+        <!-- File Upload Button -->
+        <button @click="triggerFileUpload" class="upload-btn" title="上传文件 (文档/PPT/图片/视频)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.44 11.05l-9.19 9.19a1 1 0 0 1-1.41 0l-9.19-9.19a1 1 0 0 1 1.41-1.41l8.5 8.5a1 1 0 0 0 1.41 0l8.5-8.5a1 1 0 0 1 1.41 1.41z"/>
+            <line x1="12" y1="19" x2="12" y2="5"/>
+          </svg>
+        </button>
+        <input 
+          type="file" 
+          ref="fileInputRef" 
+          @change="handleFileSelect" 
+          multiple 
+          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.json,.yaml,.yml,.csv,.xml,.png,.jpg,.jpeg,.gif,.webp,.svg,.mp4,.webm,.avi,.mov,.mkv"
+          class="file-input-hidden"
+        />
+        
         <textarea
           v-model="inputText"
           @keydown.enter.exact.prevent="sendMessage"
@@ -199,7 +216,26 @@
           rows="1"
           ref="textareaRef"
         ></textarea>
-        <button @click="sendMessage" :disabled="!inputText.trim()" class="send-btn">
+        
+        <!-- File Previews (thumbnails on right) -->
+        <div class="file-previews" v-if="attachedFiles.length > 0">
+          <div v-for="(file, index) in attachedFiles" :key="file.id" class="file-thumbnail">
+            <template v-if="file.type.includes('image')">
+              <img :src="getFilePreviewUrl(file.file)" class="thumbnail-img" />
+            </template>
+            <template v-else>
+              <span class="thumbnail-icon">{{ getFileIcon(file.type) }}</span>
+            </template>
+            <button @click="removeFile(index)" class="thumbnail-remove" title="移除">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <button @click="sendMessage" :disabled="!inputText.trim() && attachedFiles.length === 0" class="send-btn">
           <span class="send-key">发送</span>
           <svg class="send-arrow" width="12" height="12" viewBox="0 0 1024 1024" fill="currentColor"><path d="M853.333333 128a42.666667 42.666667 0 0 0-42.666666 42.666667v298.666666c0 71.210667-56.789333 128-128 128H170.666667a42.666667 42.666667 0 0 0-42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667 42.666667h512c117.632 0 213.333333-95.701333 213.333333-213.333334V170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M384 384a42.666667 42.666667 0 0 0-30.165333 12.501333l-213.333334 213.333334a42.666667 42.666667 0 0 0 0 60.330666l213.333334 213.333334a42.666667 42.666667 0 0 0 60.330666 0 42.666667 42.666667 0 0 0 0-60.330667L231.168 640l182.997333-182.997333a42.666667 42.666667 0 0 0 0-60.330667A42.666667 42.666667 0 0 0 384 384z"/></svg>
         </button>
@@ -252,6 +288,8 @@ const { messages, isStreaming, currentResponse, currentToolCalls, selectedModel 
 const inputText = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const attachedFiles = ref<Array<{ id: string; file: File; type: string; name: string; size: number }>>([])
 const agentStatus = ref('')
 const agentIteration = ref(0)
 const agentMaxIter = ref(0)
@@ -271,6 +309,108 @@ renderer.code = function({ text, lang }: Tokens.Code) {
   return `<div class="code-block"><div class="code-header"><span class="code-lang">${displayLang}</span><button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-block').querySelector('code').textContent).then(()=>{this.textContent='已复制';setTimeout(()=>{this.textContent='复制'},1500)})">复制</button></div><pre><code class="hljs language-${displayLang}">${highlighted}</code></pre></div>`
 }
 marked.setOptions({ renderer })
+
+// File upload functions
+const triggerFileUpload = () => {
+  fileInputRef.value?.click()
+}
+
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (!files || files.length === 0) return
+  
+  const maxFileSize = 50 * 1024 * 1024 // 50MB
+  const allowedTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'text/markdown',
+    'application/json',
+    'text/csv',
+    'application/xml',
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/svg+xml',
+    'video/mp4',
+    'video/webm',
+    'video/x-msvideo',
+    'video/quicktime',
+    'video/x-matroska'
+  ]
+  
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    
+    // Check file size
+    if (file.size > maxFileSize) {
+      toast.error(`文件 "${file.name}" 超过 50MB 限制`)
+      continue
+    }
+    
+    // Check file type
+    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx|ppt|pptx|xls|xlsx|txt|md|json|yaml|yml|csv|xml|png|jpg|jpeg|gif|webp|svg|mp4|webm|avi|mov|mkv)$/i)) {
+      toast.warning(`文件类型不支持：${file.name}`)
+      continue
+    }
+    
+    attachedFiles.value.push({
+      id: `${Date.now()}-${i}`,
+      file,
+      type: file.type || 'unknown',
+      name: file.name,
+      size: file.size
+    })
+  }
+  
+  // Reset input to allow re-selecting same file
+  target.value = ''
+  toast.success(`已添加 ${files.length} 个文件`)
+}
+
+const removeFile = (index: number) => {
+  attachedFiles.value.splice(index, 1)
+}
+
+const getFileIcon = (type: string): string => {
+  if (type.includes('pdf')) return '📄'
+  if (type.includes('word') || type.includes('document')) return '📝'
+  if (type.includes('powerpoint') || type.includes('presentation')) return '📊'
+  if (type.includes('excel') || type.includes('spreadsheet')) return '📈'
+  if (type.includes('image')) return '🖼️'
+  if (type.includes('video')) return '🎬'
+  if (type.includes('text') || type.includes('json') || type.includes('csv')) return '📄'
+  return '📎'
+}
+
+const getFileIconClass = (type: string): string => {
+  if (type.includes('pdf')) return 'icon-pdf'
+  if (type.includes('word') || type.includes('document')) return 'icon-doc'
+  if (type.includes('powerpoint') || type.includes('presentation')) return 'icon-ppt'
+  if (type.includes('excel') || type.includes('spreadsheet')) return 'icon-xls'
+  if (type.includes('image')) return 'icon-img'
+  if (type.includes('video')) return 'icon-video'
+  return 'icon-file'
+}
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
+const getFilePreviewUrl = (file: File): string => {
+  return URL.createObjectURL(file)
+}
 
 watch(inputText, async () => {
   await nextTick()
@@ -303,16 +443,32 @@ function quickAsk(text: string) {
 
 async function sendMessage() {
   const text = inputText.value.trim()
-  if (!text) return
+  const hasAttachments = attachedFiles.value.length > 0
+  
+  if (!text && !hasAttachments) return
 
+  // 构建消息内容（包含文件信息）
+  let messageContent = text
+  if (hasAttachments) {
+    const fileInfos = attachedFiles.value.map(f => 
+      `[附件：${f.name} (${formatFileSize(f.size)})]`
+    ).join('\n')
+    messageContent = text ? `${text}\n\n${fileInfos}` : fileInfos
+  }
+  
   // 如果正在生成，先取消当前任务再发送新消息（支持中途打断/补充）
   if (isStreaming.value) {
     try { await hermesCancel() } catch { /* ignore */ }
     chatStore.finishResponse()
   }
-
+  
   inputText.value = ''
-  chatStore.addUserMessage(text)
+  chatStore.addUserMessage(messageContent)
+  
+  // TODO: 实际发送文件到后端（当前先清空附件列表）
+  // 后续需要实现文件上传 API 并将文件 ID 传递给模型
+  const filesToSend = [...attachedFiles.value]
+  attachedFiles.value = []
 
   if (!isBrowserMode() && !appStore.agentRunning) {
     isConnecting.value = true
@@ -1430,11 +1586,17 @@ function exportChat() {
   transition: border-color 0.25s var(--spring-smooth),
               box-shadow 0.25s var(--spring-smooth),
               transform 0.2s var(--spring-bounce);
+  min-height: 56px;
 }
 
 .input-box.focused {
-  border-color: var(--color-border);
-  box-shadow: var(--glass-shadow-inset), var(--shadow-float);
+  border-color: var(--color-border-glow);
+  box-shadow: 
+    var(--glass-shadow-inset),
+    var(--shadow-float),
+    0 0 8px rgba(10,132,255,0.4),
+    0 0 16px rgba(10,132,255,0.2),
+    inset 0 0 8px rgba(10,132,255,0.05);
   transform: none;
 }
 
@@ -1447,6 +1609,122 @@ function exportChat() {
   padding-top: 2px;
   user-select: none;
   flex-shrink: 0;
+}
+
+/* File upload button */
+.upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s var(--spring-smooth);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.upload-btn:hover {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-glow);
+  color: var(--color-primary);
+  box-shadow: 0 0 8px rgba(10,132,255,0.2);
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+/* File previews (thumbnails on right side) */
+.file-previews {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding-left: 8px;
+  margin-left: 8px;
+  border-left: 1px solid var(--color-border);
+  max-width: 180px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.file-thumbnail {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s var(--spring-smooth);
+}
+
+.file-thumbnail:hover {
+  border-color: var(--color-border-glow);
+  box-shadow: 0 0 8px rgba(10,132,255,0.2);
+}
+
+.thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.thumbnail-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--color-danger);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.file-thumbnail:hover .thumbnail-remove {
+  opacity: 1;
+}
+
+.thumbnail-remove:hover {
+  background: var(--color-danger-hover);
+  transform: scale(1.1);
+}
+
+/* File list transitions */
+.file-list-enter-active,
+.file-list-leave-active {
+  transition: all 0.25s var(--spring-smooth);
+}
+
+.file-list-enter-from {
+  opacity: 0;
+  transform: translateX(10px) scale(0.9);
+}
+
+.file-list-leave-to {
+  opacity: 0;
+  transform: translateX(10px) scale(0.9);
 }
 
 textarea {
