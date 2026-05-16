@@ -15,7 +15,7 @@
       <!-- Brand -->
       <div class="sidebar-brand">
         <IconBrandLogo :width="120" :height="24" :dark="appStore.isDark" />
-        <span class="brand-version">v0.3</span>
+        <span class="brand-version">{{ appVersion }}</span>
       </div>
 
       <!-- Navigation -->
@@ -154,6 +154,7 @@ import SplashScreen from './components/SplashScreen.vue'
 import TitleBar from './components/TitleBar.vue'
 import { HxToast } from './components/ui'
 import { setToastInstance } from './composables/useToast'
+import pkg from '../package.json'
 
 const gfwStore = useGfwStore()
 const chatStore = useChatStore()
@@ -165,6 +166,8 @@ const confirmDeleteId = ref('')
 const modelDropdownOpen = ref(false)
 const showSplash = ref(true)
 const toastRef = ref()
+
+const appVersion = computed(() => `v${pkg.version}`)
 
 const selectedModelDisplay = computed(() => {
   const m = featuredModels.value.find(m => m.model_code === selectedModel.value)

@@ -1453,14 +1453,21 @@ textarea {
   flex: 1;
   background: transparent;
   border: none;
+  outline: none;
+  box-shadow: none;
   color: var(--color-text-primary);
   resize: none;
   font-size: 14px;
   font-family: var(--font-family);
   padding: 2px 0;
-  outline: none;
   line-height: 1.6;
   min-height: 22px;
+}
+
+textarea:focus {
+  outline: none;
+  box-shadow: none;
+  border: none;
 }
 
 textarea::placeholder {
