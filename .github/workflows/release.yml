@@ -212,30 +212,58 @@ jobs:
           $candidates = @(
             "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
             "C:\Program Files (x86)\NSIS\makensis.exe",
-            "C:\nsis\makensis.exe"
+            "C:\nsis\makensis.exe",
+            "${env:ProgramFiles}\NSIS\makensis.exe",
+            "C:\Program Files\NSIS\makensis.exe"
           )
           foreach ($c in $candidates) {
-            if (Test-Path $c) { $makensis = $c; break }
+            if (Test-Path $c) { 
+              $makensis = $c
+              Write-Host "Found at: $c"
+              break 
+            }
           }
 
           # Try PATH
           if (-not $makensis) {
             $cmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
-            if ($cmd) { $makensis = $cmd.Source }
+            if ($cmd) { 
+              $makensis = $cmd.Source
+              Write-Host "Found in PATH: $cmd"
+            }
           }
 
-          # Download portable if nothing found
+          # Install via choco if not found (most reliable on GitHub runners)
           if (-not $makensis) {
-            Write-Host "NSIS not found, downloading portable..."
+            Write-Host "NSIS not pre-installed, installing via choco..."
+            choco install nsis -y --no-progress --limit-output --timeout 180
+            $env:Path += ";${env:ProgramFiles(x86)}\NSIS"
+            
+            $cmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
+            if ($cmd) {
+              $makensis = $cmd.Source
+              Write-Host "Installed at: $cmd"
+            }
+          }
+
+          # Fallback: download portable
+          if (-not $makensis) {
+            Write-Host "choco failed, downloading portable..."
             $nsisDir = "$env:TEMP\nsis-portable"
             if (-not (Test-Path "$nsisDir\makensis.exe")) {
+              Remove-Item "$nsisDir" -Recurse -Force -ErrorAction SilentlyContinue
+              New-Item -ItemType Directory -Path $nsisDir -Force | Out-Null
+              
               $zip = "$env:TEMP\nsis.zip"
-              # Use GitHub mirror (more reliable than SourceForge redirects)
-              Invoke-WebRequest -Uri "https://github.com/negrutiu/nsis/releases/download/v3.10/nsis-3.10.zip" -OutFile $zip -MaximumRedirection 5
+              Invoke-WebRequest -Uri "https://nsis.sourceforge.io/ghp.php?file=nsis-3.10.zip" -OutFile $zip -MaximumRedirection 10
               Expand-Archive -Path $zip -DestinationPath $nsisDir -Force
               Remove-Item $zip
             }
             $makensis = "$nsisDir\makensis.exe"
+          }
+
+          if (-not (Test-Path $makensis)) {
+            throw "makensis not found after all attempts"
           }
 
           Write-Host "Using makensis: $makensis"
