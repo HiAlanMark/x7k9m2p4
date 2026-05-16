@@ -112,7 +112,8 @@ defineExpose({ focus: () => inputRef.value?.focus(), blur: () => inputRef.value?
 }
 
 .hixns-input-wrap.focused .hixns-input-inner {
-  border-color: var(--color-border);
+  border-color: var(--color-border) !important;
+  box-shadow: none !important;
   background: var(--color-bg-input);
 }
 
