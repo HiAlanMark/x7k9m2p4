@@ -217,7 +217,7 @@ jobs:
           wails build -trimpath -s -skipbindings -platform windows/amd64 -v 2
           
           echo "=== Build output ==="
-          find "$BUILD_DIR" -type f | head -20
+          find "$BUILD_DIR" -type f 2>/dev/null | head -20 || true
           du -sh "$BUILD_DIR" "$BUILD_DIR/hermes-agent" "$BUILD_DIR/hermes-python" 2>/dev/null || true
           
           # 使用自定义 NSIS 脚本打包（包含 Hermes 目录）
@@ -228,7 +228,7 @@ jobs:
           mv HiXNS-Windows-x64-Setup.exe "$BUILD_DIR/" 2>/dev/null || mv "${PRODUCT_NAME}.exe" "$BUILD_DIR/HiXNS-Windows-x64-Setup.exe" 2>/dev/null || true
           
           echo "=== All exe files ==="
-          find "$BUILD_DIR" -name "*.exe" -type f -exec ls -lh {} \;
+          find "$BUILD_DIR" -name "*.exe" -type f 2>/dev/null -exec ls -lh {} \;
           
           INST="$BUILD_DIR/HiXNS-Windows-x64-Setup.exe"
           if [ -f "$INST" ]; then
@@ -236,7 +236,7 @@ jobs:
             ls -lh "$INST"
           else
             echo "::error::Installer not found"
-            find "$BUILD_DIR" -name "*.exe" -type f
+            find "$BUILD_DIR" -name "*.exe" -type f 2>/dev/null
             exit 1
           fi
 
