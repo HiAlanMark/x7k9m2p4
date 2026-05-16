@@ -8,6 +8,21 @@
     <!-- 窗口控制按钮 (右上角固定) -->
     <TitleBar />
     <!-- 全局多层科技背景 -->
+    <TechGrid
+      :grid-size="50"
+      :line-color="appStore.isDark ? '#0A84FF' : '#3b82f6'"
+      :line-opacity="appStore.isDark ? 0.12 : 0.08"
+      :glow-color="appStore.isDark ? '#0A84FF' : '#3b82f6'"
+      :speed="0.4"
+      :perspective="true"
+    />
+    <AuroraFlow
+      :band-count="3"
+      :colors="appStore.isDark ? ['#0A84FF', '#BF5AF2', '#30D158'] : ['#3b82f6', '#8b5cf6', '#10b981']"
+      :speed="0.5"
+      :blur="80"
+      :opacity="appStore.isDark ? 0.25 : 0.15"
+    />
     <SoftAurora
       :color1="appStore.isDark ? '#0A84FF' : '#3b82f6'"
       :color2="appStore.isDark ? '#BF5AF2' : '#8b5cf6'"
@@ -183,6 +198,8 @@ import IconBrandLogo from './components/icons/IconBrandLogo.vue'
 import SoftAurora from './components/fx/SoftAurora.vue'
 import ParticleNetwork from './components/fx/ParticleNetwork.vue'
 import GlowOrb from './components/fx/GlowOrb.vue'
+import TechGrid from './components/fx/TechGrid.vue'
+import AuroraFlow from './components/fx/AuroraFlow.vue'
 import SplashScreen from './components/SplashScreen.vue'
 import TitleBar from './components/TitleBar.vue'
 import { HxToast } from './components/ui'
