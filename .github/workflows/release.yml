@@ -206,39 +206,27 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          BUILD_DIR="build/bin"
-          PROJECT_ROOT="$GITHUB_WORKSPACE"
-          
-          echo "=== NSIS check ==="
-          which makensis 2>/dev/null || echo "makensis not in PATH"
-          ls -la "C:/Program Files (x86)/NSIS/makensis.exe" 2>/dev/null || echo "NSIS not at default path"
-          
-          # 先构建裸二进制（包含 Hermes 文件）
-          echo "=== Building base binary with Hermes ==="
+          echo "=== Auto-building with Wails ==="
           wails build -trimpath -s -skipbindings -platform windows/amd64 -v 2
-          
-          echo "=== Build output ==="
-          find "$BUILD_DIR" -type f 2>/dev/null | head -20 || true
-          du -sh "$BUILD_DIR" "$BUILD_DIR/hermes-agent" "$BUILD_DIR/hermes-python" 2>/dev/null || true
-          
-          # 使用自定义 NSIS 脚本打包（包含 Hermes 目录）
+
+          echo "=== Verifying build artifacts ==="
+          ls -lh build/bin/hixns-agent.exe
+          du -sh build/bin/hermes-agent build/bin/hermes-python 2>/dev/null || true
+
           echo "=== Creating NSIS installer ==="
-          cd "$PROJECT_ROOT"
-          makensis -V2 -DBUILD_DIR="$BUILD_DIR" -DPROJECT_ROOT="$PROJECT_ROOT" build/windows/installer.nsi
-          
-          # 移动安装包到 build/bin
-          mv HiXNS-Windows-x64-Setup.exe "$BUILD_DIR/" 2>/dev/null || mv "${PRODUCT_NAME}.exe" "$BUILD_DIR/HiXNS-Windows-x64-Setup.exe" 2>/dev/null || true
-          
-          echo "=== All exe files ==="
-          find "$BUILD_DIR" -name "*.exe" -type f 2>/dev/null -exec ls -lh {} \;
-          
-          INST="$BUILD_DIR/HiXNS-Windows-x64-Setup.exe"
-          if [ -f "$INST" ]; then
-            echo "Installer created: $INST"
-            ls -lh "$INST"
+          WIN_ROOT="$(cygpath -w "$PWD")"
+          echo "Project root (Windows): $WIN_ROOT"
+          cd "$WIN_ROOT"
+          makensis build\\windows\\installer.nsi
+
+          echo "=== Checking installer ==="
+          ls -lh build/bin/*.exe 2>/dev/null
+
+          if [ -f "build/bin/HiXNS-Windows-x64-Setup.exe" ]; then
+            echo "INSTALLER OK: build/bin/HiXNS-Windows-x64-Setup.exe"
           else
-            echo "::error::Installer not found"
-            find "$BUILD_DIR" -name "*.exe" -type f 2>/dev/null
+            echo "::error::Installer not found!"
+            find build -name "*.exe" 2>/dev/null
             exit 1
           fi
 
