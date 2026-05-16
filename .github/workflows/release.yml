@@ -64,7 +64,7 @@ jobs:
 
       - name: Install NSIS
         if: runner.os == 'Windows'
-        uses: negrutiu/nsis-install@v4
+        uses: negrutiu/nsis-install@v1
 
       # ── 前端 ──────────────────────────────────────────
       - name: Install frontend dependencies
