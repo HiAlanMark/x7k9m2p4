@@ -7,13 +7,14 @@
     <div class="window-drag-area"></div>
     <!-- 窗口控制按钮 (右上角固定) -->
     <TitleBar />
-    <!-- Vue Bits Aurora 背景 (暗色/亮色主题不同配色) -->
-    <VueBitsAurora
-      :color-stops="appStore.isDark ? ['#0A84FF', '#BF5AF2', '#30D158'] : ['#3b82f6', '#8b5cf6', '#10b981']"
-      :amplitude="appStore.isDark ? 1.2 : 0.9"
-      :blend="appStore.isDark ? 0.6 : 0.5"
-      :speed="appStore.isDark ? 1.2 : 0.8"
-      :intensity="appStore.isDark ? 0.8 : 0.5"
+    <!-- Vue Bits Prism 棱镜背景 (动态透明度) -->
+    <VueBitsPrism
+      :colors="appStore.isDark ? ['#0A84FF', '#BF5AF2', '#30D158'] : ['#3b82f6', '#8b5cf6', '#10b981']"
+      :speed="0.4"
+      :scale="1.2"
+      :rotation-speed="0.3"
+      :opacity="backgroundOpacity"
+      :transparent="true"
     />
     <!-- Toast 通知 -->
     <HxToast ref="toastRef" />
@@ -155,7 +156,7 @@ import IconStar from './components/icons/IconStar.vue'
 import IconSun from './components/icons/IconSun.vue'
 import IconMoon from './components/icons/IconMoon.vue'
 import IconBrandLogo from './components/icons/IconBrandLogo.vue'
-import VueBitsAurora from './components/fx/VueBitsAurora.vue'
+import VueBitsPrism from './components/fx/VueBitsPrism.vue'
 import SplashScreen from './components/SplashScreen.vue'
 import TitleBar from './components/TitleBar.vue'
 import { HxToast } from './components/ui'
@@ -171,6 +172,24 @@ const confirmDeleteId = ref('')
 const modelDropdownOpen = ref(false)
 const showSplash = ref(true)
 const toastRef = ref()
+
+// 背景透明度：根据路由和会话状态动态调整
+const backgroundOpacity = computed(() => {
+  const isActiveRoute = router.currentRoute.value.path === '/'
+  const hasActiveSession = chatStore.sessions.length > 0 && chatStore.activeSessionId
+  const hasMessages = hasActiveSession && chatStore.sessions.find(s => s.id === chatStore.activeSessionId)?.messages.length > 0
+  
+  // 首页且有会话进行时：透明度降低 (淡背景)
+  if (isActiveRoute && hasMessages) {
+    return 0.25
+  }
+  // 其他页面 (设置、技能商店、任务)：透明度降低
+  if (!isActiveRoute) {
+    return 0.3
+  }
+  // 默认：正常透明度
+  return appStore.isDark ? 0.6 : 0.5
+})
 
 const selectedModelDisplay = computed(() => {
   const m = featuredModels.value.find(m => m.model_code === selectedModel.value)
