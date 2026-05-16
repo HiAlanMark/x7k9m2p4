@@ -201,36 +201,41 @@ jobs:
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
 
       # ── 4. 构建安装包 ─────────────────────────────────
-      # Windows: 用 Wails NSIS 打包
+      # Windows: 用自定义 NSIS 脚本打包（包含 Hermes）
       - name: Build Windows NSIS Installer
         if: runner.os == 'Windows'
         shell: bash
         run: |
           BUILD_DIR="build/bin"
-
+          
           echo "=== NSIS check ==="
           which makensis 2>/dev/null || echo "makensis not in PATH"
           ls -la "C:/Program Files (x86)/NSIS/makensis.exe" 2>/dev/null || echo "NSIS not at default path"
-          echo "PATH: $PATH"
-
-          # 单次构建直接生成 NSIS 安装包（不加 -clean，保留 Hermes 文件）
-          # -webview2 embed: 将 WebView2 运行时嵌入安装包，离线可用
-          # Wails 输出格式 (nsisType=multiple): <outputfilename>-<arch>-installer.exe
-          wails build -trimpath -s -skipbindings -platform windows/amd64 -nsis -webview2 embed -v 2
-
-          echo "=== All files in build/bin ==="
-          find "$BUILD_DIR" -type f | sort
+          
+          # 先构建裸二进制（包含 Hermes 文件）
+          echo "=== Building base binary with Hermes ==="
+          wails build -trimpath -s -skipbindings -platform windows/amd64 -v 2
+          
+          echo "=== Build output ==="
+          find "$BUILD_DIR" -type f | head -20
+          du -sh "$BUILD_DIR" "$BUILD_DIR/hermes-agent" "$BUILD_DIR/hermes-python" 2>/dev/null || true
+          
+          # 使用自定义 NSIS 脚本打包（包含 Hermes 目录）
+          echo "=== Creating NSIS installer ==="
+          makensis -V2 -DBUILD_DIR="$BUILD_DIR" build/windows/installer.nsi
+          
+          # 移动安装包到 build/bin
+          mv HiXNS-Windows-x64-Setup.exe "$BUILD_DIR/" 2>/dev/null || mv "${PRODUCT_NAME}.exe" "$BUILD_DIR/HiXNS-Windows-x64-Setup.exe" 2>/dev/null || true
+          
           echo "=== All exe files ==="
           find "$BUILD_DIR" -name "*.exe" -type f -exec ls -lh {} \;
-
-          # Wails NSIS 输出：hixns-agent-amd64-installer.exe (nsisType=multiple)
-          INST=$(find "$BUILD_DIR" -name "*installer*.exe" -type f | head -1)
-          if [ -n "$INST" ]; then
-            cp "$INST" "$BUILD_DIR/HiXNS-Windows-x64-Setup.exe"
-            echo "Installer found: $INST"
-            ls -lh "$BUILD_DIR/HiXNS-Windows-x64-Setup.exe"
+          
+          INST="$BUILD_DIR/HiXNS-Windows-x64-Setup.exe"
+          if [ -f "$INST" ]; then
+            echo "Installer created: $INST"
+            ls -lh "$INST"
           else
-            echo "::error::No installer found. Expected pattern: *installer*.exe"
+            echo "::error::Installer not found"
             find "$BUILD_DIR" -name "*.exe" -type f
             exit 1
           fi
