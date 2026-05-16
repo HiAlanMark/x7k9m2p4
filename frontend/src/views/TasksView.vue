@@ -465,7 +465,7 @@ function formatElapsed(iso?: string): string {
   color: var(--color-text-primary); background: var(--color-bg-input);
   outline: none;
 }
-.form-input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(10,132,255,0.08); }
+.form-input:focus { border-color: var(--color-border); box-shadow: none; }
 .form-textarea {
   width: 100%; padding: 8px 10px;
   border: 1px solid var(--glass-border); border-radius: 8px;
@@ -473,7 +473,7 @@ function formatElapsed(iso?: string): string {
   color: var(--color-text-primary); background: var(--color-bg-input);
   outline: none; resize: vertical; min-height: 60px;
 }
-.form-textarea:focus { border-color: var(--color-primary); }
+.form-textarea:focus { border-color: var(--color-border); }
 .form-hint { font-size: 11px; color: var(--color-text-tertiary); margin: 3px 0 0; }
 .form-actions { display: flex; gap: 8px; margin-top: 14px; }
 

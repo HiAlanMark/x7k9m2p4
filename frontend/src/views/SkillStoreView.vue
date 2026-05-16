@@ -646,8 +646,8 @@ onBeforeUnmount(() => {
 }
 
 .search-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 2px 12px rgba(10,132,255,0.10);
+  border-color: var(--color-border);
+  box-shadow: none;
 }
 
 .search-input::placeholder {

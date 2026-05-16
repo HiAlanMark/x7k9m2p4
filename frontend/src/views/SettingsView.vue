@@ -1250,7 +1250,7 @@ onMounted(async () => {
 }
 
 .settings-search-input:focus {
-  border-color: var(--color-primary);
+  border-color: var(--color-border);
 }
 
 .settings-search-input::placeholder {
@@ -1362,8 +1362,8 @@ onMounted(async () => {
 }
 
 .form-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(10,132,255,0.08);
+  border-color: var(--color-border);
+  box-shadow: none;
 }
 
 .form-input::placeholder {
@@ -1856,8 +1856,8 @@ onMounted(async () => {
 }
 
 .form-textarea:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(10,132,255,0.08);
+  border-color: var(--color-border);
+  box-shadow: none;
 }
 
 .form-textarea::placeholder {
