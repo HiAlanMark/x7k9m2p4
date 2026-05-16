@@ -204,31 +204,42 @@ jobs:
       # Windows: 用自定义 NSIS 脚本打包（包含 Hermes）
       - name: Build Windows NSIS Installer
         if: runner.os == 'Windows'
-        shell: bash
+        shell: pwsh
         run: |
-          echo "=== Auto-building with Wails ==="
+          Write-Host "=== Auto-building with Wails ==="
           wails build -trimpath -s -skipbindings -platform windows/amd64 -v 2
 
-          echo "=== Verifying build artifacts ==="
-          ls -lh build/bin/hixns-agent.exe
-          du -sh build/bin/hermes-agent build/bin/hermes-python 2>/dev/null || true
+          Write-Host "=== Verifying build artifacts ==="
+          Get-Item build\bin\hixns-agent.exe | Select-Object Name, Length
 
-          echo "=== Creating NSIS installer ==="
-          WIN_ROOT="$(cygpath -w "$PWD")"
-          echo "Project root (Windows): $WIN_ROOT"
-          cd "$WIN_ROOT"
-          makensis build\\windows\\installer.nsi
+          $hermesAgent = Get-ChildItem build\bin\hermes-agent -Recurse | Measure-Object
+          $hermesPython = Get-ChildItem build\bin\hermes-python -Recurse | Measure-Object
+          Write-Host "hermes-agent files: $($hermesAgent.Count)"
+          Write-Host "hermes-python files: $($hermesPython.Count)"
 
-          echo "=== Checking installer ==="
-          ls -lh build/bin/*.exe 2>/dev/null
+          Write-Host "=== Creating NSIS installer ==="
+          $nsisScript = Resolve-Path build\windows\installer.nsi
+          Write-Host "Script: $nsisScript"
+          Write-Host "Working dir: $PWD"
 
-          if [ -f "build/bin/HiXNS-Windows-x64-Setup.exe" ]; then
-            echo "INSTALLER OK: build/bin/HiXNS-Windows-x64-Setup.exe"
-          else
-            echo "::error::Installer not found!"
-            find build -name "*.exe" 2>/dev/null
+          & makensis $nsisScript 2>&1 | ForEach-Object { Write-Host $_ }
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "makensis failed (exit $LASTEXITCODE)"
             exit 1
-          fi
+          }
+
+          Write-Host "=== Checking installer ==="
+          Get-ChildItem build\bin\*.exe | ForEach-Object {
+            Write-Host "$($_.Name) = $([math]::Round($_.Length/1MB, 1))MB"
+          }
+
+          if (Test-Path build\bin\HiXNS-Windows-x64-Setup.exe) {
+            Write-Host "##[notice] INSTALLER OK"
+          } else {
+            Write-Error "Installer not found!"
+            Get-ChildItem build\bin -Recurse -Filter *.exe | Select-Object FullName
+            exit 1
+          }
 
       # Linux: 手动构建 AppImage
       - name: Build Linux AppImage
