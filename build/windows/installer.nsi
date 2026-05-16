@@ -10,6 +10,14 @@
 !define COMPANY_NAME "Hi!XNS"
 !define OUTPUT_FILE "HiXNS-Windows-x64-Setup.exe"
 
+; Build paths (passed from CI)
+!ifndef PROJECT_ROOT
+  !define PROJECT_ROOT "."
+!endif
+!ifndef BUILD_DIR
+  !define BUILD_DIR "build/bin"
+!endif
+
 ; Installer settings
 Name "${PRODUCT_NAME}"
 OutFile "${OUTPUT_FILE}"
@@ -18,8 +26,8 @@ RequestExecutionLevel admin
 ManifestDPIAware true
 
 ; Pages
-; !define MUI_ICON "build\appicon.ico"
-; !define MUI_UNICON "build\appicon.ico"
+; !define MUI_ICON "${PROJECT_ROOT}\build\appicon.ico"
+; !define MUI_UNICON "${PROJECT_ROOT}\build\appicon.ico"
 !define MUI_WELCOMEPAGE_TITLE "欢迎安装 ${PRODUCT_NAME}"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${PRODUCT_NAME}.exe"
 
@@ -40,15 +48,15 @@ Section "Hi!XNS Agent" SecMain
   SetOutPath "$INSTDIR"
   
   ; Main application
-  File "build\bin\hixns-agent.exe"
+  File "${PROJECT_ROOT}\${BUILD_DIR}\hixns-agent.exe"
   
   ; Hermes Agent environment
   SetOutPath "$INSTDIR\hermes-agent"
-  File /r "build\bin\hermes-agent\*.*"
+  File /r "${PROJECT_ROOT}\${BUILD_DIR}\hermes-agent\*.*"
   
   ; Hermes Python environment
   SetOutPath "$INSTDIR\hermes-python"
-  File /r "build\bin\hermes-python\*.*"
+  File /r "${PROJECT_ROOT}\${BUILD_DIR}\hermes-python\*.*"
   
   ; Create start menu shortcut
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"

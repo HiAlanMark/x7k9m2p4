@@ -207,6 +207,7 @@ jobs:
         shell: bash
         run: |
           BUILD_DIR="build/bin"
+          PROJECT_ROOT="$GITHUB_WORKSPACE"
           
           echo "=== NSIS check ==="
           which makensis 2>/dev/null || echo "makensis not in PATH"
@@ -222,7 +223,8 @@ jobs:
           
           # 使用自定义 NSIS 脚本打包（包含 Hermes 目录）
           echo "=== Creating NSIS installer ==="
-          makensis -V2 -DBUILD_DIR="$BUILD_DIR" build/windows/installer.nsi
+          cd "$PROJECT_ROOT"
+          makensis -V2 -DBUILD_DIR="$BUILD_DIR" -DPROJECT_ROOT="$PROJECT_ROOT" build/windows/installer.nsi
           
           # 移动安装包到 build/bin
           mv HiXNS-Windows-x64-Setup.exe "$BUILD_DIR/" 2>/dev/null || mv "${PRODUCT_NAME}.exe" "$BUILD_DIR/HiXNS-Windows-x64-Setup.exe" 2>/dev/null || true
