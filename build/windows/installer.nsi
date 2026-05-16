@@ -1,68 +1,59 @@
-; Hi!XNS NSIS Installer Script
-; Includes main binary + Hermes Agent environment
-; Run from project root: makensis build/windows/installer.nsi
+; Hi!XNS Windows Installer
+; Minimal NSIS — installs app + Hermes environment
 
-!include "MUI2.nsh"
 !include "FileFunc.nsh"
 
-!define PRODUCT_NAME "Hi!XNS"
-!define PRODUCT_VERSION "0.9.5"
-!define COMPANY_NAME "Hi!XNS"
-
-Name "${PRODUCT_NAME}"
+Name "Hi!XNS"
 OutFile "build\bin\HiXNS-Windows-x64-Setup.exe"
-InstallDir "$PROGRAMFILES64\${PRODUCT_NAME}"
+InstallDir "$PROGRAMFILES64\HiXNS"
 RequestExecutionLevel admin
 ManifestDPIAware true
+ShowInstDetails show
+ShowUninstDetails show
 
-!define MUI_WELCOMEPAGE_TITLE "Welcome to ${PRODUCT_NAME} Setup"
-!define MUI_FINISHPAGE_RUN "$INSTDIR\${PRODUCT_NAME}.exe"
-
-!insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_DIRECTORY
-!insertmacro MUI_PAGE_INSTFILES
-!insertmacro MUI_PAGE_FINISH
-!insertmacro MUI_UNPAGE_CONFIRM
-!insertmacro MUI_UNPAGE_INSTFILES
-!insertmacro MUI_LANGUAGE "English"
-
-Section "Hi!XNS Agent" SecMain
+Section "Install"
   SetOutPath "$INSTDIR"
 
-  ; Main binary
+  ; Main application
   File "build\bin\hixns-agent.exe"
 
-  ; Hermes Agent (Python source + scripts)
+  ; Hermes Agent (Python scripts)
   SetOutPath "$INSTDIR\hermes-agent"
-  File /r /x __pycache__ /x *.pyc "build\bin\hermes-agent\*.*"
+  File /r /x __pycache__ /x *.pyc "build\bin\hermes-agent\*"
 
-  ; Hermes Python runtime (embedded Python + site-packages)
+  ; Hermes Python (embedded runtime + packages)
   SetOutPath "$INSTDIR\hermes-python"
-  File /r /x __pycache__ /x *.pyc "build\bin\hermes-python\*.*"
+  File /r /x __pycache__ /x *.pyc "build\bin\hermes-python\*"
 
-  ; Start menu
-  CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
-  CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk" "$INSTDIR\${PRODUCT_NAME}.exe"
-  CreateShortcut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\${PRODUCT_NAME}.exe"
+  ; Start menu shortcut
+  CreateDirectory "$SMPROGRAMS\HiXNS"
+  CreateShortCut "$SMPROGRAMS\HiXNS\HiXNS.lnk" "$INSTDIR\hixns-agent.exe"
 
+  ; Desktop shortcut
+  CreateShortCut "$DESKTOP\HiXNS.lnk" "$INSTDIR\hixns-agent.exe"
+
+  ; Uninstaller
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
-  WriteRegStr HKLM "Software\${COMPANY_NAME}\${PRODUCT_NAME}" "InstallDir" "$INSTDIR"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayName" "${PRODUCT_NAME}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayVersion" "${PRODUCT_VERSION}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "Publisher" "${COMPANY_NAME}"
+  ; Add/Remove Programs entry
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "DisplayName" "Hi!XNS AI Agent"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "DisplayVersion" "0.9.5"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "Publisher" "Hi!XNS"
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "NoModify" 1
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "NoRepair" 1
 SectionEnd
 
 Section "Uninstall"
   RMDir /r "$INSTDIR\hermes-agent"
   RMDir /r "$INSTDIR\hermes-python"
-  Delete "$INSTDIR\${PRODUCT_NAME}.exe"
+  Delete "$INSTDIR\hixns-agent.exe"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
-  Delete "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk"
-  RMDir "$SMPROGRAMS\${PRODUCT_NAME}"
-  Delete "$DESKTOP\${PRODUCT_NAME}.lnk"
-  DeleteRegKey HKLM "Software\${COMPANY_NAME}\${PRODUCT_NAME}"
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
+
+  Delete "$SMPROGRAMS\HiXNS\HiXNS.lnk"
+  RMDir "$SMPROGRAMS\HiXNS"
+  Delete "$DESKTOP\HiXNS.lnk"
+
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS"
 SectionEnd

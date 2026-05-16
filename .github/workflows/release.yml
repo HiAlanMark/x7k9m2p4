@@ -62,9 +62,18 @@ jobs:
           echo "CGO_ENABLED=1" >> $GITHUB_ENV
           echo "CC=cl" >> $GITHUB_ENV
 
-      - name: Install NSIS
+      - name: Install NSIS (Windows)
         if: runner.os == 'Windows'
-        uses: negrutiu/nsis-install@v1
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress --limit-output
+          refreshenv
+          Write-Host "makensis at: $(Get-Command makensis.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)"
+          if (-not (Get-Command makensis.exe -ErrorAction SilentlyContinue)) {
+            $env:Path += ";${env:ProgramFiles(x86)}\NSIS"
+            Write-Host "Added NSIS to PATH"
+          }
+          makensis.exe /VERSION
 
       # ── 前端 ──────────────────────────────────────────
       - name: Install frontend dependencies
@@ -201,45 +210,42 @@ jobs:
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
 
       # ── 4. 构建安装包 ─────────────────────────────────
-      # Windows: 用自定义 NSIS 脚本打包（包含 Hermes）
-      - name: Build Windows NSIS Installer
+      # Windows: 构建二进制 + NSIS 打包（包含 Hermes）
+      - name: Build Windows Installer
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Write-Host "=== Auto-building with Wails ==="
-          wails build -trimpath -s -skipbindings -platform windows/amd64 -v 2
+          $ErrorActionPreference = "Stop"
 
-          Write-Host "=== Verifying build artifacts ==="
-          Get-Item build\bin\hixns-agent.exe | Select-Object Name, Length
+          Write-Host "=== 1. Build Go binary ==="
+          wails build -trimpath -s -skipbindings -platform windows/amd64 -webview2 embed -v 2
+          if (-not (Test-Path build\bin\hixns-agent.exe)) {
+            throw "Binary not found: build\bin\hixns-agent.exe"
+          }
+          Write-Host "Binary size: $([math]::Round((Get-Item build\bin\hixns-agent.exe).Length/1MB, 1))MB"
 
-          $hermesAgent = Get-ChildItem build\bin\hermes-agent -Recurse | Measure-Object
-          $hermesPython = Get-ChildItem build\bin\hermes-python -Recurse | Measure-Object
-          Write-Host "hermes-agent files: $($hermesAgent.Count)"
-          Write-Host "hermes-python files: $($hermesPython.Count)"
+          Write-Host "=== 2. Verify Hermes env ==="
+          $agentCount = (Get-ChildItem build\bin\hermes-agent -Recurse -File 2>$null).Count
+          $pythonCount = (Get-ChildItem build\bin\hermes-python -Recurse -File 2>$null).Count
+          Write-Host "hermes-agent: $agentCount files"
+          Write-Host "hermes-python: $pythonCount files"
 
-          Write-Host "=== Creating NSIS installer ==="
-          $nsisScript = Resolve-Path build\windows\installer.nsi
-          Write-Host "Script: $nsisScript"
-          Write-Host "Working dir: $PWD"
+          Write-Host "=== 3. Run NSIS ==="
+          $nsis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          if (-not (Test-Path $nsis)) {
+            $nsis = (Get-Command makensis.exe -ErrorAction Stop).Source
+          }
+          Write-Host "makensis: $nsis"
+          Write-Host "Script: build\windows\installer.nsi"
 
-          & makensis $nsisScript 2>&1 | ForEach-Object { Write-Host $_ }
+          & $nsis build\windows\installer.nsi
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "makensis failed (exit $LASTEXITCODE)"
-            exit 1
+            throw "makensis failed with exit code $LASTEXITCODE"
           }
 
-          Write-Host "=== Checking installer ==="
-          Get-ChildItem build\bin\*.exe | ForEach-Object {
-            Write-Host "$($_.Name) = $([math]::Round($_.Length/1MB, 1))MB"
-          }
-
-          if (Test-Path build\bin\HiXNS-Windows-x64-Setup.exe) {
-            Write-Host "##[notice] INSTALLER OK"
-          } else {
-            Write-Error "Installer not found!"
-            Get-ChildItem build\bin -Recurse -Filter *.exe | Select-Object FullName
-            exit 1
-          }
+          Write-Host "=== 4. Result ==="
+          $inst = Get-Item build\bin\HiXNS-Windows-x64-Setup.exe
+          Write-Host "Installer: $([math]::Round($inst.Length/1MB, 1))MB at $($inst.FullName)"
 
       # Linux: 手动构建 AppImage
       - name: Build Linux AppImage
