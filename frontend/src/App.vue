@@ -65,6 +65,7 @@
               class="session-item"
               :class="{ active: s.id === chatStore.activeSessionId }"
               @click="chatStore.switchSession(s.id); router.push('/')"
+              @contextmenu.prevent="openContextMenu($event, s)"
             >
               <span class="session-item-title">{{ truncateTitle(s.title) }}</span>
               <span class="session-item-count">{{ s.messages.filter(m => m.role === 'user').length }}</span>
@@ -86,6 +87,46 @@
               </span>
             </div>
           </transition-group>
+        </div>
+      </div>
+      
+      <!-- Context Menu -->
+      <div v-if="contextMenu.visible" class="context-menu" :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }" @click.stop>
+        <div class="context-menu-item" @click="startRename">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          <span>重命名</span>
+        </div>
+        <div class="context-menu-item danger" @click="deleteFromMenu">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+          </svg>
+          <span>删除</span>
+        </div>
+      </div>
+      <div v-if="contextMenu.visible" class="context-menu-overlay" @click="closeContextMenu"></div>
+      
+      <!-- Rename Modal -->
+      <div v-if="renameModal.visible" class="rename-modal-overlay" @click="closeRenameModal">
+        <div class="rename-modal" @click.stop>
+          <h3 class="rename-title">重命名会话</h3>
+          <input
+            ref="renameInputRef"
+            v-model="renameValue"
+            type="text"
+            class="rename-input"
+            placeholder="输入会话名称"
+            @keydown.enter="confirmRename"
+            @keydown.escape="closeRenameModal"
+          />
+          <div class="rename-actions">
+            <button class="rename-cancel" @click="closeRenameModal">取消</button>
+            <button class="rename-confirm" @click="confirmRename">确定</button>
+          </div>
         </div>
       </div>
 
@@ -186,6 +227,12 @@ const showSplash = ref(true)
 const confirmDeleteId = ref('')
 const modelDropdownOpen = ref(false)
 
+// Context Menu & Rename
+const contextMenu = ref({ visible: false, x: 0, y: 0, sessionId: '' })
+const renameModal = ref({ visible: false })
+const renameValue = ref('')
+const renameInputRef = ref<HTMLInputElement | null>(null)
+
 const { selectedModel } = storeToRefs(chatStore)
 
 const activeModelDisplay = computed(() => {
@@ -220,13 +267,58 @@ function handleKeydown(e: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('click', closeContextMenu)
   gfwStore.fetchBalance()
   gfwStore.fetchModels()
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('click', closeContextMenu)
 })
+
+// Context Menu functions
+function openContextMenu(e: MouseEvent, session: { id: string, title: string }) {
+  contextMenu.value = {
+    visible: true,
+    x: Math.min(e.clientX, window.innerWidth - 160),
+    y: Math.min(e.clientY, window.innerHeight - 80),
+    sessionId: session.id,
+  }
+}
+
+function closeContextMenu() {
+  contextMenu.value.visible = false
+}
+
+function startRename() {
+  const session = chatStore.sessions.find(s => s.id === contextMenu.value.sessionId)
+  if (session) {
+    renameValue.value = session.title
+    renameModal.value.visible = true
+    contextMenu.value.visible = false
+    setTimeout(() => renameInputRef.value?.focus(), 100)
+  }
+}
+
+function closeRenameModal() {
+  renameModal.value.visible = false
+  renameValue.value = ''
+}
+
+function confirmRename() {
+  if (renameValue.value.trim()) {
+    chatStore.renameSession(contextMenu.value.sessionId, renameValue.value.trim())
+  }
+  closeRenameModal()
+}
+
+function deleteFromMenu() {
+  if (contextMenu.value.sessionId && chatStore.sessions.length > 1) {
+    chatStore.deleteSession(contextMenu.value.sessionId)
+  }
+  closeContextMenu()
+}
 </script>
 
 <style scoped>
@@ -713,5 +805,167 @@ onUnmounted(() => {
 .page-fade-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+/* ════════════════════════════════════════════════════════════
+   Context Menu
+   ════════════════════════════════════════════════════════════ */
+.context-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-modal);
+}
+
+.context-menu {
+  position: fixed;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-1);
+  min-width: 140px;
+  z-index: calc(var(--z-modal) + 1);
+  animation: slideUp var(--duration-200) var(--ease-expo);
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--fast);
+}
+
+.context-menu-item:hover {
+  background: var(--glass-base);
+}
+
+.context-menu-item.danger {
+  color: var(--error);
+}
+
+.context-menu-item.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ════════════════════════════════════════════════════════════
+   Rename Modal
+   ════════════════════════════════════════════════════════════ */
+.rename-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  animation: fadeIn var(--duration-200) var(--ease-expo);
+}
+
+.rename-modal {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-5);
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: var(--shadow-2xl);
+  animation: scaleIn var(--duration-200) var(--ease-expo);
+}
+
+.rename-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4);
+}
+
+.rename-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: var(--glass-base);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  outline: none;
+  transition: all var(--fast);
+  box-sizing: border-box;
+}
+
+.rename-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: var(--glow-sm);
+}
+
+.rename-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.rename-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.rename-cancel,
+.rename-confirm {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--fast);
+  border: none;
+}
+
+.rename-cancel {
+  background: var(--glass-base);
+  color: var(--text-secondary);
+}
+
+.rename-cancel:hover {
+  background: var(--glass-bg-hover);
+  color: var(--text-primary);
+}
+
+.rename-confirm {
+  background: var(--primary);
+  color: white;
+}
+
+.rename-confirm:hover {
+  background: var(--primary-dark);
+  box-shadow: var(--glow-sm);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>
