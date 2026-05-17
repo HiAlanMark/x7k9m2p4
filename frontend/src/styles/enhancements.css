@@ -24,7 +24,7 @@
   
   transition: 
     background-color var(--colors),
-    border-color var(--colors),
+    border-color var(--fast),
     box-shadow var(--fast),
     transform var(--fast),
     opacity var(--fast);
@@ -36,6 +36,25 @@
   /* Default size */
   padding: var(--space-2) var(--space-4);
   min-height: 36px;
+}
+
+.hixns-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--fast);
+  pointer-events: none;
+}
+
+.hixns-btn:hover:not(:disabled)::before {
+  opacity: 1;
 }
 
 .hixns-btn:hover:not(:disabled) {
@@ -207,6 +226,28 @@
     background-color var(--colors);
   
   outline: none;
+  overflow: hidden;
+  position: relative;
+}
+
+.hixns-input::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.03) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--fast);
+  pointer-events: none;
+}
+
+.hixns-input:hover::before,
+.hixns-input:focus-within::before {
+  opacity: 1;
 }
 
 .hixns-input:hover {
@@ -217,8 +258,10 @@
 .hixns-input:focus-within {
   border-color: var(--border-focus);
   box-shadow: 
-    var(--glow-sm),
-    var(--glow-inner);
+    0 0 0 1px rgba(10, 132, 255, 0.1),
+    0 0 8px rgba(10, 132, 255, 0.2),
+    0 0 16px rgba(10, 132, 255, 0.1),
+    inset 0 0 8px rgba(10, 132, 255, 0.05);
   background: var(--glass-strong);
 }
 
@@ -318,18 +361,46 @@
   
   padding: var(--space-6);
   
-  box-shadow: var(--glass-inset), var(--shadow-md);
+  box-shadow: 
+    var(--glass-inset),
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.02);
   
   transition: 
     border-color var(--fast),
     box-shadow var(--normal),
     transform var(--normal),
     background-color var(--colors);
+  
+  position: relative;
+  overflow: hidden;
+}
+
+.hixns-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.04) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--normal);
+  pointer-events: none;
+}
+
+.hixns-card:hover::before {
+  opacity: 1;
 }
 
 .hixns-card:hover {
   border-color: var(--border-light);
-  box-shadow: var(--glass-inset), var(--shadow-lg);
+  box-shadow: 
+    var(--glass-inset),
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .hixns-card--interactive {
@@ -342,7 +413,10 @@
 }
 
 .hixns-card--elevated {
-  box-shadow: var(--glass-inset), var(--shadow-xl);
+  box-shadow: 
+    var(--glass-inset),
+    0 16px 48px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .hixns-card__header {
@@ -453,54 +527,6 @@
   font-size: 12px;
 }
 
-/* ════════════════════════════════════════════════════════════
-   Toggle / Switch
-   ════════════════════════════════════════════════════════════ */
-.hixns-toggle {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  
-  width: 44px;
-  height: 24px;
-  
-  background: var(--glass-base);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-full);
-  
-  cursor: pointer;
-  transition: all var(--fast);
-}
-
-.hixns-toggle:hover {
-  border-color: var(--border-light);
-  background: var(--glass-bg-hover);
-}
-
-.hixns-toggle--checked {
-  background: var(--primary);
-  border-color: var(--primary-dark);
-  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.3);
-}
-
-.hixns-toggle__thumb {
-  position: absolute;
-  left: 2px;
-  
-  width: 18px;
-  height: 18px;
-  
-  background: white;
-  border-radius: 50%;
-  
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  
-  transition: transform var(--normal);
-}
-
-.hixns-toggle--checked .hixns-toggle__thumb {
-  transform: translateX(20px);
-}
 
 /* ════════════════════════════════════════════════════════════
    Modal / Dialog

@@ -1,17 +1,17 @@
 <template>
-  <div class="vuebits-bg">
+  <div class="tech-background">
     <!-- 渐变网格层 -->
-    <div class="vuebits-bg__grid-layer">
-      <div class="vuebits-bg__grid" />
-      <div class="vuebits-bg__grid vuebits-bg__grid--alt" />
+    <div class="grid-layer">
+      <div class="grid-grid" />
+      <div class="grid-grid grid-grid-2" />
     </div>
     
     <!-- 粒子层 -->
-    <div class="vuebits-bg__particles">
+    <div class="particles-layer">
       <div 
         v-for="particle in particles" 
         :key="particle.id"
-        class="vuebits-bg__particle"
+        class="particle"
         :style="{
           left: particle.x + '%',
           top: particle.y + '%',
@@ -24,16 +24,14 @@
     </div>
     
     <!-- 光晕层 -->
-    <div class="vuebits-bg__glow-layer">
-      <div class="vuebits-bg__orb vuebits-bg__orb--1" />
-      <div class="vuebits-bg__orb vuebits-bg__orb--2" />
-      <div class="vuebits-bg__orb vuebits-bg__orb--3" />
+    <div class="glow-layer">
+      <div class="glow-orb glow-orb-1" />
+      <div class="glow-orb glow-orb-2" />
+      <div class="glow-orb glow-orb-3" />
     </div>
     
     <!-- 扫描线层 -->
-    <div class="vuebits-bg__scanlines" />
-    
-    <slot />
+    <div class="scanline-layer" />
   </div>
 </template>
 
@@ -52,7 +50,7 @@ interface Particle {
 const particles = ref<Particle[]>([])
 
 function generateParticles() {
-  const count = 35
+  const count = 30
   const newParticles: Particle[] = []
   
   for (let i = 0; i < count; i++) {
@@ -79,7 +77,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.vuebits-bg {
+.tech-background {
   position: fixed;
   inset: 0;
   overflow: hidden;
@@ -90,14 +88,14 @@ onUnmounted(() => {
 /* ════════════════════════════════════════════════════════════
    渐变网格层
    ════════════════════════════════════════════════════════════ */
-.vuebits-bg__grid-layer {
+.grid-layer {
   position: absolute;
   inset: 0;
   perspective: 1000px;
   transform-style: preserve-3d;
 }
 
-.vuebits-bg__grid {
+.grid-grid {
   position: absolute;
   inset: -50%;
   background-image: 
@@ -110,7 +108,7 @@ onUnmounted(() => {
   transform-origin: center top;
 }
 
-.vuebits-bg__grid--alt {
+.grid-grid-2 {
   animation: gridMove 25s linear infinite reverse;
   opacity: 0.5;
   background-image: 
@@ -130,12 +128,12 @@ onUnmounted(() => {
 /* ════════════════════════════════════════════════════════════
    粒子层
    ════════════════════════════════════════════════════════════ */
-.vuebits-bg__particles {
+.particles-layer {
   position: absolute;
   inset: 0;
 }
 
-.vuebits-bg__particle {
+.particle {
   position: absolute;
   border-radius: 50%;
   background: radial-gradient(
@@ -172,12 +170,12 @@ onUnmounted(() => {
 /* ════════════════════════════════════════════════════════════
    光晕层
    ════════════════════════════════════════════════════════════ */
-.vuebits-bg__glow-layer {
+.glow-layer {
   position: absolute;
   inset: 0;
 }
 
-.vuebits-bg__orb {
+.glow-orb {
   position: absolute;
   border-radius: 50%;
   filter: blur(80px);
@@ -185,7 +183,7 @@ onUnmounted(() => {
   animation: orbFloat 15s ease-in-out infinite;
 }
 
-.vuebits-bg__orb--1 {
+.glow-orb-1 {
   width: 400px;
   height: 400px;
   background: radial-gradient(
@@ -199,7 +197,7 @@ onUnmounted(() => {
   animation-delay: 0s;
 }
 
-.vuebits-bg__orb--2 {
+.glow-orb-2 {
   width: 300px;
   height: 300px;
   background: radial-gradient(
@@ -213,7 +211,7 @@ onUnmounted(() => {
   animation-delay: -5s;
 }
 
-.vuebits-bg__orb--3 {
+.glow-orb-3 {
   width: 250px;
   height: 250px;
   background: radial-gradient(
@@ -246,7 +244,7 @@ onUnmounted(() => {
 /* ════════════════════════════════════════════════════════════
    扫描线层
    ════════════════════════════════════════════════════════════ */
-.vuebits-bg__scanlines {
+.scanline-layer {
   position: absolute;
   inset: 0;
   background: linear-gradient(
@@ -268,34 +266,5 @@ onUnmounted(() => {
   100% {
     background-position: 0 100%;
   }
-}
-
-/* ════════════════════════════════════════════════════════════
-   Light theme adjustments
-   ════════════════════════════════════════════════════════════ */
-[data-theme="light"] .vuebits-bg__grid {
-  background-image: 
-    linear-gradient(rgba(0, 102, 204, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 102, 204, 0.04) 1px, transparent 1px);
-  opacity: 0.5;
-}
-
-[data-theme="light"] .vuebits-bg__grid--alt {
-  background-image: 
-    linear-gradient(rgba(138, 43, 226, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(138, 43, 226, 0.03) 1px, transparent 1px);
-}
-
-[data-theme="light"] .vuebits-bg__orb {
-  opacity: 0.2;
-}
-
-[data-theme="light"] .vuebits-bg__scanlines {
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(0, 102, 204, 0.03) 50%,
-    transparent 100%
-  );
 }
 </style>
