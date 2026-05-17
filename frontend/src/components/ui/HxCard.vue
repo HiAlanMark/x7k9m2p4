@@ -66,27 +66,26 @@ const cardStyle = computed(() => ({
 .hixns-card__header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   margin-bottom: var(--space-4);
-  padding-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .hixns-card__title {
-  font-size: var(--text-xl);
-  font-weight: var(--font-bold);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
   color: var(--text-primary);
   margin: 0;
   line-height: var(--leading-tight);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
+
 .hixns-card__subtitle {
   font-size: var(--text-sm);
   color: var(--text-secondary);
   margin: 0;
+  line-height: var(--leading-normal);
 }
-
 .hixns-card__content {
   color: var(--text-secondary);
   line-height: var(--leading-relaxed);
