@@ -211,14 +211,17 @@
               <label class="form-label">
                 模型
                 <HxButton v-if="customUpstream !== '__manual__'" variant="ghost" size="sm" :loading="upstreamModelsSyncing" @click="fetchUpstreamModels" style="margin-left:8px;">
-                  {{ upstreamModelsSyncing ? '获取中...' : '获取模型列表' }}
+                  {{ upstreamModelsSyncing ? '获取中...' : '刷新模型' }}
                 </HxButton>
               </label>
               <HxSelect v-if="upstreamModels.length > 0" v-model="customModel">
                 <option v-for="m in upstreamModels" :key="m" :value="m">{{ m }}</option>
               </HxSelect>
-              <HxInput v-else v-model="customModel" placeholder="gpt-4o / deepseek-chat / qwen-plus" />
+              <HxInput v-else v-model="customModel" placeholder="选择或输入模型名称" />
               <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
+              <p v-if="customUpstream !== '__manual__' && upstreamModels.length === 0 && !upstreamModelsError" class="form-hint">
+                点击"刷新模型"从 {{ customUpstream }} 获取可用模型列表
+              </p>
             </div>
             <div class="form-row">
               <label class="form-label">上下文长度</label>
@@ -1062,6 +1065,10 @@ function selectUpstream(preset: { name: string; baseUrl: string; model: string }
   // 切换上游时清空之前获取的模型列表
   upstreamModels.value = []
   upstreamModelsError.value = ''
+  // 如果包含占位符，提示用户先编辑 URL；否则自动获取模型列表
+  if (!hasPlaceholder(preset.baseUrl)) {
+    fetchUpstreamModels()
+  }
 }
 
 // 检查 URL 是否包含占位符（如 {resource-name}, {region}, {account_id} 等）
