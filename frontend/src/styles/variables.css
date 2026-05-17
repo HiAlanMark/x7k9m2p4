@@ -37,12 +37,14 @@
   --glass-strong: rgba(255, 255, 255, 0.07);
   --glass-solid:  rgba(255, 255, 255, 0.1);
   
-  /* Primary — Electric Blue */
-  --primary:        #0A84FF;
-  --primary-light:  rgba(10, 132, 255, 0.08);
-  --primary-dark:   #0066CC;
-  --primary-glow:   rgba(10, 132, 255, 0.4);
-  --primary-glow-sm: rgba(10, 132, 255, 0.25);
+  /* Primary — Glass Light Blue */
+  --primary:        rgba(90, 200, 250, 0.15);
+  --primary-light:  rgba(90, 200, 250, 0.08);
+  --primary-dark:   rgba(90, 200, 250, 0.25);
+  --primary-glow:   rgba(90, 200, 250, 0.3);
+  --primary-glow-sm: rgba(90, 200, 250, 0.2);
+  --primary-text:   rgba(90, 200, 250, 0.95);
+  --primary-border: rgba(90, 200, 250, 0.4);
   
   /* Secondary — Nebula Purple */
   --secondary:       #BF5AF2;

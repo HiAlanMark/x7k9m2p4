@@ -83,14 +83,21 @@
 /* Variants */
 .hixns-btn--primary {
   background: var(--primary);
-  color: white;
-  border-color: var(--primary-dark);
-  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.3);
+  color: var(--primary-text);
+  border-color: var(--primary-border);
+  backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
+  box-shadow: 
+    var(--glass-inset),
+    0 2px 8px rgba(90, 200, 250, 0.2);
 }
 
 .hixns-btn--primary:hover:not(:disabled) {
   background: var(--primary-dark);
-  box-shadow: 0 4px 16px rgba(10, 132, 255, 0.4);
+  border-color: rgba(90, 200, 250, 0.6);
+  box-shadow: 
+    var(--glass-inset),
+    0 4px 16px rgba(90, 200, 250, 0.3),
+    0 0 24px rgba(90, 200, 250, 0.15);
 }
 
 .hixns-btn--secondary {
