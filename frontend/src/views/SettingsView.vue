@@ -185,7 +185,7 @@
                   title="手动输入自定义提供商"
                 >
                   <span class="chip-icon">
-                    <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M492.434338 5.253094a39.039805 39.039805 0 0 1 39.039804 0l204.798976 118.527407 204.670977 118.527407a37.759811 37.759811 0 0 1 19.007905 32.639837v474.10963a37.759811 37.759811 0 0 1-19.007905 32.639837l-204.734976 118.527407-204.734977 118.527407a39.039805 39.039805 0 0 1-39.039804 0L82.964385 781.697212a37.759811 37.759811 0 0 1-19.007905-32.639837V274.947745a37.759811 37.759811 0 0 1 19.007905-32.639837l204.670977-118.527407 204.798976-118.527407zM511.95424 81.92471L326.803166 189.124174l-185.791071 107.519463v430.653847l185.791071 107.519462L511.95424 942.08041l185.151074-107.135465 185.727072-107.583462V296.643637L697.105314 189.188174 511.95424 81.860711v0.063999z"></path><path d="M511.95424 0.00512c21.247894 0 38.527807 16.959915 38.527807 37.95181V512.00256a37.759811 37.759811 0 0 1-19.263903 32.831836 39.039805 39.039805 0 0 1-38.527808 0A37.759811 37.759811 0 0 1 473.426433 512.00256V37.95693c0-10.111949 4.03198-19.711901 11.263943-26.879865A38.847806 38.847806 0 0 1 511.95424 0.00512z"></path><path d="M478.738406 492.802656a38.911805 38.911805 0 0 1 52.735736-13.439933l409.469953 236.990815c17.663912 10.879946 23.295884 33.663832 12.735936 51.327744a38.847806 38.847806 0 0 1-51.83974 14.079929L492.498337 544.642397A37.567812 37.567812 0 0 1 478.674406 492.802656z"></path><path d="M492.434338 479.362723a38.847806 38.847806 0 0 1 51.83974 13.95193 37.567812 37.567812 0 0 1-12.799936 51.391743L122.00419 781.697212a38.847806 38.847806 0 0 1-51.839741-14.01593 37.567812 37.567812 0 0 1 12.799936-51.327744L492.434338 479.362723zM511.95424 711.041565c21.247894 0 38.527807 16.959915 38.527807 37.95181v236.990815c0 20.991895-17.279914 37.95181-38.527807 37.95181a38.207809 38.207809 0 0 1-38.527807-37.95181v-236.990815c0-20.991895 17.279914-37.95181 38.527807-37.95181z m388.990055-468.285659a38.911805 38.911805 0 0 1 53.119734 12.03194 37.567812 37.567812 0 0 1-12.223938 52.287739l-192.703037 118.527407a39.039805 39.039805 0 0 1-38.527807 1.279994 37.759811 37.759811 0 0 1-2.303989-65.663672l192.639037-118.463408zM69.780451 254.851846a39.039805 39.039805 0 0 1 53.119734-12.03194l192.703037 118.463408a37.759811 37.759811 0 0 1-2.303989 65.727671 39.039805 39.039805 0 0 1-38.527807-1.343993L82.068389 307.139584a37.439813 37.439813 0 0 1-12.159939-52.287738H69.716451z"></path></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                   </span>
                   <span class="chip-name">手动</span>
                 </button>
@@ -207,41 +207,38 @@
               <label class="form-label">API Key</label>
               <HxInput v-model="customApiKey" type="password" placeholder="sk-..." />
             </div>
-            <div class="form-row">
-              <label class="form-label">
-                模型
-                <HxButton v-if="customUpstream !== '__manual__'" variant="ghost" size="sm" :loading="upstreamModelsSyncing" @click="fetchUpstreamModels" style="margin-left:8px;">
-                  {{ upstreamModelsSyncing ? '获取中...' : '刷新模型' }}
-                </HxButton>
-              </label>
-              <HxSelect v-if="upstreamModels.length > 0" v-model="customModel">
-                <option v-for="m in upstreamModels" :key="m" :value="m">{{ m }}</option>
-              </HxSelect>
-              <HxInput v-else v-model="customModel" placeholder="选择或输入模型名称" />
-              <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
-              <p v-if="customUpstream !== '__manual__' && upstreamModels.length === 0 && !upstreamModelsError && customApiKey" class="form-hint">
-                点击"刷新模型"从 {{ customUpstream }} 获取最新模型列表
-              </p>
-              <p v-if="customUpstream !== '__manual__' && upstreamModels.length === 0 && !upstreamModelsError && !customApiKey" class="form-hint">
-                请先填写 API Key，然后点击"刷新模型"获取最新模型列表
-              </p>
-            </div>
-            <div class="form-row">
-              <label class="form-label">上下文长度</label>
-              <HxInput v-model.number="contextLength" type="number" style="max-width: 200px;" :min="512" :max="128000" :step="512" />
-            </div>
-          </HxCard>
 
-          <!-- 连接测试 + 保存 -->
-          <HxCard style="margin-top: 16px;">
-            <div class="test-row">
-              <HxButton variant="secondary" :loading="testing" @click="testConnection">
-                {{ testing ? '测试中...' : '测试连接' }}
+            <!-- 测试连接按钮 -->
+            <div class="form-row" style="margin-top: 12px;">
+              <HxButton variant="secondary" :loading="testing" @click="testConnection" style="width: 100%;">
+                {{ testing ? '测试中...' : '测试连接并获取模型列表' }}
               </HxButton>
-              <span v-if="testResult" :class="['test-result', testResult.ok ? 'success' : 'error']">
+              <span v-if="testResult" :class="['test-result', testResult.ok ? 'success' : 'error']" style="display: block; margin-top: 8px;">
                 {{ testResult.message }}
               </span>
             </div>
+
+            <!-- 测试通过后才显示模型和上下文设置 -->
+            <template v-if="apiVerified">
+              <div class="form-row" style="margin-top: 16px; border-top: 1px solid var(--color-border); padding-top: 16px;">
+                <label class="form-label">
+                  模型
+                  <HxButton variant="ghost" size="sm" :loading="upstreamModelsSyncing" @click="fetchUpstreamModels" style="margin-left:8px;">
+                    {{ upstreamModelsSyncing ? '获取中...' : '刷新模型' }}
+                  </HxButton>
+                </label>
+                <HxSelect v-if="upstreamModels.length > 0" v-model="customModel" @change="onModelChange">
+                  <option v-for="m in upstreamModels" :key="m" :value="m">{{ m }}</option>
+                </HxSelect>
+                <HxInput v-else v-model="customModel" placeholder="输入模型名称" />
+                <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
+              </div>
+              <div class="form-row">
+                <label class="form-label">上下文长度</label>
+                <HxInput v-model.number="contextLength" type="number" style="max-width: 200px;" :min="512" :max="128000" :step="512" />
+                <p class="form-hint">根据所选模型自动设置，可手动调整</p>
+              </div>
+            </template>
           </HxCard>
 
           <div class="form-actions" style="margin-top: 20px;">
@@ -714,13 +711,100 @@ const customModel = ref(customProvider.value.model)
 const testing = ref(false)
 const testResult = ref<{ ok: boolean; message: string } | null>(null)
 const saveSuccess = ref(false)
+const apiVerified = ref(false)  // API Key 验证通过标志
 
-// 当用户填写 API Key 后，自动获取模型列表（如果已选择预设）
-watch(customApiKey, (newVal) => {
-  if (newVal && customUpstream.value !== '__manual__' && !hasPlaceholder(customBaseUrl.value)) {
-    fetchUpstreamModels()
+// 模型上下文长度映射（根据模型名称自动设置）
+const modelContextMap: Record<string, number> = {
+  // OpenAI
+  'gpt-4o': 128000,
+  'gpt-4o-mini': 128000,
+  'gpt-4-turbo': 128000,
+  'gpt-4': 128000,
+  'gpt-3.5-turbo': 16385,
+  'o1-preview': 128000,
+  'o1-mini': 128000,
+  // Anthropic
+  'claude-sonnet-4': 200000,
+  'claude-3-5-sonnet': 200000,
+  'claude-3-opus': 200000,
+  'claude-3-haiku': 200000,
+  // Moonshot / Kimi
+  'moonshot-v1-8k': 8192,
+  'moonshot-v1-32k': 32768,
+  'moonshot-v1-128k': 128000,
+  'moonshot-v1-auto': 128000,
+  // DeepSeek
+  'deepseek-chat': 128000,
+  'deepseek-coder': 128000,
+  // Google Gemini
+  'gemini-2.5-pro': 1048576,
+  'gemini-2.0-flash': 1048576,
+  'gemini-1.5-pro': 2097152,
+  'gemini-1.5-flash': 1048576,
+  // Qwen
+  'qwen-plus': 131072,
+  'qwen-max': 32768,
+  'qwen-turbo': 131072,
+  'qwen-long': 1000000,
+  // Groq
+  'llama-3.3-70b-versatile': 128000,
+  'llama-3.1-8b-instant': 128000,
+  'mixtral-8x7b-32768': 32768,
+  'gemma2-9b-it': 8192,
+  // xAI / Grok
+  'grok-3': 128000,
+  'grok-2': 128000,
+  // GLM / Z.AI
+  'glm-4-plus': 128000,
+  'glm-4-air': 128000,
+  'glm-4-flash': 128000,
+  'glm-4': 128000,
+  // Mistral
+  'mistral-large': 128000,
+  'mistral-medium': 128000,
+  'mistral-small': 128000,
+  'open-mistral-7b': 32768,
+  // Cohere
+  'command-r-plus': 128000,
+  'command-r': 128000,
+  'command': 4096,
+  // MiniMax
+  'minimax-m1': 256000,
+  'abab6.5s-chat': 256000,
+  'abab6.5g-chat': 256000,
+  // NVIDIA
+  'llama-3.1-8b-instruct': 128000,
+  'llama-3.1-70b-instruct': 128000,
+  // IBM Watsonx
+  'llama-3-8b-instruct': 128000,
+  'llama-3-70b-instruct': 128000,
+  // Together AI
+  'Llama-3.3-70B-Instruct-Turbo': 128000,
+  // Cerebras
+  'llama3.1-8b': 128000,
+  'llama3.1-70b': 128000,
+  // FriendliAI
+  'llama-3-8b': 128000,
+  'llama-3-70b': 128000,
+  // SambaNova
+  'Meta-Llama-3.1-8B-Instruct': 128000,
+  'Meta-Llama-3.1-70B-Instruct': 128000,
+  'Meta-Llama-3.1-405B-Instruct': 128000,
+}
+// 根据模型名称自动设置上下文长度
+function onModelChange() {
+  const model = customModel.value
+  for (const [key, context] of Object.entries(modelContextMap)) {
+    if (model.includes(key)) {
+      contextLength.value = context
+      return
+    }
   }
-})
+  // 默认值
+  contextLength.value = 128000
+}
+
+// 当用户填写 API Key 后，不自动获取，等待用户点击测试按钮
 
 // GFW 模型列表
 const gfwApiKey = ref(localStorage.getItem('gfw_api_key') || '')
@@ -1114,17 +1198,12 @@ function selectUpstream(preset: { name: string; baseUrl: string; model: string; 
   customName.value = preset.name
   customBaseUrl.value = preset.baseUrl
   customModel.value = preset.model
-  // 切换上游时清空之前获取的模型列表
+  // 切换上游时清空之前获取的模型列表和验证状态
   upstreamModels.value = []
   upstreamModelsError.value = ''
-  // 如果有预设模型列表，先显示预设列表
-  if (preset.defaultModels && preset.defaultModels.length > 0) {
-    upstreamModels.value = preset.defaultModels
-  }
-  // 如果包含占位符，提示用户先编辑 URL；否则自动获取模型列表
-  if (!hasPlaceholder(preset.baseUrl)) {
-    fetchUpstreamModels()
-  }
+  apiVerified.value = false
+  // 如果有预设模型列表，先显示预设列表（但不自动获取，等待用户测试）
+  // 不再自动调用 fetchUpstreamModels，等待用户点击测试按钮
 }
 
 // 检查 URL 是否包含占位符（如 {resource-name}, {region}, {account_id} 等）
@@ -1135,6 +1214,7 @@ function hasPlaceholder(url: string): boolean {
 async function testConnection() {
   testing.value = true
   testResult.value = null
+  apiVerified.value = false  // 重置验证状态
 
   const config = providerMode.value === 'custom'
     ? { baseUrl: customBaseUrl.value, apiKey: customApiKey.value, model: customModel.value }
@@ -1178,8 +1258,13 @@ async function testConnection() {
     if (r.ok) {
       const data = await r.json()
       const model = data?.model || config.model || '未知'
-      testResult.value = { ok: true, message: `连接成功! 模型: ${model}` }
-      toast.success('连接成功', `模型: ${model}`)
+      testResult.value = { ok: true, message: `连接成功! 模型：${model}` }
+      toast.success('连接成功', `模型：${model}`)
+      // 测试成功后，获取模型列表并显示模型设置
+      apiVerified.value = true
+      await fetchUpstreamModels()
+      // 根据当前模型设置上下文长度
+      onModelChange()
     } else if (r.status === 401) {
       testResult.value = { ok: false, message: 'API Key 无效 (401 Unauthorized)' }
       toast.error('API Key 无效')
@@ -1199,7 +1284,7 @@ async function testConnection() {
     } else if (msg.includes('timeout') || msg.includes('abort')) {
       testResult.value = { ok: false, message: '连接超时，请检查 API 地址是否可访问。' }
     } else {
-      testResult.value = { ok: false, message: `连接失败: ${msg}` }
+      testResult.value = { ok: false, message: `连接失败：${msg}` }
     }
     toast.error('连接失败', msg.slice(0, 80))
   }
