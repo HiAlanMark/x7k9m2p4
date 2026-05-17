@@ -219,8 +219,11 @@
               </HxSelect>
               <HxInput v-else v-model="customModel" placeholder="选择或输入模型名称" />
               <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
-              <p v-if="customUpstream !== '__manual__' && upstreamModels.length === 0 && !upstreamModelsError" class="form-hint">
+              <p v-if="customUpstream !== '__manual__' && upstreamModels.length === 0 && !upstreamModelsError && customApiKey" class="form-hint">
                 点击"刷新模型"从 {{ customUpstream }} 获取可用模型列表
+              </p>
+              <p v-if="customUpstream !== '__manual__' && upstreamModels.length === 0 && !upstreamModelsError && !customApiKey" class="form-hint">
+                请先填写 API Key，然后点击"刷新模型"获取可用模型列表
               </p>
             </div>
             <div class="form-row">
@@ -644,7 +647,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useGfwStore } from '../stores/gfw'
 import { useChatStore } from '../stores/chat'
 import { storeToRefs } from 'pinia'
@@ -711,6 +714,13 @@ const customModel = ref(customProvider.value.model)
 const testing = ref(false)
 const testResult = ref<{ ok: boolean; message: string } | null>(null)
 const saveSuccess = ref(false)
+
+// 当用户填写 API Key 后，自动获取模型列表（如果已选择预设）
+watch(customApiKey, (newVal) => {
+  if (newVal && customUpstream.value !== '__manual__' && !hasPlaceholder(customBaseUrl.value)) {
+    fetchUpstreamModels()
+  }
+})
 
 // GFW 模型列表
 const gfwApiKey = ref(localStorage.getItem('gfw_api_key') || '')
@@ -1004,7 +1014,7 @@ async function fetchUpstreamModels() {
   const baseUrl = customBaseUrl.value
   const apiKey = customApiKey.value
   if (!baseUrl) { upstreamModelsError.value = '请先填写 API Base URL'; return }
-  if (!apiKey) { upstreamModelsError.value = '请先填写 API Key'; return }
+  if (!apiKey) { upstreamModelsError.value = ''; return }  // API Key 为空时不显示错误，让用户先填写
 
   upstreamModelsSyncing.value = true
   upstreamModelsError.value = ''
@@ -1051,7 +1061,7 @@ async function fetchUpstreamModels() {
     }
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
-    upstreamModelsError.value = `获取失败: ${msg}`
+    upstreamModelsError.value = `获取失败：${msg}`
   } finally {
     upstreamModelsSyncing.value = false
   }
