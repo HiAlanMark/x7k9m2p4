@@ -131,11 +131,11 @@
 
             <div class="form-row">
               <label class="form-label">模型</label>
-              <HxSelect v-model="selectedModel" v-if="filteredGfwModels.length > 0">
-                <option v-for="m in filteredGfwModels" :key="m.model_code" :value="m.model_code">
-                  {{ m.model_name }}{{ !selectedProvider ? ' (' + m.provider + ')' : '' }} {{ m.input_price ? '¥' + m.input_price + '/M' : '' }}
-                </option>
-              </HxSelect>
+              <HxSelect 
+                v-model="selectedModel" 
+                v-if="filteredGfwModels.length > 0"
+                :options="gfwModelOptions"
+              />
               <HxInput v-else v-model="selectedModel" placeholder="输入模型名称" />
             </div>
 
@@ -229,9 +229,12 @@
                     {{ upstreamModelsSyncing ? '获取中...' : '刷新' }}
                   </HxButton>
                 </label>
-                <HxSelect v-if="upstreamModels.length > 0" v-model="customModel" @change="onModelChange">
-                  <option v-for="m in upstreamModels" :key="m" :value="m" :label="m">{{ m }}</option>
-                </HxSelect>
+                <HxSelect 
+                  v-if="upstreamModels.length > 0" 
+                  v-model="customModel" 
+                  :options="upstreamModelOptions"
+                  @change="onModelChange" 
+                />
                 <HxInput v-else v-model="customModel" placeholder="输入模型名称" />
                 <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
                 <p v-else-if="upstreamModels.length > 0" class="form-hint" style="color: var(--color-success); margin-top: 4px;">✓ 已获取 {{ upstreamModels.length }} 个模型，请选择</p>
@@ -833,6 +836,14 @@ const filteredGfwModels = computed(() => {
   return gfwModels.value.filter(m => m.provider === selectedProvider.value)
 })
 
+// GFW 模型选项（用于 HxSelect）
+const gfwModelOptions = computed(() => {
+  return filteredGfwModels.value.map(m => ({
+    value: m.model_code,
+    label: `${m.model_name}${!selectedProvider.value ? ' (' + m.provider + ')' : ''} ${m.input_price ? '¥' + m.input_price + '/M' : ''}`,
+  }))
+})
+
 // 统计每个提供商的模型数量
 function providerModelCount(provider: string): number {
   return gfwModels.value.filter(m => m.provider === provider).length
@@ -1128,6 +1139,11 @@ const customUpstream = ref<string>(
 const upstreamModels = ref<string[]>([])
 const upstreamModelsSyncing = ref(false)
 const upstreamModelsError = ref('')
+
+// 上游模型选项（用于 HxSelect）
+const upstreamModelOptions = computed(() => {
+  return upstreamModels.value.map(m => ({ value: m, label: m }))
+})
 
 async function fetchUpstreamModels() {
   const baseUrl = customBaseUrl.value

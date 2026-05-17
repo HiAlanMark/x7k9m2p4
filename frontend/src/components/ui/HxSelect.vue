@@ -4,10 +4,9 @@
     <div 
       ref="triggerRef"
       class="hixns-select__trigger"
-      :class="{ 'hixns-select__trigger--has-value': modelValue }"
       @click="toggle"
     >
-      <span class="hixns-select__value">{{ displayValue || placeholder || '请选择' }}</span>
+      <span class="hixns-select__value">{{ displayValue }}</span>
       <span class="hixns-select__arrow">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="6 9 12 15 18 9"></polyline>
@@ -23,36 +22,36 @@
       :style="dropdownStyle"
     >
       <div
-        v-for="option in options"
-        :key="option.value"
+        v-for="opt in options"
+        :key="opt.value"
         class="hixns-select__option"
-        :class="{ 'hixns-select__option--selected': option.value === modelValue }"
-        @click="selectOption(option)"
+        :class="{ 'hixns-select__option--selected': opt.value === modelValue }"
+        @click="selectOption(opt)"
       >
-        {{ option.label }}
+        {{ opt.label }}
       </div>
     </div>
-    
-    <!-- 原生 select 隐藏用于表单提交 -->
-    <select v-if="name" :name="name" :value="modelValue" style="display:none">
-      <option v-for="option in options" :key="option.value" :value="option.value">{{ option.label }}</option>
-    </select>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 
+interface Option {
+  value: string | number
+  label: string
+}
+
 const props = withDefaults(defineProps<{
   modelValue?: string | number
+  options?: Option[]
   placeholder?: string
   disabled?: boolean
-  name?: string
 }>(), {
   modelValue: '',
-  placeholder: '',
+  options: () => [],
+  placeholder: '请选择',
   disabled: false,
-  name: '',
 })
 
 const emit = defineEmits<{
@@ -65,41 +64,21 @@ const triggerRef = ref<HTMLElement | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const dropdownStyle = ref<Record<string, string>>({})
 
-// 从 slot 获取 options
-const slots = defineSlots<{ default?: () => any }>()
-const options = computed(() => {
-  const children = slots.default?.()
-  if (!children || !Array.isArray(children)) return []
-  
-  return children
-    .map((c: any) => {
-      // 处理 option 元素
-      if (c.props?.value !== undefined) {
-        const label = c.props?.label || (c.children && typeof c.children === 'string' ? c.children : String(c.props?.value))
-        return {
-          value: c.props?.value,
-          label: label,
-        }
-      }
-      return null
-    })
-    .filter((o: any) => o && o.value !== '')
-})
-
 const displayValue = computed(() => {
-  const selected = options.value.find(o => o.value === props.modelValue)
-  return selected?.label || ''
+  if (!props.modelValue) return props.placeholder
+  const selected = props.options.find(o => o.value === props.modelValue)
+  return selected?.label || props.placeholder
 })
 
 function toggle() {
   if (props.disabled) return
   isOpen.value = !isOpen.value
   if (isOpen.value) {
-    updateDropdownPosition()
+    setTimeout(updateDropdownPosition, 0)
   }
 }
 
-function selectOption(option: { value: string | number; label: string }) {
+function selectOption(option: Option) {
   emit('update:modelValue', option.value)
   emit('change', option.value)
   isOpen.value = false
@@ -110,14 +89,12 @@ function updateDropdownPosition() {
   
   const triggerRect = triggerRef.value.getBoundingClientRect()
   const viewportHeight = window.innerHeight
+  const dropdownHeight = Math.min(props.options.length * 40, 240)
   
-  // 计算下拉框位置
   const spaceBelow = viewportHeight - triggerRect.bottom
   const spaceAbove = triggerRect.top
-  const dropdownHeight = Math.min(options.value.length * 40, 240)
   
   if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
-    // 上方空间更多
     dropdownStyle.value = {
       bottom: '100%',
       left: '0',
@@ -125,7 +102,6 @@ function updateDropdownPosition() {
       marginBottom: '4px',
     }
   } else {
-    // 下方空间足够
     dropdownStyle.value = {
       top: '100%',
       left: '0',
@@ -142,28 +118,12 @@ function handleClickOutside(e: MouseEvent) {
   }
 }
 
-function handleScroll() {
-  if (isOpen.value) {
-    updateDropdownPosition()
-  }
-}
-
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  window.addEventListener('scroll', handleScroll, true)
-  window.addEventListener('resize', handleScroll)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
-  window.removeEventListener('scroll', handleScroll, true)
-  window.removeEventListener('resize', handleScroll)
-})
-
-watch(isOpen, (val) => {
-  if (val) {
-    setTimeout(updateDropdownPosition, 0)
-  }
 })
 </script>
 
@@ -219,11 +179,8 @@ watch(isOpen, (val) => {
   text-overflow: ellipsis;
 }
 
-.hixns-select__trigger--has-value .hixns-select__value {
-  color: var(--text-primary);
-}
-
-.hixns-select__trigger:not(.hixns-select__trigger--has-value) .hixns-select__value {
+.hixns-select__trigger:not(:has(.hixns-select__value:not(:empty))) .hixns-select__value,
+.hixns-select__value:has(+ .hixns-select__arrow):empty {
   color: var(--text-tertiary);
 }
 
