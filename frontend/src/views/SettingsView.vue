@@ -176,7 +176,7 @@
                   @click="selectUpstream(preset)"
                   :title="preset.name"
                 >
-                  <img class="chip-icon-img" :src="providerIconMap[preset.iconKey]" :alt="preset.name" />
+                  <img class="chip-icon-img" :class="{ 'is-color': preset.isColor }" :src="providerIconMap[preset.iconKey]" :alt="preset.name" />
                   <span class="chip-name">{{ preset.name }}</span>
                 </button>
                 <button
@@ -801,7 +801,8 @@ const providerPresets = [
     name: 'OpenAI',
     baseUrl: 'https://api.openai.com/v1',
     model: 'gpt-4o',
-    iconKey: 'OpenAI'
+    iconKey: 'OpenAI',
+    isColor: true
   },
   {
     name: 'Anthropic',
@@ -819,7 +820,8 @@ const providerPresets = [
     name: 'Google Gemini',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     model: 'gemini-2.5-pro',
-    iconKey: 'Google Gemini'
+    iconKey: 'Google Gemini',
+    isColor: true
   },
   {
     name: 'xAI / Grok',
@@ -843,13 +845,15 @@ const providerPresets = [
     name: 'Groq',
     baseUrl: 'https://api.groq.com/openai/v1',
     model: 'llama-3.3-70b-versatile',
-    iconKey: 'Groq'
+    iconKey: 'Groq',
+    isColor: true
   },
   {
     name: 'Hugging Face',
     baseUrl: 'https://api-inference.huggingface.co/v1',
     model: 'meta-llama/Llama-3.3-70B-Instruct',
-    iconKey: 'Hugging Face'
+    iconKey: 'Hugging Face',
+    isColor: true
   },
   {
     name: 'MiniMax',
@@ -933,31 +937,36 @@ const providerPresets = [
     name: 'NVIDIA NIM',
     baseUrl: 'https://integrate.api.nvidia.com/v1',
     model: 'meta/llama-3.1-8b-instruct',
-    iconKey: 'NVIDIA NIM'
+    iconKey: 'NVIDIA NIM',
+    isColor: true
   },
   {
     name: 'IBM Watsonx',
     baseUrl: 'https://eu-de.ml.cloud.ibm.com/ml/v1-beta/watsonx/ai',
     model: 'meta-llama/llama-3-8b-instruct',
-    iconKey: 'IBM Watsonx'
+    iconKey: 'IBM Watsonx',
+    isColor: true
   },
   {
     name: 'Azure OpenAI',
     baseUrl: 'https://{resource-name}.openai.azure.com/openai',
     model: 'gpt-4o',
-    iconKey: 'Azure OpenAI'
+    iconKey: 'Azure OpenAI',
+    isColor: true
   },
   {
     name: 'Amazon Bedrock',
     baseUrl: 'https://bedrock-runtime.{region}.amazonaws.com',
     model: 'anthropic.claude-3-sonnet-20240229-v1:0',
-    iconKey: 'Amazon Bedrock'
+    iconKey: 'Amazon Bedrock',
+    isColor: true
   },
   {
     name: 'Cloudflare AI',
     baseUrl: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1',
     model: '@cf/meta/llama-3-8b-instruct',
-    iconKey: 'Cloudflare AI'
+    iconKey: 'Cloudflare AI',
+    isColor: true
   },
   {
     name: 'Cerebras',
@@ -1956,8 +1965,8 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-/* 暗色模式下将黑色图标反转为白色 */
-[data-theme="dark"] .provider-chips .chip .chip-icon-img {
+/* 暗色模式下将黑色图标反转为白色，彩色图标除外 */
+[data-theme="dark"] .provider-chips .chip .chip-icon-img:not(.is-color) {
   filter: brightness(0) invert(1);
 }
 
