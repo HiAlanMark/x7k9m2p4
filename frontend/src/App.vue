@@ -419,8 +419,27 @@ function deleteFromMenu() {
 }
 
 .nav-item.active {
-  background: var(--primary-light);
-  color: var(--primary);
+  background: linear-gradient(
+    135deg,
+    rgba(90, 200, 250, 0.2) 0%,
+    rgba(90, 200, 250, 0.12) 100%
+  );
+  color: rgba(90, 200, 250, 1);
+  border: 1px solid rgba(90, 200, 250, 0.3);
+  border-left-color: rgba(90, 200, 250, 0.5);
+  box-shadow: 
+    inset 0 0 0 1px rgba(90, 200, 250, 0.1),
+    0 0 12px rgba(90, 200, 250, 0.15);
+}
+
+.nav-item.active .nav-icon {
+  color: rgba(90, 200, 250, 1);
+}
+
+.nav-item.active .nav-shortcut {
+  background: rgba(90, 200, 250, 0.2);
+  color: rgba(90, 200, 250, 1);
+  border-color: rgba(90, 200, 250, 0.3);
 }
 
 .nav-icon {
@@ -509,8 +528,27 @@ function deleteFromMenu() {
 }
 
 .session-item.active {
-  background: var(--primary-light);
-  color: var(--primary);
+  background: linear-gradient(
+    135deg,
+    rgba(90, 200, 250, 0.25) 0%,
+    rgba(90, 200, 250, 0.15) 100%
+  );
+  border: 1px solid rgba(90, 200, 250, 0.35);
+  border-left-color: rgba(90, 200, 250, 0.6);
+  box-shadow: 
+    inset 0 0 0 1px rgba(90, 200, 250, 0.15),
+    0 0 16px rgba(90, 200, 250, 0.2);
+}
+
+.session-item.active .session-item-title {
+  color: rgba(90, 200, 250, 1);
+  font-weight: var(--font-semibold);
+}
+
+.session-item.active .session-item-count {
+  background: rgba(90, 200, 250, 0.25);
+  color: rgba(90, 200, 250, 1);
+  border-color: rgba(90, 200, 250, 0.4);
 }
 
 .session-item-title {
@@ -520,11 +558,6 @@ function deleteFromMenu() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.session-item.active .session-item-title {
-  color: var(--primary);
-  font-weight: var(--font-medium);
 }
 
 .session-item-count {

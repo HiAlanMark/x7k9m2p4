@@ -1507,11 +1507,22 @@ onMounted(async () => {
 }
 
 .settings-nav-item.active {
-  background: var(--primary-light);
-  color: var(--primary);
-  border-left-color: var(--primary);
-  box-shadow: var(--glow-sm);
+  background: linear-gradient(
+    135deg,
+    rgba(90, 200, 250, 0.25) 0%,
+    rgba(90, 200, 250, 0.15) 100%
+  );
+  color: rgba(90, 200, 250, 1);
+  border-left: 3px solid rgba(90, 200, 250, 0.8);
+  box-shadow: 
+    inset 0 0 0 1px rgba(90, 200, 250, 0.15),
+    0 0 16px rgba(90, 200, 250, 0.2);
   font-weight: var(--font-semibold);
+}
+
+.settings-nav-item.active .nav-icon-dot {
+  background: rgba(90, 200, 250, 1) !important;
+  box-shadow: 0 0 8px rgba(90, 200, 250, 0.6);
 }
 
 /* ===== Right Content ===== */
