@@ -55,25 +55,6 @@ const cardStyle = computed(() => ({
 
 <style scoped>
 /* Base styles from enhancements.css */
-.hixns-card {
-  position: relative;
-  overflow: hidden;
-}
-
-.hixns-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(
-    90deg,
-    var(--primary) 0%,
-    rgba(90, 200, 250, 0.5) 100%
-  );
-}
-
 .hixns-card--no-pad {
   padding: 0;
 }
@@ -92,12 +73,11 @@ const cardStyle = computed(() => ({
 }
 
 .hixns-card__title {
-  font-size: 20px;
-  font-weight: var(--font-bold);
+  font-size: 18px;
+  font-weight: var(--font-semibold);
   color: var(--text-primary);
   margin: 0;
   line-height: var(--leading-tight);
-  letter-spacing: -0.01em;
 }
 
 .hixns-card__subtitle {
