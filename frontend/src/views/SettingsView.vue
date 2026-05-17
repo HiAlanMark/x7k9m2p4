@@ -100,7 +100,7 @@
           <HxCard v-if="providerMode === 'gfw'">
             <template #header>
               <HxBadge variant="blue">GFW.NET</HxBadge>
-              <span style="margin-left:8px;">内置模型服务</span>
+              <span>内置模型服务</span>
             </template>
             <div class="form-row">
               <label class="form-label">GFW API Key</label>
@@ -165,7 +165,7 @@
           <HxCard v-if="providerMode === 'custom'">
             <template #header>
               <HxBadge variant="purple">自定义</HxBadge>
-              <span style="margin-left:8px;">自定义 API 提供商</span>
+              <span>自定义 API 提供商</span>
             </template>
             <!-- 上游选择 -->
             <div class="form-row">
@@ -360,7 +360,7 @@
           <HxCard style="margin-bottom: 16px;">
             <template #header>
               <HxBadge variant="blue">对话</HxBadge>
-              <span style="margin-left:8px;">对话行为</span>
+              <span>对话行为</span>
             </template>
             <div class="form-row">
               <label class="form-label">最大轮次</label>
@@ -377,7 +377,7 @@
           <HxCard style="margin-bottom: 16px;">
             <template #header>
               <HxBadge variant="green">上下文</HxBadge>
-              <span style="margin-left:8px;">上下文压缩</span>
+              <span>上下文压缩</span>
             </template>
             <div class="form-row">
               <label class="form-label">最大回合数</label>
@@ -402,7 +402,7 @@
           <HxCard style="margin-bottom: 16px;">
             <template #header>
               <HxBadge variant="purple">记忆</HxBadge>
-              <span style="margin-left:8px;">持久记忆</span>
+              <span>持久记忆</span>
             </template>
             <div class="form-row">
               <label class="form-label">记忆系统</label>
@@ -458,7 +458,7 @@
           <HxCard v-if="terminalSettings.backend === 'ssh'" style="margin-bottom: 16px;">
             <template #header>
               <HxBadge variant="orange">SSH</HxBadge>
-              <span style="margin-left:8px;">远程连接配置</span>
+              <span>远程连接配置</span>
             </template>
             <div class="form-row">
               <label class="form-label">主机</label>
@@ -477,7 +477,7 @@
           <HxCard v-if="terminalSettings.backend === 'docker'" style="margin-bottom: 16px;">
             <template #header>
               <HxBadge variant="cyan">Docker</HxBadge>
-              <span style="margin-left:8px;">容器配置</span>
+              <span>容器配置</span>
             </template>
             <div class="form-row">
               <label class="form-label">镜像</label>
