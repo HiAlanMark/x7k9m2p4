@@ -198,7 +198,10 @@
             </div>
             <div class="form-row">
               <label class="form-label">API Base URL</label>
-              <HxInput v-model="customBaseUrl" placeholder="https://api.openai.com/v1" :disabled="customUpstream !== '__manual__'" />
+              <HxInput v-model="customBaseUrl" placeholder="https://api.openai.com/v1" :disabled="customUpstream !== '__manual__' && !hasPlaceholder(customBaseUrl)" />
+              <p v-if="hasPlaceholder(customBaseUrl)" class="form-hint" style="color: var(--color-warning); margin-top: 4px;">
+                ⚠️ 请将 <code>{resource-name}</code> 替换为您的 Azure OpenAI 资源名称，例如：<code>https://my-resource.openai.azure.com/openai</code>
+              </p>
             </div>
             <div class="form-row">
               <label class="form-label">API Key</label>
@@ -1059,6 +1062,11 @@ function selectUpstream(preset: { name: string; baseUrl: string; model: string }
   // 切换上游时清空之前获取的模型列表
   upstreamModels.value = []
   upstreamModelsError.value = ''
+}
+
+// 检查 URL 是否包含占位符（如 {resource-name}, {region}, {account_id} 等）
+function hasPlaceholder(url: string): boolean {
+  return /\{[^}]+\}/.test(url)
 }
 
 async function testConnection() {
