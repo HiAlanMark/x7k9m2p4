@@ -4,6 +4,10 @@ import path from 'path'
 import http from 'http'
 import https from 'https'
 import { URL } from 'url'
+import fs from 'fs'
+
+// 读取 package.json 获取版本号
+const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'))
 
 export default defineConfig({
   plugins: [
@@ -68,6 +72,9 @@ export default defineConfig({
       },
     },
   ],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
