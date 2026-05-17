@@ -104,19 +104,22 @@
   background: var(--primary);
   color: var(--primary-text);
   border-color: var(--primary-border);
-  backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
+  backdrop-filter: blur(var(--blur-lg)) saturate(var(--saturate));
+  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(var(--saturate));
   box-shadow: 
     var(--glass-inset),
-    0 2px 8px rgba(90, 200, 250, 0.2);
+    0 2px 8px rgba(90, 200, 250, 0.2),
+    0 0 0 1px rgba(90, 200, 250, 0.1);
 }
 
 .hixns-btn--primary:hover:not(:disabled) {
   background: var(--primary-dark);
-  border-color: rgba(90, 200, 250, 0.6);
+  border-color: rgba(90, 200, 250, 0.7);
   box-shadow: 
     var(--glass-inset),
-    0 4px 16px rgba(90, 200, 250, 0.3),
-    0 0 24px rgba(90, 200, 250, 0.15);
+    0 4px 16px rgba(90, 200, 250, 0.4),
+    0 0 24px rgba(90, 200, 250, 0.2),
+    0 0 0 1px rgba(90, 200, 250, 0.15);
 }
 
 .hixns-btn--secondary {
