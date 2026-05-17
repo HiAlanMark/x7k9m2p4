@@ -230,7 +230,7 @@
                   </HxButton>
                 </label>
                 <HxSelect v-if="upstreamModels.length > 0" v-model="customModel" @change="onModelChange">
-                  <option v-for="m in upstreamModels" :key="m" :value="m">{{ m }}</option>
+                  <option v-for="m in upstreamModels" :key="m" :value="m" :label="m">{{ m }}</option>
                 </HxSelect>
                 <HxInput v-else v-model="customModel" placeholder="输入模型名称" />
                 <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
