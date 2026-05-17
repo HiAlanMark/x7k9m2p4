@@ -14,6 +14,46 @@
     <!-- Toast 通知 -->
     <HxToast ref="toastRef" />
     
+    <!-- Context Menu (moved outside sidebar) -->
+    <div v-if="contextMenu.visible" class="context-menu" :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }" @click.stop>
+      <div class="context-menu-item" @click="startRename">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        <span>重命名</span>
+      </div>
+      <div class="context-menu-item danger" @click="deleteFromMenu">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18"></path>
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+        </svg>
+        <span>删除</span>
+      </div>
+    </div>
+    <div v-if="contextMenu.visible" class="context-menu-overlay" @click="closeContextMenu"></div>
+    
+    <!-- Rename Modal (moved outside sidebar) -->
+    <div v-if="renameModal.visible" class="rename-modal-overlay" @click="closeRenameModal">
+      <div class="rename-modal" @click.stop>
+        <h3 class="rename-title">重命名会话</h3>
+        <input
+          ref="renameInputRef"
+          v-model="renameValue"
+          type="text"
+          class="rename-input"
+          placeholder="输入会话名称"
+          @keydown.enter="confirmRename"
+          @keydown.escape="closeRenameModal"
+        />
+        <div class="rename-actions">
+          <button class="rename-cancel" @click="closeRenameModal">取消</button>
+          <button class="rename-confirm" @click="confirmRename">确定</button>
+        </div>
+      </div>
+    </div>
+    
     <!-- Sidebar -->
     <aside class="sidebar glass">
       <!-- Brand -->
@@ -90,46 +130,6 @@
         </div>
       </div>
       
-      <!-- Context Menu -->
-      <div v-if="contextMenu.visible" class="context-menu" :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }" @click.stop>
-        <div class="context-menu-item" @click="startRename">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-          <span>重命名</span>
-        </div>
-        <div class="context-menu-item danger" @click="deleteFromMenu">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 6h18"></path>
-            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-          </svg>
-          <span>删除</span>
-        </div>
-      </div>
-      <div v-if="contextMenu.visible" class="context-menu-overlay" @click="closeContextMenu"></div>
-      
-      <!-- Rename Modal -->
-      <div v-if="renameModal.visible" class="rename-modal-overlay" @click="closeRenameModal">
-        <div class="rename-modal" @click.stop>
-          <h3 class="rename-title">重命名会话</h3>
-          <input
-            ref="renameInputRef"
-            v-model="renameValue"
-            type="text"
-            class="rename-input"
-            placeholder="输入会话名称"
-            @keydown.enter="confirmRename"
-            @keydown.escape="closeRenameModal"
-          />
-          <div class="rename-actions">
-            <button class="rename-cancel" @click="closeRenameModal">取消</button>
-            <button class="rename-confirm" @click="confirmRename">确定</button>
-          </div>
-        </div>
-      </div>
-
       <!-- Footer -->
       <div class="sidebar-footer">
         <!-- Session Info -->
