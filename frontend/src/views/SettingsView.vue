@@ -99,10 +99,7 @@
           <!-- GFW.NET 模式 -->
           <HxCard v-if="providerMode === 'gfw'">
             <template #header>
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <HxBadge variant="blue" style="align-self: flex-start;">GFW.NET</HxBadge>
-                <span style="font-size: var(--text-sm); color: var(--text-secondary);">内置模型服务</span>
-              </div>
+              <span>内置模型服务</span>
             </template>
             <div class="form-row">
               <label class="form-label">GFW API Key</label>
@@ -166,10 +163,7 @@
           <!-- 自定义提供商模式 -->
           <HxCard v-if="providerMode === 'custom'">
             <template #header>
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <HxBadge variant="purple" style="align-self: flex-start;">自定义</HxBadge>
-                <span style="font-size: var(--text-sm); color: var(--text-secondary);">自定义 API 提供商</span>
-              </div>
+              <span>自定义 API 提供商</span>
             </template>
             <!-- 上游选择 -->
             <div class="form-row">
@@ -363,10 +357,7 @@
 
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <HxBadge variant="blue" style="align-self: flex-start;">对话</HxBadge>
-                <span style="font-size: var(--text-sm); color: var(--text-secondary);">对话行为</span>
-              </div>
+              <span>对话行为</span>
             </template>
             <div class="form-row">
               <label class="form-label">最大轮次</label>
@@ -382,10 +373,7 @@
 
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <HxBadge variant="green" style="align-self: flex-start;">上下文</HxBadge>
-                <span style="font-size: var(--text-sm); color: var(--text-secondary);">上下文压缩</span>
-              </div>
+              <span>上下文压缩</span>
             </template>
             <div class="form-row">
               <label class="form-label">最大回合数</label>
@@ -409,10 +397,7 @@
 
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <HxBadge variant="purple" style="align-self: flex-start;">记忆</HxBadge>
-                <span style="font-size: var(--text-sm); color: var(--text-secondary);">持久记忆</span>
-              </div>
+              <span>持久记忆</span>
             </template>
             <div class="form-row">
               <label class="form-label">记忆系统</label>
@@ -467,10 +452,7 @@
 
           <HxCard v-if="terminalSettings.backend === 'ssh'" style="margin-bottom: 16px;">
             <template #header>
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <HxBadge variant="orange" style="align-self: flex-start;">SSH</HxBadge>
-                <span style="font-size: var(--text-sm); color: var(--text-secondary);">远程连接配置</span>
-              </div>
+              <span>远程连接配置</span>
             </template>
             <div class="form-row">
               <label class="form-label">主机</label>
@@ -488,10 +470,7 @@
 
           <HxCard v-if="terminalSettings.backend === 'docker'" style="margin-bottom: 16px;">
             <template #header>
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <HxBadge variant="cyan" style="align-self: flex-start;">Docker</HxBadge>
-                <span style="font-size: var(--text-sm); color: var(--text-secondary);">容器配置</span>
-              </div>
+              <span>容器配置</span>
             </template>
             <div class="form-row">
               <label class="form-label">镜像</label>

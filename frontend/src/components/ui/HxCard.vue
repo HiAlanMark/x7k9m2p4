@@ -55,6 +55,25 @@ const cardStyle = computed(() => ({
 
 <style scoped>
 /* Base styles from enhancements.css */
+.hixns-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.hixns-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--primary) 0%,
+    rgba(90, 200, 250, 0.5) 100%
+  );
+}
+
 .hixns-card--no-pad {
   padding: 0;
 }
@@ -66,23 +85,24 @@ const cardStyle = computed(() => ({
 .hixns-card__header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-3);
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .hixns-card__title {
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
+  font-size: 20px;
+  font-weight: var(--font-bold);
   color: var(--text-primary);
   margin: 0;
   line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
 }
 
 .hixns-card__subtitle {
   font-size: var(--text-sm);
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   margin: 0;
   line-height: var(--leading-normal);
 }
