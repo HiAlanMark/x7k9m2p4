@@ -1454,3 +1454,18 @@
 [data-theme="light"] .hixns-btn--text:hover:not(:disabled) {
   color: rgba(10, 102, 204, 1);
 }
+
+/* ════════════════════════════════════════════════════════════
+   Light Theme — Card Shadows (Lighter)
+   ════════════════════════════════════════════════════════════ */
+[data-theme="light"] .hixns-card {
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .hixns-card:hover {
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+}
