@@ -38,13 +38,13 @@
   --glass-solid:  rgba(255, 255, 255, 0.1);
   
   /* Primary — Glass Light Blue */
-  --primary:        rgba(90, 200, 250, 0.25);
-  --primary-light:  rgba(90, 200, 250, 0.12);
-  --primary-dark:   rgba(90, 200, 250, 0.35);
-  --primary-glow:   rgba(90, 200, 250, 0.4);
-  --primary-glow-sm: rgba(90, 200, 250, 0.25);
+  --primary:        rgba(90, 200, 250, 0.2);
+  --primary-light:  rgba(90, 200, 250, 0.1);
+  --primary-dark:   rgba(90, 200, 250, 0.3);
+  --primary-glow:   rgba(90, 200, 250, 0.35);
+  --primary-glow-sm: rgba(90, 200, 250, 0.2);
   --primary-text:   rgba(90, 200, 250, 0.95);
-  --primary-border: rgba(90, 200, 250, 0.5);
+  --primary-border: rgba(90, 200, 250, 0.45);
   
   /* Secondary — Nebula Purple */
   --secondary:       #BF5AF2;

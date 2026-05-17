@@ -3,7 +3,7 @@
    ════════════════════════════════════════════════════════════ */
 
 /* ════════════════════════════════════════════════════════════
-   Button — Master Component
+   Button — Master Component (Glass Morphism)
    ════════════════════════════════════════════════════════════ */
 .hixns-btn {
   display: inline-flex;
@@ -15,179 +15,347 @@
   font-weight: var(--font-medium);
   font-size: var(--text-sm);
   
-  border: 1px solid transparent;
   border-radius: var(--radius-md);
   
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
   
-  transition: 
-    background-color var(--colors),
-    border-color var(--fast),
-    box-shadow var(--fast),
-    transform var(--fast),
-    opacity var(--fast);
-  
   position: relative;
   overflow: hidden;
   outline: none;
   
+  /* Multi-layer transition */
+  transition: 
+    all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  
   /* Default size */
   padding: var(--space-2) var(--space-4);
-  min-height: 36px;
+  min-height: 38px;
 }
 
+/* ────────────────────────────────────────────────────────────
+   Base State Animation Layer
+   ──────────────────────────────────────────────────────────── */
 .hixns-btn::before {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
     135deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.05) 35%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.08) 100%
+  );
+  opacity: 1;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Inner shine layer */
+.hixns-btn::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: linear-gradient(
+    180deg,
     rgba(255, 255, 255, 0.1) 0%,
     transparent 50%,
     rgba(0, 0, 0, 0.05) 100%
   );
-  opacity: 0;
-  transition: opacity var(--fast);
+  border-radius: inherit;
   pointer-events: none;
+  z-index: 1;
+}
+
+/* Content on top */
+.hixns-btn > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Hover & Active States
+   ──────────────────────────────────────────────────────────── */
+.hixns-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
 }
 
 .hixns-btn:hover:not(:disabled)::before {
   opacity: 1;
 }
 
-.hixns-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
 .hixns-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
 }
 
 .hixns-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* Sizes */
+/* ────────────────────────────────────────────────────────────
+   Sizes
+   ──────────────────────────────────────────────────────────── */
 .hixns-btn--xs {
   padding: var(--space-1) var(--space-2);
   font-size: var(--text-xs);
-  min-height: 26px;
+  min-height: 28px;
   border-radius: var(--radius-sm);
 }
 
 .hixns-btn--sm {
   padding: var(--space-1) var(--space-3);
   font-size: var(--text-sm);
-  min-height: 32px;
+  min-height: 34px;
   border-radius: var(--radius-md);
 }
 
 .hixns-btn--md {
   padding: var(--space-2) var(--space-4);
   font-size: var(--text-sm);
-  min-height: 36px;
+  min-height: 38px;
   border-radius: var(--radius-md);
 }
 
 .hixns-btn--lg {
   padding: var(--space-3) var(--space-6);
   font-size: var(--text-base);
-  min-height: 44px;
+  min-height: 46px;
   border-radius: var(--radius-lg);
 }
 
-/* Variants */
+/* ────────────────────────────────────────────────────────────
+   Variants — Glass Morphism Styles
+   ──────────────────────────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   PRIMARY — Crystal Blue Glass
+   ════════════════════════════════════════════════════════════ */
 .hixns-btn--primary {
-  background: var(--primary);
-  color: var(--primary-text);
-  border-color: var(--primary-border);
-  backdrop-filter: blur(var(--blur-lg)) saturate(var(--saturate));
-  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(var(--saturate));
+  /* Multi-layer glass background */
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(90, 200, 250, 0.35) 0%,
+      rgba(90, 200, 250, 0.25) 50%,
+      rgba(90, 200, 250, 0.15) 100%
+    );
+  
+  /* Glass border with gradient */
+  border: 1px solid rgba(90, 200, 250, 0.5);
+  border-top-color: rgba(90, 200, 250, 0.7);
+  border-bottom-color: rgba(90, 200, 250, 0.3);
+  
+  /* Text color */
+  color: rgba(255, 255, 255, 0.98);
+  
+  /* Strong glass effect */
+  backdrop-filter: blur(40px) saturate(1.5);
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
+  
+  /* Multi-layer shadow */
   box-shadow: 
-    var(--glass-inset),
-    0 2px 8px rgba(90, 200, 250, 0.2),
-    0 0 0 1px rgba(90, 200, 250, 0.1);
+    /* Inner highlight */
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    /* Outer glow */
+    0 4px 12px rgba(90, 200, 250, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    /* Edge glow */
+    0 0 0 1px rgba(90, 200, 250, 0.15);
+  
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .hixns-btn--primary:hover:not(:disabled) {
-  background: var(--primary-dark);
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(90, 200, 250, 0.45) 0%,
+      rgba(90, 200, 250, 0.35) 50%,
+      rgba(90, 200, 250, 0.25) 100%
+    );
+  
   border-color: rgba(90, 200, 250, 0.7);
+  border-top-color: rgba(90, 200, 250, 0.9);
+  border-bottom-color: rgba(90, 200, 250, 0.5);
+  
   box-shadow: 
-    var(--glass-inset),
-    0 4px 16px rgba(90, 200, 250, 0.4),
-    0 0 24px rgba(90, 200, 250, 0.2),
-    0 0 0 1px rgba(90, 200, 250, 0.15);
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(90, 200, 250, 0.45),
+    0 4px 8px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(90, 200, 250, 0.25),
+    0 0 20px rgba(90, 200, 250, 0.2);
 }
 
+.hixns-btn--primary:active:not(:disabled) {
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(90, 200, 250, 0.3) 0%,
+      rgba(90, 200, 250, 0.2) 50%,
+      rgba(90, 200, 250, 0.1) 100%
+    );
+  
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 2px 8px rgba(90, 200, 250, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* ════════════════════════════════════════════════════════════
+   SECONDARY — Frosted Glass
+   ════════════════════════════════════════════════════════════ */
 .hixns-btn--secondary {
-  background: var(--glass-base);
-  color: var(--text-primary);
-  border-color: var(--border-base);
-  backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
-  -webkit-backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.04) 50%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
+  
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top-color: rgba(255, 255, 255, 0.2);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  
+  color: rgba(255, 255, 255, 0.95);
+  
+  backdrop-filter: blur(32px) saturate(1.4);
+  -webkit-backdrop-filter: blur(32px) saturate(1.4);
+  
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .hixns-btn--secondary:hover:not(:disabled) {
-  background: var(--glass-strong);
-  border-color: var(--border-light);
-  box-shadow: var(--glow-sm);
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.06) 50%,
+      rgba(255, 255, 255, 0.03) 100%
+    );
+  
+  border-color: rgba(255, 255, 255, 0.2);
+  border-top-color: rgba(255, 255, 255, 0.3);
+  
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* ════════════════════════════════════════════════════════════
+   DANGER — Red Glass
+   ════════════════════════════════════════════════════════════ */
 .hixns-btn--danger {
-  background: var(--error);
-  color: white;
-  box-shadow: 0 2px 8px rgba(255, 69, 58, 0.3);
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(255, 69, 58, 0.4) 0%,
+      rgba(255, 69, 58, 0.3) 50%,
+      rgba(255, 69, 58, 0.2) 100%
+    );
+  
+  border: 1px solid rgba(255, 69, 58, 0.5);
+  border-top-color: rgba(255, 69, 58, 0.7);
+  border-bottom-color: rgba(255, 69, 58, 0.3);
+  
+  color: rgba(255, 255, 255, 0.98);
+  
+  backdrop-filter: blur(32px) saturate(1.4);
+  -webkit-backdrop-filter: blur(32px) saturate(1.4);
+  
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 4px 12px rgba(255, 69, 58, 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .hixns-btn--danger:hover:not(:disabled) {
-  background: #ff2f22;
-  box-shadow: 0 4px 16px rgba(255, 69, 58, 0.4);
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(255, 69, 58, 0.5) 0%,
+      rgba(255, 69, 58, 0.4) 50%,
+      rgba(255, 69, 58, 0.3) 100%
+    );
+  
+  border-color: rgba(255, 69, 58, 0.7);
+  border-top-color: rgba(255, 69, 58, 0.9);
+  
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(255, 69, 58, 0.45),
+    0 4px 8px rgba(0, 0, 0, 0.25);
 }
 
+/* ════════════════════════════════════════════════════════════
+   GHOST — Minimal
+   ════════════════════════════════════════════════════════════ */
 .hixns-btn--ghost {
   background: transparent;
-  color: var(--text-secondary);
-  border-color: transparent;
+  border: 1px solid transparent;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .hixns-btn--ghost:hover:not(:disabled) {
-  background: var(--glass-base);
-  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.95);
 }
 
+/* ════════════════════════════════════════════════════════════
+   TEXT — Link Style
+   ════════════════════════════════════════════════════════════ */
 .hixns-btn--text {
   background: transparent;
-  color: var(--primary);
-  border-color: transparent;
+  border: 1px solid transparent;
+  color: rgba(90, 200, 250, 0.9);
   padding-left: var(--space-2);
   padding-right: var(--space-2);
 }
 
 .hixns-btn--text:hover:not(:disabled) {
-  color: var(--primary-dark);
+  color: rgba(90, 200, 250, 1);
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-/* Icon button */
+/* ════════════════════════════════════════════════════════════
+   Icon Button & Full Width
+   ════════════════════════════════════════════════════════════ */
 .hixns-btn--icon {
   padding: var(--space-2);
-  min-height: 36px;
-  min-width: 36px;
+  min-height: 38px;
+  min-width: 38px;
 }
 
-.hixns-btn--icon.hixns-btn--xs { min-height: 26px; min-width: 26px; }
-.hixns-btn--icon.hixns-btn--sm { min-height: 32px; min-width: 32px; }
-.hixns-btn--icon.hixns-btn--lg { min-height: 44px; min-width: 44px; }
+.hixns-btn--icon.hixns-btn--xs { min-height: 28px; min-width: 28px; }
+.hixns-btn--icon.hixns-btn--sm { min-height: 34px; min-width: 34px; }
+.hixns-btn--icon.hixns-btn--md { min-height: 38px; min-width: 38px; }
+.hixns-btn--icon.hixns-btn--lg { min-height: 46px; min-width: 46px; }
 
 /* Full width */
 .hixns-btn--full {
   width: 100%;
 }
 
-/* Loading state */
+/* ════════════════════════════════════════════════════════════
+   Loading State
+   ════════════════════════════════════════════════════════════ */
 .hixns-btn--loading {
   pointer-events: none;
 }
@@ -195,10 +363,10 @@
 .hixns-btn--loading .btn-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: rgba(255, 255, 255, 0.9);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.7s linear infinite;
 }
 
 .hixns-btn--loading .btn-content {
