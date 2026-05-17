@@ -234,7 +234,8 @@
                 </HxSelect>
                 <HxInput v-else v-model="customModel" placeholder="输入模型名称" />
                 <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
-                <p class="form-hint" style="color: var(--color-primary); margin-top: 4px;">✓ API 验证成功，请选择模型</p>
+                <p v-else-if="upstreamModels.length > 0" class="form-hint" style="color: var(--color-success); margin-top: 4px;">✓ 已获取 {{ upstreamModels.length }} 个模型，请选择</p>
+                <p v-else-if="apiVerified" class="form-hint" style="color: var(--color-primary); margin-top: 4px;">✓ API 验证成功，已加载预设模型</p>
               </div>
               <div class="form-row">
                 <label class="form-label">上下文长度</label>
@@ -919,7 +920,7 @@ const providerPresets = [
     baseUrl: 'https://api.deepseek.com/v1',
     model: 'deepseek-chat',
     iconKey: 'DeepSeek',
-    defaultModels: ['deepseek-chat', 'deepseek-coder']
+    defaultModels: ['deepseek-chat', 'deepseek-coder', 'deepseek-v2-chat', 'deepseek-v2-instruct', 'deepseek-v3', 'deepseek-v4-flash']
   },
   {
     name: 'Google Gemini',
@@ -1149,7 +1150,6 @@ async function fetchUpstreamModels() {
       'Authorization': `Bearer ${apiKey}`,
     }
     // Wails 模式或开发模式下通过 Go 后端代理避免跨域
-    // 判断：如果是外部 URL 且当前 origin 不是该 URL 的 origin，则走代理
     if (baseUrl.startsWith('http')) {
       try {
         const targetOrigin = new URL(baseUrl).origin
@@ -1166,21 +1166,49 @@ async function fetchUpstreamModels() {
       signal: AbortSignal.timeout(15000),
     })
     console.log('[fetchUpstreamModels] 响应状态:', r.status)
+    
     if (!r.ok) {
+      // 如果 /models 接口失败，使用预设模型列表
+      const preset = providerPresets.find(p => p.name === customUpstream.value)
+      if (preset?.defaultModels && preset.defaultModels.length > 0) {
+        console.log('[fetchUpstreamModels] API 返回失败，使用预设模型列表')
+        upstreamModels.value = preset.defaultModels
+        upstreamModelsError.value = ''
+        return
+      }
       upstreamModelsError.value = `HTTP ${r.status}: 获取模型列表失败 (API Key 可能无效)`
       return
     }
+    
     const body = await r.json()
     console.log('[fetchUpstreamModels] 响应数据:', body)
-    const modelList: string[] = (body.data || [])
-      .map((m: any) => m.id || m.model || '')
-      .filter((id: string) => id)
-      .sort()
+    
+    // 处理不同 API 格式的模型列表
+    let modelList: string[] = []
+    if (body.data && Array.isArray(body.data)) {
+      modelList = body.data.map((m: any) => m.id || m.model || '').filter((id: string) => id)
+    } else if (body.models && Array.isArray(body.models)) {
+      modelList = body.models.map((m: any) => m.id || m.model || '').filter((id: string) => id)
+    } else if (Array.isArray(body)) {
+      modelList = body.map((m: any) => m.id || m.model || '').filter((id: string) => id)
+    }
+    
+    modelList = modelList.sort()
     console.log('[fetchUpstreamModels] 解析到的模型数量:', modelList.length)
+    
     if (modelList.length === 0) {
+      // 如果 API 返回空列表，使用预设模型列表
+      const preset = providerPresets.find(p => p.name === customUpstream.value)
+      if (preset?.defaultModels && preset.defaultModels.length > 0) {
+        console.log('[fetchUpstreamModels] API 返回空列表，使用预设模型列表')
+        upstreamModels.value = preset.defaultModels
+        upstreamModelsError.value = ''
+        return
+      }
       upstreamModelsError.value = '未获取到模型列表 (API 返回数据为空)'
       return
     }
+    
     upstreamModels.value = modelList
     // 如果当前选的模型不在列表中，自动选第一个
     if (!modelList.includes(customModel.value)) {
@@ -1190,6 +1218,14 @@ async function fetchUpstreamModels() {
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('[fetchUpstreamModels] 错误:', e)
+    // 如果请求失败，使用预设模型列表
+    const preset = providerPresets.find(p => p.name === customUpstream.value)
+    if (preset?.defaultModels && preset.defaultModels.length > 0) {
+      console.log('[fetchUpstreamModels] 请求失败，使用预设模型列表')
+      upstreamModels.value = preset.defaultModels
+      upstreamModelsError.value = ''
+      return
+    }
     upstreamModelsError.value = `获取失败：${msg}`
   } finally {
     upstreamModelsSyncing.value = false
@@ -1262,12 +1298,16 @@ async function testConnection() {
       const data = await r.json()
       const model = data?.model || config.model || '未知'
       testResult.value = { ok: true, message: `连接成功! 模型：${model}` }
-      toast.success('连接成功', `模型：${model}`)
+      toast.success('连接成功', `当前使用：${model}`)
       // 测试成功后，获取模型列表并显示模型设置
       apiVerified.value = true
       await fetchUpstreamModels()
       // 根据当前模型设置上下文长度
       onModelChange()
+      // 如果有模型列表，提示用户选择
+      if (upstreamModels.value.length > 0) {
+        toast.info('模型列表已加载', `请选择您要使用的模型`)
+      }
     } else if (r.status === 401) {
       testResult.value = { ok: false, message: 'API Key 无效 (401 Unauthorized)' }
       toast.error('API Key 无效')
