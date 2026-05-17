@@ -677,17 +677,12 @@
     0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
-.hixns-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-4);
-}
-
 .hixns-card__title {
-  font-size: var(--text-lg);
+  font-size: var(--text-base);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
 }
 
 .hixns-card__subtitle {
@@ -709,16 +704,27 @@
   align-items: center;
   gap: var(--space-1);
   
-  padding: 2px var(--space-2);
+  padding: 3px 10px;
   
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: var(--font-medium);
   line-height: 1;
   
   border-radius: var(--radius-full);
   
   white-space: nowrap;
+  
+  /* Glass morphism effect */
+  backdrop-filter: blur(8px);
+  
+  /* Subtle inner gradient */
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.04) 100%
+  );
 }
 
 .hixns-badge--default {
@@ -759,20 +765,22 @@
 
 .hixns-badge--dot::before {
   content: '';
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: currentColor;
+  box-shadow: 0 0 4px currentColor;
+  flex-shrink: 0;
 }
 
 .hixns-badge--xs {
-  padding: 1px 6px;
-  font-size: 9px;
+  padding: 2px 7px;
+  font-size: 10px;
 }
 
 .hixns-badge--sm {
-  padding: 2px 8px;
-  font-size: 10px;
+  padding: 3px 10px;
+  font-size: var(--text-xs);
 }
 
 .hixns-badge--md {
