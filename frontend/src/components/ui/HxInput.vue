@@ -1,5 +1,5 @@
 <template>
-  <div class="hixns-input" :class="{ 'hixns-input--error': error }">
+  <div class="hixns-input" :class="[{ 'hixns-input--error': error }, { 'hixns-input--number': type === 'number' }]">
     <span v-if="$slots.left || leftIcon" class="hixns-input__icon">
       <slot name="left">
         <span v-if="leftIcon">{{ leftIcon }}</span>
@@ -13,25 +13,39 @@
       :value="modelValue"
       :placeholder="placeholder"
       :disabled="disabled"
-      :class="['hixns-input__field', { 'hixns-input__field--has-right': showClear || $slots.right }]"
+      :class="['hixns-input__field', { 
+        'hixns-input__field--has-right': showClear || $slots.right || showNumberControls 
+      }]"
       @input="onInput"
       @focus="onFocus"
       @blur="onBlur"
       @keydown.enter="onEnter"
     />
     
-    <textarea
-      v-else
-      ref="textareaRef"
-      :value="modelValue"
-      :placeholder="placeholder"
-      :disabled="disabled"
-      :rows="rows"
-      class="hixns-textarea"
-      @input="onInput"
-      @focus="onFocus"
-      @blur="onBlur"
-    />
+    <!-- Number controls -->
+    <div v-if="type === 'number' && showNumberControls" class="hixns-input__number-controls">
+      <button 
+        type="button" 
+        class="hixns-input__number-btn"
+        @click="decrement"
+        :disabled="disabled || (min !== null && Number(modelValue) <= min)"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+      <button 
+        type="button" 
+        class="hixns-input__number-btn"
+        @click="increment"
+        :disabled="disabled || (max !== null && Number(modelValue) >= max)"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+    </div>
     
     <button
       v-if="showClear && modelValue"
@@ -67,6 +81,10 @@ const props = withDefaults(defineProps<{
   rows?: number
   error?: string
   autofocus?: boolean
+  min?: number | null
+  max?: number | null
+  step?: number
+  showNumberControls?: boolean
 }>(), {
   modelValue: '',
   type: 'text',
@@ -78,10 +96,14 @@ const props = withDefaults(defineProps<{
   rows: 3,
   error: '',
   autofocus: false,
+  min: null,
+  max: null,
+  step: 1,
+  showNumberControls: true,
 })
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
+  'update:modelValue': [value: string | number]
   'focus': [e: FocusEvent]
   'blur': [e: FocusEvent]
   'enter': [e: KeyboardEvent]
@@ -95,7 +117,7 @@ const showClear = computed(() => props.clearable && props.modelValue)
 
 function onInput(e: Event) {
   const target = e.target as HTMLInputElement | HTMLTextAreaElement
-  emit('update:modelValue', target.value)
+  emit('update:modelValue', props.type === 'number' ? Number(target.value) : target.value)
 }
 
 function onFocus(e: FocusEvent) {
@@ -117,6 +139,26 @@ function onClear() {
     if (inputRef.value) inputRef.value.focus()
     if (textareaRef.value) textareaRef.value.focus()
   })
+}
+
+function increment() {
+  if (props.type === 'number') {
+    const current = Number(props.modelValue) || 0
+    const newValue = current + props.step
+    if (props.max === null || newValue <= props.max) {
+      emit('update:modelValue', newValue)
+    }
+  }
+}
+
+function decrement() {
+  if (props.type === 'number') {
+    const current = Number(props.modelValue) || 0
+    const newValue = current - props.step
+    if (props.min === null || newValue >= props.min) {
+      emit('update:modelValue', newValue)
+    }
+  }
 }
 
 defineExpose({

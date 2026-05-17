@@ -459,6 +459,26 @@
   padding: 0;
 }
 
+/* Hide number input spinners */
+.hixns-input__field[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.hixns-input__field[type="number"]::-webkit-outer-spin-button,
+.hixns-input__field[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.hixns-input__field[type="number"]:focus {
+  -moz-appearance: textfield;
+}
+
+.hixns-input__field[type="number"]:focus::-webkit-outer-spin-button,
+.hixns-input__field[type="number"]:focus::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
 .hixns-input__field::placeholder {
   color: var(--text-tertiary);
 }
@@ -472,6 +492,73 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--fast);
+  flex-shrink: 0;
+}
+
+.hixns-input__clear:hover {
+  background: var(--glass-base);
+  color: var(--text-primary);
+}
+
+/* Number Input Controls */
+.hixns-input--number .hixns-input__field {
+  padding-right: 2px;
+}
+
+.hixns-input__number-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 4px;
+  flex-shrink: 0;
+}
+
+.hixns-input__number-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(
+    135deg,
+    rgba(90, 200, 250, 0.15) 0%,
+    rgba(90, 200, 250, 0.08) 100%
+  );
+  border: 1px solid rgba(90, 200, 250, 0.25);
+  border-radius: var(--radius-sm);
+  color: rgba(90, 200, 250, 0.9);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.hixns-input__number-btn:hover:not(:disabled) {
+  background: linear-gradient(
+    135deg,
+    rgba(90, 200, 250, 0.25) 0%,
+    rgba(90, 200, 250, 0.15) 100%
+  );
+  border-color: rgba(90, 200, 250, 0.4);
+  color: rgba(90, 200, 250, 1);
+  transform: translateY(-1px);
+}
+
+.hixns-input__number-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.95);
+}
+
+.hixns-input__number-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
   
   width: 20px;
   height: 20px;
@@ -1068,107 +1155,110 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   Select
+   Select — Glass Dropdown
    ════════════════════════════════════════════════════════════ */
 .hixns-select {
   position: relative;
-}
-
-.hixns-select__trigger {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  
   width: 100%;
-  padding: var(--space-2) var(--space-3);
   
   background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
+  -webkit-backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
+  
   border: 1px solid var(--border-base);
   border-radius: var(--radius-md);
+  
+  min-height: 38px;
+  
+  transition: all var(--fast);
+  cursor: pointer;
+}
+
+.hixns-select::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.03) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--fast);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.hixns-select:hover::before,
+.hixns-select:focus-within::before {
+  opacity: 1;
+}
+
+.hixns-select:hover {
+  border-color: var(--border-light);
+  background: var(--glass-bg-hover);
+}
+
+.hixns-select:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: 
+    0 0 0 1px rgba(10, 132, 255, 0.1),
+    0 0 8px rgba(10, 132, 255, 0.2),
+    0 0 16px rgba(10, 132, 255, 0.1),
+    inset 0 0 8px rgba(10, 132, 255, 0.05);
+  background: var(--glass-strong);
+}
+
+.hixns-select__field {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  
+  background: transparent;
+  border: none;
+  outline: none;
   
   font-family: var(--font-sans);
   font-size: var(--text-base);
   color: var(--text-primary);
   
+  padding: var(--space-2) var(--space-3);
+  padding-right: var(--space-8);
+  
   cursor: pointer;
-  
-  transition: all var(--fast);
-  
-  backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
-  -webkit-backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
 }
 
-.hixns-select__trigger:hover {
-  border-color: var(--border-light);
-  background: var(--glass-bg-hover);
+.hixns-select__field::-ms-expand {
+  display: none;
 }
 
-.hixns-select__trigger:focus {
-  border-color: var(--border-focus);
-  box-shadow: var(--glow-sm), var(--glow-inner);
-  background: var(--glass-strong);
+.hixns-select__field option {
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+  padding: var(--space-2);
 }
 
-.hixns-select__value {
-  flex: 1;
-  text-align: left;
-}
-
-.hixns-select__icon {
-  color: var(--text-tertiary);
-  transition: transform var(--fast);
-}
-
-.hixns-select--open .hixns-select__icon {
-  transform: rotate(180deg);
-}
-
-.hixns-select__dropdown {
+.hixns-select__arrow {
   position: absolute;
-  top: calc(100% + var(--space-1));
-  left: 0;
-  right: 0;
-  
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-md);
-  
-  box-shadow: var(--shadow-xl);
-  
-  max-height: 240px;
-  overflow-y: auto;
-  
-  z-index: var(--z-dropdown);
-  
-  animation: slideDown var(--duration-200) var(--ease-expo);
-}
-
-.hixns-select__option {
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
-  
-  padding: var(--space-2) var(--space-3);
-  
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  
-  cursor: pointer;
-  
+  justify-content: center;
+  color: var(--text-secondary);
+  pointer-events: none;
   transition: all var(--fast);
 }
 
-.hixns-select__option:hover {
-  background: var(--glass-base);
-}
-
-.hixns-select__option--selected {
-  background: var(--primary-light);
+.hixns-select:focus-within .hixns-select__arrow {
   color: var(--primary);
-}
-
-.hixns-select__option--disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 /* ════════════════════════════════════════════════════════════

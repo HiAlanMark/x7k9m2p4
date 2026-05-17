@@ -223,7 +223,7 @@
             </div>
             <div class="form-row">
               <label class="form-label">上下文长度</label>
-              <HxInput v-model.number="contextLength" type="number" style="max-width: 200px;" />
+              <HxInput v-model.number="contextLength" type="number" style="max-width: 200px;" :min="512" :max="128000" :step="512" />
             </div>
           </HxCard>
 
@@ -291,7 +291,7 @@
             </div>
             <div class="form-row">
               <label class="form-label">G 币限额</label>
-              <HxInput v-model.number="newKeyLimit" type="number" style="max-width: 200px;" />
+              <HxInput v-model.number="newKeyLimit" type="number" style="max-width: 200px;" :min="1" :max="1000" :step="1" />
             </div>
             <div class="form-actions">
               <HxButton variant="primary" @click="createKey">创建</HxButton>
@@ -380,22 +380,26 @@
               <span style="margin-left:8px;">上下文压缩</span>
             </template>
             <div class="form-row">
-              <label class="form-label">自动压缩</label>
-              <HxToggle v-model="agentSettings.compressionEnabled" :label="agentSettings.compressionEnabled ? '已启用' : '已禁用'" />
+              <label class="form-label">最大回合数</label>
+              <HxInput v-model.number="agentSettings.maxTurns" type="number" style="max-width: 120px;" :min="1" :max="50" :step="1" />
+              <span class="form-help">单次对话最大往返次数</span>
             </div>
             <div class="form-row">
               <label class="form-label">压缩阈值</label>
-              <HxInput v-model.number="agentSettings.compressionThreshold" type="number" step="0.05" min="0.1" max="0.95" style="max-width: 120px;" />
-              <p class="form-hint">上下文使用超过此比例时触发压缩 (默认 0.50)</p>
+              <HxInput v-model.number="agentSettings.compressionThreshold" type="number" step="0.05" min="0.1" max="0.95" style="max-width: 120px;" :showNumberControls="true" />
+              <span class="form-help">触发压缩的记忆阈值</span>
             </div>
             <div class="form-row">
-              <label class="form-label">目标压缩率</label>
-              <HxInput v-model.number="agentSettings.compressionTarget" type="number" step="0.05" min="0.05" max="0.5" style="max-width: 120px;" />
-              <p class="form-hint">压缩后保留的上下文比例 (默认 0.20)</p>
+              <label class="form-label">压缩目标</label>
+              <HxInput v-model.number="agentSettings.compressionTarget" type="number" step="0.05" min="0.05" max="0.5" style="max-width: 120px;" :showNumberControls="true" />
+              <span class="form-help">压缩后目标大小比例</span>
+            </div>
+            <div class="form-actions">
+              <HxButton variant="primary" @click="saveAgentSettings">保存</HxButton>
             </div>
           </HxCard>
 
-          <HxCard>
+          <HxCard style="margin-bottom: 16px;">
             <template #header>
               <HxBadge variant="purple">记忆</HxBadge>
               <span style="margin-left:8px;">持久记忆</span>
