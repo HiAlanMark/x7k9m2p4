@@ -176,11 +176,23 @@
                   :key="preset.name"
                   :class="['chip', { active: customUpstream === preset.name }]"
                   @click="selectUpstream(preset)"
-                >{{ preset.name }}</button>
+                  :title="preset.name"
+                >
+                  <img class="chip-icon-img" :src="providerIconMap[preset.iconKey]" :alt="preset.name" />
+                  <span class="chip-name">{{ preset.name }}</span>
+                </button>
                 <button
                   :class="['chip', { active: customUpstream === '__manual__' }]"
                   @click="customUpstream = '__manual__'"
-                >手动输入</button>
+                  title="手动输入自定义提供商"
+                >
+                  <span class="chip-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                    </svg>
+                  </span>
+                  <span class="chip-name">手动</span>
+                </button>
               </div>
             </div>
 
@@ -753,21 +765,229 @@ try {
   if (cached) gfwModels.value = JSON.parse(cached)
 } catch { /* ignore */ }
 
+// 提供商图标映射 (本地图片)
+const providerIconMap: Record<string, string> = {
+  'OpenAI': '/src/assets/provider-icons/openai.png',
+  'Anthropic': '/src/assets/provider-icons/anthropic.png',
+  'DeepSeek': '/src/assets/provider-icons/deepseek.png',
+  'Google Gemini': '/src/assets/provider-icons/google.png',
+  'xAI / Grok': '/src/assets/provider-icons/xai.png',
+  'OpenRouter': '/src/assets/provider-icons/openrouter.png',
+  'Qwen (DashScope)': '/src/assets/provider-icons/alibabacloud.png',
+  'Groq': '/src/assets/provider-icons/groq.png',
+  'Hugging Face': '/src/assets/provider-icons/huggingface.png',
+  'MiniMax': '/src/assets/provider-icons/minimax.png',
+  'Kimi / Moonshot': '/src/assets/provider-icons/moonshot.png',
+  'Z.AI / GLM': '/src/assets/provider-icons/zhipu.png',
+  'Ollama (本地)': '/src/assets/provider-icons/ollama.png',
+  'vLLM': '/src/assets/provider-icons/vllm.png',
+  'LM Studio': '/src/assets/provider-icons/lmstudio.png',
+  'Together AI': '/src/assets/provider-icons/together.png',
+  'Anyscale': '/src/assets/provider-icons/anyscale.png',
+  'Perplexity': '/src/assets/provider-icons/perplexity.png',
+  'Mistral AI': '/src/assets/provider-icons/mistral.png',
+  'Cohere': '/src/assets/provider-icons/cohere.png',
+  'Fireworks AI': '/src/assets/provider-icons/fireworks.png',
+  'Replicate': '/src/assets/provider-icons/replicate.png',
+  'NVIDIA NIM': '/src/assets/provider-icons/nvidia.png',
+  'IBM Watsonx': '/src/assets/provider-icons/ibm.png',
+  'Azure OpenAI': '/src/assets/provider-icons/azure.png',
+  'Amazon Bedrock': '/src/assets/provider-icons/bedrock.png',
+  'Cloudflare AI': '/src/assets/provider-icons/cloudflare.png',
+  'Cerebras': '/src/assets/provider-icons/cerebras.png',
+  'FriendliAI': '/src/assets/provider-icons/friendli.png',
+  'Novita AI': '/src/assets/provider-icons/novita.png',
+  'SambaNova': '/src/assets/provider-icons/sambanova.png',
+}
+
 // 预设提供商（对齐 Hermes Agent 支持的上游列表）
 const providerPresets = [
-  { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' },
-  { name: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514' },
-  { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-  { name: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-pro' },
-  { name: 'xAI / Grok', baseUrl: 'https://api.x.ai/v1', model: 'grok-3' },
-  { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'openai/gpt-4o' },
-  { name: 'Qwen (DashScope)', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
-  { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile' },
-  { name: 'Hugging Face', baseUrl: 'https://api-inference.huggingface.co/v1', model: 'meta-llama/Llama-3.3-70B-Instruct' },
-  { name: 'MiniMax', baseUrl: 'https://api.minimax.chat/v1', model: 'MiniMax-M1' },
-  { name: 'Kimi / Moonshot', baseUrl: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-auto' },
-  { name: 'Z.AI / GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-plus' },
-  { name: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1', model: 'llama3' },
+  {
+    name: 'OpenAI',
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'gpt-4o',
+    iconKey: 'OpenAI'
+  },
+  {
+    name: 'Anthropic',
+    baseUrl: 'https://api.anthropic.com/v1',
+    model: 'claude-sonnet-4-20250514',
+    iconKey: 'Anthropic'
+  },
+  {
+    name: 'DeepSeek',
+    baseUrl: 'https://api.deepseek.com/v1',
+    model: 'deepseek-chat',
+    iconKey: 'DeepSeek'
+  },
+  {
+    name: 'Google Gemini',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    model: 'gemini-2.5-pro',
+    iconKey: 'Google Gemini'
+  },
+  {
+    name: 'xAI / Grok',
+    baseUrl: 'https://api.x.ai/v1',
+    model: 'grok-3',
+    iconKey: 'xAI / Grok'
+  },
+  {
+    name: 'OpenRouter',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    model: 'openai/gpt-4o',
+    iconKey: 'OpenRouter'
+  },
+  {
+    name: 'Qwen (DashScope)',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    model: 'qwen-plus',
+    iconKey: 'Qwen (DashScope)'
+  },
+  {
+    name: 'Groq',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    model: 'llama-3.3-70b-versatile',
+    iconKey: 'Groq'
+  },
+  {
+    name: 'Hugging Face',
+    baseUrl: 'https://api-inference.huggingface.co/v1',
+    model: 'meta-llama/Llama-3.3-70B-Instruct',
+    iconKey: 'Hugging Face'
+  },
+  {
+    name: 'MiniMax',
+    baseUrl: 'https://api.minimax.chat/v1',
+    model: 'MiniMax-M1',
+    iconKey: 'MiniMax'
+  },
+  {
+    name: 'Kimi / Moonshot',
+    baseUrl: 'https://api.moonshot.cn/v1',
+    model: 'moonshot-v1-auto',
+    iconKey: 'Kimi / Moonshot'
+  },
+  {
+    name: 'Z.AI / GLM',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    model: 'glm-4-plus',
+    iconKey: 'Z.AI / GLM'
+  },
+  {
+    name: 'Ollama (本地)',
+    baseUrl: 'http://localhost:11434/v1',
+    model: 'llama3',
+    iconKey: 'Ollama (本地)'
+  },
+  {
+    name: 'vLLM',
+    baseUrl: 'http://localhost:8000/v1',
+    model: 'meta-llama/Llama-3.2-1B-Instruct',
+    iconKey: 'vLLM'
+  },
+  {
+    name: 'LM Studio',
+    baseUrl: 'http://localhost:1234/v1',
+    model: 'local-model',
+    iconKey: 'LM Studio'
+  },
+  {
+    name: 'Together AI',
+    baseUrl: 'https://api.together.xyz/v1',
+    model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+    iconKey: 'Together AI'
+  },
+  {
+    name: 'Anyscale',
+    baseUrl: 'https://api.endpoints.anyscale.com/v1',
+    model: 'meta-llama/Llama-3.3-70B-Instruct',
+    iconKey: 'Anyscale'
+  },
+  {
+    name: 'Perplexity',
+    baseUrl: 'https://api.perplexity.ai',
+    model: 'sonar-pro',
+    iconKey: 'Perplexity'
+  },
+  {
+    name: 'Mistral AI',
+    baseUrl: 'https://api.mistral.ai/v1',
+    model: 'mistral-large-latest',
+    iconKey: 'Mistral AI'
+  },
+  {
+    name: 'Cohere',
+    baseUrl: 'https://api.cohere.com/v1',
+    model: 'command-r-plus',
+    iconKey: 'Cohere'
+  },
+  {
+    name: 'Fireworks AI',
+    baseUrl: 'https://api.fireworks.ai/inference/v1',
+    model: 'accounts/fireworks/models/llama-v3p1-8b-instruct',
+    iconKey: 'Fireworks AI'
+  },
+  {
+    name: 'Replicate',
+    baseUrl: 'https://openai-proxy.replicate.com/v1',
+    model: 'meta/meta-llama-3-8b-instruct',
+    iconKey: 'Replicate'
+  },
+  {
+    name: 'NVIDIA NIM',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    model: 'meta/llama-3.1-8b-instruct',
+    iconKey: 'NVIDIA NIM'
+  },
+  {
+    name: 'IBM Watsonx',
+    baseUrl: 'https://eu-de.ml.cloud.ibm.com/ml/v1-beta/watsonx/ai',
+    model: 'meta-llama/llama-3-8b-instruct',
+    iconKey: 'IBM Watsonx'
+  },
+  {
+    name: 'Azure OpenAI',
+    baseUrl: 'https://{resource-name}.openai.azure.com/openai',
+    model: 'gpt-4o',
+    iconKey: 'Azure OpenAI'
+  },
+  {
+    name: 'Amazon Bedrock',
+    baseUrl: 'https://bedrock-runtime.{region}.amazonaws.com',
+    model: 'anthropic.claude-3-sonnet-20240229-v1:0',
+    iconKey: 'Amazon Bedrock'
+  },
+  {
+    name: 'Cloudflare AI',
+    baseUrl: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1',
+    model: '@cf/meta/llama-3-8b-instruct',
+    iconKey: 'Cloudflare AI'
+  },
+  {
+    name: 'Cerebras',
+    baseUrl: 'https://api.cerebras.ai/v1',
+    model: 'llama3.1-8b',
+    iconKey: 'Cerebras'
+  },
+  {
+    name: 'FriendliAI',
+    baseUrl: 'https://api.friendli.ai/v1',
+    model: 'llama-3-8b',
+    iconKey: 'FriendliAI'
+  },
+  {
+    name: 'Novita AI',
+    baseUrl: 'https://api.novita.ai/v1',
+    model: 'meta-llama/llama-3-8b-instruct',
+    iconKey: 'Novita AI'
+  },
+  {
+    name: 'SambaNova',
+    baseUrl: 'https://api.sambanova.ai/v1',
+    model: 'Meta-Llama-3.1-8B-Instruct',
+    iconKey: 'SambaNova'
+  }
 ]
 
 const customUpstream = ref<string>(
@@ -1676,6 +1896,66 @@ onMounted(async () => {
     inset 0 0 8px rgba(10,132,255,0.05);
   font-weight: 600;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Provider Chips */
+.provider-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.provider-chips .chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+  background: var(--glass-base);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--fast);
+}
+
+.provider-chips .chip:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+.provider-chips .chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  box-shadow: var(--glow-sm);
+}
+
+.provider-chips .chip .chip-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.provider-chips .chip .chip-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.provider-chips .chip .chip-icon-img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.provider-chips .chip .chip-name {
+  white-space: nowrap;
 }
 
 /* Card header */
