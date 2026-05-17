@@ -16,7 +16,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useSlots } from 'vue'
+
+const slots = useSlots()
 
 const props = withDefaults(defineProps<{
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'text'
@@ -46,7 +48,7 @@ const btnClass = computed(() => [
     'hixns-btn--disabled': props.disabled,
     'hixns-btn--loading': props.loading,
     'hixns-btn--full': props.fullWidth,
-    'hixns-btn--icon': props.icon || props.$slots.icon,
+    'hixns-btn--icon': props.icon || !!slots.icon,
   },
 ])
 
