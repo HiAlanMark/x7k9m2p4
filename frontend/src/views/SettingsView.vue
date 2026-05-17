@@ -205,15 +205,17 @@
             </div>
             <div class="form-row">
               <label class="form-label">API Key</label>
-              <HxInput v-model="customApiKey" type="password" placeholder="sk-..." />
+              <div style="display: flex; gap: 8px;">
+                <HxInput v-model="customApiKey" type="password" placeholder="sk-..." style="flex: 1;" />
+                <HxButton variant="secondary" :loading="testing" @click="testConnection" style="white-space: nowrap;">
+                  {{ testing ? '测试中...' : '测试连接' }}
+                </HxButton>
+              </div>
             </div>
 
-            <!-- 测试连接按钮 -->
-            <div class="form-row" style="margin-top: 12px;">
-              <HxButton variant="secondary" :loading="testing" @click="testConnection" style="width: 100%;">
-                {{ testing ? '测试中...' : '测试连接并获取模型列表' }}
-              </HxButton>
-              <span v-if="testResult" :class="['test-result', testResult.ok ? 'success' : 'error']" style="display: block; margin-top: 8px;">
+            <!-- 测试结果显示在下方 -->
+            <div v-if="testResult" style="margin-top: 8px;">
+              <span :class="['test-result', testResult.ok ? 'success' : 'error']" style="display: block; text-align: center;">
                 {{ testResult.message }}
               </span>
             </div>
@@ -224,7 +226,7 @@
                 <label class="form-label">
                   模型
                   <HxButton variant="ghost" size="sm" :loading="upstreamModelsSyncing" @click="fetchUpstreamModels" style="margin-left:8px;">
-                    {{ upstreamModelsSyncing ? '获取中...' : '刷新模型' }}
+                    {{ upstreamModelsSyncing ? '获取中...' : '刷新' }}
                   </HxButton>
                 </label>
                 <HxSelect v-if="upstreamModels.length > 0" v-model="customModel" @change="onModelChange">
@@ -232,6 +234,7 @@
                 </HxSelect>
                 <HxInput v-else v-model="customModel" placeholder="输入模型名称" />
                 <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
+                <p class="form-hint" style="color: var(--color-primary); margin-top: 4px;">✓ API 验证成功，请选择模型</p>
               </div>
               <div class="form-row">
                 <label class="form-label">上下文长度</label>
