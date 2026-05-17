@@ -220,10 +220,10 @@
               <HxInput v-else v-model="customModel" placeholder="选择或输入模型名称" />
               <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
               <p v-if="customUpstream !== '__manual__' && upstreamModels.length === 0 && !upstreamModelsError && customApiKey" class="form-hint">
-                点击"刷新模型"从 {{ customUpstream }} 获取可用模型列表
+                点击"刷新模型"从 {{ customUpstream }} 获取最新模型列表
               </p>
               <p v-if="customUpstream !== '__manual__' && upstreamModels.length === 0 && !upstreamModelsError && !customApiKey" class="form-hint">
-                请先填写 API Key，然后点击"刷新模型"获取可用模型列表
+                请先填写 API Key，然后点击"刷新模型"获取最新模型列表
               </p>
             </div>
             <div class="form-row">
@@ -817,187 +817,218 @@ const providerPresets = [
     name: 'OpenAI',
     baseUrl: 'https://api.openai.com/v1',
     model: 'gpt-4o',
-    iconKey: 'OpenAI'
+    iconKey: 'OpenAI',
+    defaultModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'o1-preview', 'o1-mini']
   },
   {
     name: 'Anthropic',
     baseUrl: 'https://api.anthropic.com/v1',
     model: 'claude-sonnet-4-20250514',
-    iconKey: 'Anthropic'
+    iconKey: 'Anthropic',
+    defaultModels: ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307']
   },
   {
     name: 'DeepSeek',
     baseUrl: 'https://api.deepseek.com/v1',
     model: 'deepseek-chat',
-    iconKey: 'DeepSeek'
+    iconKey: 'DeepSeek',
+    defaultModels: ['deepseek-chat', 'deepseek-coder']
   },
   {
     name: 'Google Gemini',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     model: 'gemini-2.5-pro',
-    iconKey: 'Google Gemini'
+    iconKey: 'Google Gemini',
+    defaultModels: ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash']
   },
   {
     name: 'xAI / Grok',
     baseUrl: 'https://api.x.ai/v1',
     model: 'grok-3',
-    iconKey: 'xAI / Grok'
+    iconKey: 'xAI / Grok',
+    defaultModels: ['grok-3', 'grok-2', 'grok-2-latest']
   },
   {
     name: 'OpenRouter',
     baseUrl: 'https://openrouter.ai/api/v1',
     model: 'openai/gpt-4o',
-    iconKey: 'OpenRouter'
+    iconKey: 'OpenRouter',
+    defaultModels: []  // OpenRouter 模型太多，不预设
   },
   {
     name: 'Qwen (DashScope)',
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     model: 'qwen-plus',
-    iconKey: 'Qwen (DashScope)'
+    iconKey: 'Qwen (DashScope)',
+    defaultModels: ['qwen-plus', 'qwen-max', 'qwen-turbo', 'qwen-long', 'qwen-vl-max']
   },
   {
     name: 'Groq',
     baseUrl: 'https://api.groq.com/openai/v1',
     model: 'llama-3.3-70b-versatile',
-    iconKey: 'Groq'
+    iconKey: 'Groq',
+    defaultModels: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it']
   },
   {
     name: 'Hugging Face',
     baseUrl: 'https://api-inference.huggingface.co/v1',
     model: 'meta-llama/Llama-3.3-70B-Instruct',
-    iconKey: 'Hugging Face'
+    iconKey: 'Hugging Face',
+    defaultModels: []  // 模型太多，不预设
   },
   {
     name: 'MiniMax',
     baseUrl: 'https://api.minimax.chat/v1',
     model: 'MiniMax-M1',
-    iconKey: 'MiniMax'
+    iconKey: 'MiniMax',
+    defaultModels: ['MiniMax-M1', 'abab6.5s-chat', 'abab6.5g-chat']
   },
   {
     name: 'Kimi / Moonshot',
     baseUrl: 'https://api.moonshot.cn/v1',
     model: 'moonshot-v1-auto',
-    iconKey: 'Kimi / Moonshot'
+    iconKey: 'Kimi / Moonshot',
+    defaultModels: ['moonshot-v1-auto', 'moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k']
   },
   {
     name: 'Z.AI / GLM',
     baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
     model: 'glm-4-plus',
-    iconKey: 'Z.AI / GLM'
+    iconKey: 'Z.AI / GLM',
+    defaultModels: ['glm-4-plus', 'glm-4-air', 'glm-4-flash', 'glm-4']
   },
   {
     name: 'Ollama (本地)',
     baseUrl: 'http://localhost:11434/v1',
     model: 'llama3',
-    iconKey: 'Ollama (本地)'
+    iconKey: 'Ollama (本地)',
+    defaultModels: []  // 本地模型不确定
   },
   {
     name: 'vLLM',
     baseUrl: 'http://localhost:8000/v1',
     model: 'meta-llama/Llama-3.2-1B-Instruct',
-    iconKey: 'vLLM'
+    iconKey: 'vLLM',
+    defaultModels: []
   },
   {
     name: 'LM Studio',
     baseUrl: 'http://localhost:1234/v1',
     model: 'local-model',
-    iconKey: 'LM Studio'
+    iconKey: 'LM Studio',
+    defaultModels: []
   },
   {
     name: 'Together AI',
     baseUrl: 'https://api.together.xyz/v1',
     model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
-    iconKey: 'Together AI'
+    iconKey: 'Together AI',
+    defaultModels: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo']
   },
   {
     name: 'Anyscale',
     baseUrl: 'https://api.endpoints.anyscale.com/v1',
     model: 'meta-llama/Llama-3.3-70B-Instruct',
-    iconKey: 'Anyscale'
+    iconKey: 'Anyscale',
+    defaultModels: ['meta-llama/Llama-3.3-70B-Instruct', 'meta-llama/Meta-Llama-3-8B-Instruct']
   },
   {
     name: 'Perplexity',
     baseUrl: 'https://api.perplexity.ai',
     model: 'sonar-pro',
-    iconKey: 'Perplexity'
+    iconKey: 'Perplexity',
+    defaultModels: ['sonar-pro', 'sonar-plus', 'sonar']
   },
   {
     name: 'Mistral AI',
     baseUrl: 'https://api.mistral.ai/v1',
     model: 'mistral-large-latest',
-    iconKey: 'Mistral AI'
+    iconKey: 'Mistral AI',
+    defaultModels: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest', 'open-mistral-7b']
   },
   {
     name: 'Cohere',
     baseUrl: 'https://api.cohere.com/v1',
     model: 'command-r-plus',
-    iconKey: 'Cohere'
+    iconKey: 'Cohere',
+    defaultModels: ['command-r-plus', 'command-r', 'command']
   },
   {
     name: 'Fireworks AI',
     baseUrl: 'https://api.fireworks.ai/inference/v1',
     model: 'accounts/fireworks/models/llama-v3p1-8b-instruct',
-    iconKey: 'Fireworks AI'
+    iconKey: 'Fireworks AI',
+    defaultModels: []
   },
   {
     name: 'Replicate',
     baseUrl: 'https://openai-proxy.replicate.com/v1',
     model: 'meta/meta-llama-3-8b-instruct',
-    iconKey: 'Replicate'
+    iconKey: 'Replicate',
+    defaultModels: []
   },
   {
     name: 'NVIDIA NIM',
     baseUrl: 'https://integrate.api.nvidia.com/v1',
     model: 'meta/llama-3.1-8b-instruct',
-    iconKey: 'NVIDIA NIM'
+    iconKey: 'NVIDIA NIM',
+    defaultModels: ['meta/llama-3.1-8b-instruct', 'meta/llama-3.1-70b-instruct', 'meta/llama3-8b-instruct']
   },
   {
     name: 'IBM Watsonx',
     baseUrl: 'https://eu-de.ml.cloud.ibm.com/ml/v1-beta/watsonx/ai',
     model: 'meta-llama/llama-3-8b-instruct',
-    iconKey: 'IBM Watsonx'
+    iconKey: 'IBM Watsonx',
+    defaultModels: ['meta-llama/llama-3-8b-instruct', 'meta-llama/llama-3-70b-instruct']
   },
   {
     name: 'Azure OpenAI',
     baseUrl: 'https://{resource-name}.openai.azure.com/openai',
     model: 'gpt-4o',
-    iconKey: 'Azure OpenAI'
+    iconKey: 'Azure OpenAI',
+    defaultModels: ['gpt-4o', 'gpt-4', 'gpt-35-turbo']
   },
   {
     name: 'Amazon Bedrock',
     baseUrl: 'https://bedrock-runtime.{region}.amazonaws.com',
     model: 'anthropic.claude-3-sonnet-20240229-v1:0',
-    iconKey: 'Amazon Bedrock'
+    iconKey: 'Amazon Bedrock',
+    defaultModels: []
   },
   {
     name: 'Cloudflare AI',
     baseUrl: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1',
     model: '@cf/meta/llama-3-8b-instruct',
-    iconKey: 'Cloudflare AI'
+    iconKey: 'Cloudflare AI',
+    defaultModels: []
   },
   {
     name: 'Cerebras',
     baseUrl: 'https://api.cerebras.ai/v1',
     model: 'llama3.1-8b',
-    iconKey: 'Cerebras'
+    iconKey: 'Cerebras',
+    defaultModels: ['llama3.1-8b', 'llama3.1-70b']
   },
   {
     name: 'FriendliAI',
     baseUrl: 'https://api.friendli.ai/v1',
     model: 'llama-3-8b',
-    iconKey: 'FriendliAI'
+    iconKey: 'FriendliAI',
+    defaultModels: ['llama-3-8b', 'llama-3-70b']
   },
   {
     name: 'Novita AI',
     baseUrl: 'https://api.novita.ai/v1',
     model: 'meta-llama/llama-3-8b-instruct',
-    iconKey: 'Novita AI'
+    iconKey: 'Novita AI',
+    defaultModels: []
   },
   {
     name: 'SambaNova',
     baseUrl: 'https://api.sambanova.ai/v1',
     model: 'Meta-Llama-3.1-8B-Instruct',
-    iconKey: 'SambaNova'
+    iconKey: 'SambaNova',
+    defaultModels: ['Meta-Llama-3.1-8B-Instruct', 'Meta-Llama-3.1-70B-Instruct', 'Meta-Llama-3.1-405B-Instruct']
   }
 ]
 
@@ -1014,8 +1045,13 @@ async function fetchUpstreamModels() {
   const baseUrl = customBaseUrl.value
   const apiKey = customApiKey.value
   if (!baseUrl) { upstreamModelsError.value = '请先填写 API Base URL'; return }
-  if (!apiKey) { upstreamModelsError.value = ''; return }  // API Key 为空时不显示错误，让用户先填写
+  if (!apiKey) { 
+    upstreamModelsError.value = ''
+    console.log('[fetchUpstreamModels] API Key 为空，等待用户填写')
+    return 
+  }
 
+  console.log('[fetchUpstreamModels] 开始获取模型列表，baseUrl:', baseUrl)
   upstreamModelsSyncing.value = true
   upstreamModelsError.value = ''
 
@@ -1037,21 +1073,25 @@ async function fetchUpstreamModels() {
       } catch (_) {}
     }
 
+    console.log('[fetchUpstreamModels] 请求 URL:', fetchUrl)
     const r = await fetch(fetchUrl, {
       headers,
       signal: AbortSignal.timeout(15000),
     })
+    console.log('[fetchUpstreamModels] 响应状态:', r.status)
     if (!r.ok) {
-      upstreamModelsError.value = `HTTP ${r.status}: 获取模型列表失败`
+      upstreamModelsError.value = `HTTP ${r.status}: 获取模型列表失败 (API Key 可能无效)`
       return
     }
     const body = await r.json()
+    console.log('[fetchUpstreamModels] 响应数据:', body)
     const modelList: string[] = (body.data || [])
       .map((m: any) => m.id || m.model || '')
       .filter((id: string) => id)
       .sort()
+    console.log('[fetchUpstreamModels] 解析到的模型数量:', modelList.length)
     if (modelList.length === 0) {
-      upstreamModelsError.value = '未获取到模型列表'
+      upstreamModelsError.value = '未获取到模型列表 (API 返回数据为空)'
       return
     }
     upstreamModels.value = modelList
@@ -1059,15 +1099,17 @@ async function fetchUpstreamModels() {
     if (!modelList.includes(customModel.value)) {
       customModel.value = modelList[0]
     }
+    console.log('[fetchUpstreamModels] 获取成功，模型列表:', upstreamModels.value)
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
+    console.error('[fetchUpstreamModels] 错误:', e)
     upstreamModelsError.value = `获取失败：${msg}`
   } finally {
     upstreamModelsSyncing.value = false
   }
 }
 
-function selectUpstream(preset: { name: string; baseUrl: string; model: string }) {
+function selectUpstream(preset: { name: string; baseUrl: string; model: string; defaultModels?: string[] }) {
   customUpstream.value = preset.name
   customName.value = preset.name
   customBaseUrl.value = preset.baseUrl
@@ -1075,6 +1117,10 @@ function selectUpstream(preset: { name: string; baseUrl: string; model: string }
   // 切换上游时清空之前获取的模型列表
   upstreamModels.value = []
   upstreamModelsError.value = ''
+  // 如果有预设模型列表，先显示预设列表
+  if (preset.defaultModels && preset.defaultModels.length > 0) {
+    upstreamModels.value = preset.defaultModels
+  }
   // 如果包含占位符，提示用户先编辑 URL；否则自动获取模型列表
   if (!hasPlaceholder(preset.baseUrl)) {
     fetchUpstreamModels()
