@@ -519,36 +519,41 @@ function formatElapsed(iso?: string): string {
 .empty-text { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 6px; }
 .empty-hint { font-size: 12px; color: var(--color-text-tertiary); }
 
-/* Task list */
-.task-list { display: flex; flex-direction: column; gap: 8px; }
+/* Task List — VueBits */
+.task-list { display: flex; flex-direction: column; gap: var(--space-2); }
 
 .task-card {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--glass-shadow-inset), var(--shadow-card);
-  transition: all 0.3s var(--spring-bounce);
-  padding: 14px 16px;
-  transition: border-color 0.12s;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-inset), var(--shadow-sm);
+  transition: all var(--fast);
+  padding: var(--space-4);
 }
-.task-card:hover { border-color: var(--color-text-tertiary); }
+
+.task-card:hover {
+  border-color: var(--border-light);
+  box-shadow: var(--glass-inset), var(--shadow-md);
+  transform: translateY(-1px);
+}
+
 .task-card.paused { opacity: 0.6; }
-.task-card.running { border-left: 3px solid var(--color-primary); }
-.task-card.history.failed { border-left: 3px solid var(--color-error); }
-.task-card.history.success { border-left: 3px solid var(--color-success); }
+.task-card.running { border-left: 3px solid var(--primary); }
+.task-card.history.failed { border-left: 3px solid var(--error); }
+.task-card.history.success { border-left: 3px solid var(--success); }
 
 .task-top {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2);
 }
 
 .task-dot {
   width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
 }
-.task-dot.active { background: var(--color-success); }
-.task-dot.paused { background: var(--color-text-tertiary); }
-.task-dot.running { background: var(--color-primary); animation: pulse 1.5s ease infinite; }
+.task-dot.active { background: var(--success); }
+.task-dot.paused { background: var(--text-tertiary); }
+.task-dot.running { background: var(--primary); animation: pulse 1.5s ease infinite; }
 
 .task-spinner {
   width: 12px; height: 12px;

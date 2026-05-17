@@ -793,29 +793,29 @@ onBeforeUnmount(() => {
   opacity: 0.3;
 }
 
-/* Skill grid */
+/* Skill Grid — VueBits */
 .skill-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .skill-card {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-card);
-  padding: 16px;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-4);
   cursor: pointer;
-  box-shadow: var(--glass-shadow-inset), var(--shadow-card);
-  transition: all 0.3s var(--spring-bounce);
+  box-shadow: var(--glass-inset), var(--shadow-md);
+  transition: all var(--fast);
 }
 
 .skill-card:hover {
-  border-color: var(--color-text-tertiary);
-  box-shadow: var(--glass-shadow-inset), var(--shadow-card-hover);
-  transform: translateY(-3px) scale(1.01);
+  border-color: var(--border-light);
+  box-shadow: var(--glass-inset), var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .skill-card:active {
@@ -825,19 +825,19 @@ onBeforeUnmount(() => {
 .card-header {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .card-icon {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg-input);
-  border-radius: 6px;
-  color: var(--color-primary);
+  background: var(--glass-base);
+  border-radius: var(--radius-lg);
+  color: var(--primary);
   flex-shrink: 0;
 }
 
@@ -847,9 +847,9 @@ onBeforeUnmount(() => {
 }
 
 .card-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -860,8 +860,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 2px;
-  font-size: 11px;
-  color: var(--color-warning);
+  font-size: var(--text-xs);
+  color: var(--warning);
   margin-top: 2px;
 }
 
@@ -871,7 +871,7 @@ onBeforeUnmount(() => {
 
 .card-version {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-text-tertiary);
   background: var(--color-bg-input);
   padding: 2px 5px;

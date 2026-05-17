@@ -811,11 +811,11 @@ function exportChat() {
   color: var(--color-primary);
 }
 
-/* ===== Messages — iOS 27 glass cards ===== */
+/* ===== Messages — VueBits Glass Cards ===== */
 .msg {
-  padding: 20px 48px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  transition: background 0.3s var(--spring-smooth);
+  padding: var(--space-5) var(--space-12);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: all var(--normal);
 }
 
 .msg:last-child {
@@ -823,52 +823,60 @@ function exportChat() {
 }
 
 .msg.user {
-  background: var(--color-bg-page);
+  background: transparent;
 }
 
 .msg.assistant {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  box-shadow: var(--glass-shadow-inset);
-  animation: msgSlideIn 0.4s var(--spring-bounce) both;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--glass-inset), var(--shadow-sm);
+  animation: msgSlideIn 0.5s var(--ease-expo) both;
+  margin: var(--space-2) 0;
+}
+
+.msg.assistant:hover {
+  border-color: var(--border-light);
+  box-shadow: var(--glass-inset), var(--shadow-md);
 }
 
 @keyframes msgSlideIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .msg-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 .msg-author {
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.msg-author.user { color: var(--color-text-tertiary); }
-.msg-author.assistant { color: var(--color-primary); }
+.msg-author.user { color: var(--text-tertiary); }
+.msg-author.assistant { color: var(--primary); }
 
 .msg-time {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   opacity: 0.6;
 }
 
 /* Content */
 .msg-content {
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
 }
 
 .user-content {

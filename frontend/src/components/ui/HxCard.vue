@@ -1,18 +1,19 @@
 <template>
   <div
     class="hixns-card"
-    :class="{ 'hixns-card--hover': hover, 'hixns-card--glass': glass, 'hixns-card--no-pad': noPad }"
+    :class="cardClasses"
     :style="cardStyle"
   >
-    <div v-if="$slots.header || title" class="hixns-card-header">
+    <div v-if="$slots.header || title" class="hixns-card__header">
       <slot name="header">
-        <h3 class="hixns-card-title">{{ title }}</h3>
+        <h3 class="hixns-card__title">{{ title }}</h3>
+        <p v-if="subtitle" class="hixns-card__subtitle">{{ subtitle }}</p>
       </slot>
     </div>
-    <div class="hixns-card-body">
+    <div class="hixns-card__content">
       <slot />
     </div>
-    <div v-if="$slots.footer" class="hixns-card-footer">
+    <div v-if="$slots.footer" class="hixns-card__footer">
       <slot name="footer" />
     </div>
   </div>
@@ -23,16 +24,29 @@ import { computed } from 'vue'
 
 const props = withDefaults(defineProps<{
   title?: string
-  hover?: boolean
+  subtitle?: string
+  interactive?: boolean
+  elevated?: boolean
   glass?: boolean
   noPad?: boolean
   radius?: number
 }>(), {
-  hover: false,
-  glass: false,
+  title: '',
+  subtitle: '',
+  interactive: false,
+  elevated: false,
+  glass: true,
   noPad: false,
   radius: undefined,
 })
+
+const cardClasses = computed(() => [
+  {
+    'hixns-card--interactive': props.interactive,
+    'hixns-card--elevated': props.elevated,
+    'hixns-card--no-pad': props.noPad,
+  },
+])
 
 const cardStyle = computed(() => ({
   '--card-radius': props.radius ? `${props.radius}px` : undefined,
@@ -40,61 +54,43 @@ const cardStyle = computed(() => ({
 </script>
 
 <style scoped>
-.hixns-card {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--card-radius, var(--radius-card));
-  box-shadow: var(--shadow-card);
-  transition: all 0.35s var(--ease-out-expo);
-  overflow: hidden;
-}
-
-.hixns-card--glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border-color: var(--glass-border);
-  box-shadow: var(--glass-shadow-inset), var(--shadow-card);
-}
-
-.hixns-card--hover:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card-hover);
-  border-color: var(--color-border-light);
-}
-
-.hixns-card--glass.hixns-card--hover:hover {
-  background: var(--glass-bg-strong);
-  border-color: var(--glass-border-strong);
-  box-shadow: var(--glass-shadow-inset), var(--shadow-card-hover);
-}
-
-.hixns-card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 16px 0;
-}
-
-.hixns-card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin: 0;
-}
-
-.hixns-card-body {
-  padding: var(--card-radius, 16px);
-}
-
-.hixns-card--no-pad .hixns-card-body {
+/* Base styles from enhancements.css */
+.hixns-card--no-pad {
   padding: 0;
 }
 
-.hixns-card-footer {
+.hixns-card--elevated {
+  box-shadow: var(--glass-inset), var(--shadow-xl);
+}
+
+.hixns-card__header {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 16px 14px;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.hixns-card__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.hixns-card__subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.hixns-card__content {
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.hixns-card__footer {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-base);
 }
 </style>
