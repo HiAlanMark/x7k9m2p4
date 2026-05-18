@@ -206,16 +206,18 @@ onUnmounted(() => {
   overflow-y: auto;
   overflow-x: hidden;
   
-  background: var(--glass-strong);
-  backdrop-filter: blur(var(--blur-lg)) saturate(var(--saturate));
-  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(var(--saturate));
+  /* 增强的高斯模糊背景 */
+  background: rgba(15, 15, 22, 0.92);
+  backdrop-filter: blur(40px) saturate(1.8);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
   
   border: 1px solid var(--border-focus);
   border-radius: var(--radius-md);
   
   box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(10, 132, 255, 0.1);
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(10, 132, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   
   padding: 4px;
 }
