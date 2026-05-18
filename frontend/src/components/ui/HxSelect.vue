@@ -95,18 +95,24 @@ function updateDropdownPosition() {
   const spaceAbove = triggerRect.top
   
   if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+    // 向上展开
     dropdownStyle.value = {
-      bottom: '100%',
-      left: '0',
-      right: '0',
-      marginBottom: '4px',
+      top: `${triggerRect.top - dropdownHeight - 4}px`,
+      left: `${triggerRect.left}px`,
+      right: 'auto',
+      bottom: 'auto',
+      marginTop: '0',
+      marginBottom: '0',
     }
   } else {
+    // 向下展开
     dropdownStyle.value = {
-      top: '100%',
-      left: '0',
-      right: '0',
-      marginTop: '4px',
+      top: `${triggerRect.bottom + 4}px`,
+      left: `${triggerRect.left}px`,
+      right: 'auto',
+      bottom: 'auto',
+      marginTop: '0',
+      marginBottom: '0',
     }
   }
 }
@@ -199,9 +205,9 @@ onUnmounted(() => {
 }
 
 .hixns-select__dropdown {
-  position: absolute;
-  z-index: 99999;
-  min-width: 100%;
+  position: fixed;
+  z-index: 2147483647;
+  min-width: max-content;
   max-height: 240px;
   overflow-y: auto;
   overflow-x: hidden;
