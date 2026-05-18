@@ -200,14 +200,14 @@ onUnmounted(() => {
 
 .hixns-select__dropdown {
   position: absolute;
-  z-index: 1000;
+  z-index: 99999;
   min-width: 100%;
   max-height: 240px;
   overflow-y: auto;
   overflow-x: hidden;
   
-  /* 增强的高斯模糊背景 */
-  background: rgba(15, 15, 22, 0.92);
+  /* 增强的高斯模糊背景 - 暗色主题 */
+  background: rgba(15, 15, 22, 0.95);
   backdrop-filter: blur(40px) saturate(1.8);
   -webkit-backdrop-filter: blur(40px) saturate(1.8);
   
@@ -220,6 +220,15 @@ onUnmounted(() => {
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   
   padding: 4px;
+}
+
+/* 亮色主题适配 */
+[data-theme="light"] .hixns-select__dropdown {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(10, 132, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .hixns-select__dropdown::-webkit-scrollbar {
@@ -257,6 +266,16 @@ onUnmounted(() => {
   background: var(--primary);
   color: #fff;
   font-weight: var(--font-medium);
+}
+
+/* 亮色主题适配 */
+[data-theme="light"] .hixns-select__option:hover {
+  background: rgba(10, 132, 255, 0.15);
+}
+
+[data-theme="light"] .hixns-select__option--selected {
+  background: var(--primary);
+  color: #fff;
 }
 
 .hixns-select--disabled {
