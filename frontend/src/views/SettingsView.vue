@@ -3008,10 +3008,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .provider-tab.active {
-  background: var(--primary-light);
-  border-color: var(--border-focus);
-  color: var(--text-primary);
-  box-shadow: var(--glow-sm);
+  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
+  color: rgba(90, 200, 250, 1);
+  border-color: rgba(90, 200, 250, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
 }
 
 /* GFW Auth Mode */
@@ -3041,10 +3041,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
   color: var(--text-primary);
 }
 .gfw-auth-mode.active {
-  background: var(--primary-light);
-  border-color: var(--border-focus);
-  color: var(--text-primary);
-  box-shadow: var(--glow-sm);
+  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
+  border-color: rgba(90, 200, 250, 0.3);
+  color: rgba(90, 200, 250, 1);
+  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
 }
 
 /* GFW User Info */
@@ -3124,10 +3124,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
   transform: translateY(-1px);
 }
 .gfw-key-item.active {
-  border-color: var(--accent);
-  background: rgba(90, 200, 250, 0.06);
-  color: var(--text-primary);
-  box-shadow: 0 0 12px rgba(90, 200, 250, 0.08);
+  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
+  border-color: rgba(90, 200, 250, 0.3);
+  color: rgba(90, 200, 250, 1);
+  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
 }
 /* Active indicator */
 .gfw-key-item.active::before {
@@ -3239,10 +3239,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .provider-chips .chip.active {
-  background: var(--primary-light);
-  border-color: var(--border-focus);
-  color: var(--text-primary);
-  box-shadow: var(--glow-sm);
+  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
+  border-color: rgba(90, 200, 250, 0.3);
+  color: rgba(90, 200, 250, 1);
+  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
 }
 
 .provider-chips .chip .chip-icon {
@@ -3482,10 +3482,11 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .chip.active {
-  border-color: var(--color-text-primary);
-  background: var(--color-bg-input);
-  color: var(--color-text-primary);
+  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
+  border-color: rgba(90, 200, 250, 0.3);
+  color: rgba(90, 200, 250, 1);
   font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
 }
 
 .chip-count {
@@ -3834,9 +3835,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
   color: var(--text-primary);
 }
 .gfw-quota-btn.active {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(90, 200, 250, 0.15);
+  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
+  color: rgba(90, 200, 250, 1);
+  border: 1px solid rgba(90, 200, 250, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
 }
 .gfw-quota-input {
   display: flex;
