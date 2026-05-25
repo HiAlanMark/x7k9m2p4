@@ -86,6 +86,9 @@ jobs:
           if [ "${{ runner.os }}" = "Linux" ]; then
             pkg-config --exists webkit2gtk-4.1 && EXTRA_FLAGS="-tags webkit2_41" || true
           fi
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            EXTRA_FLAGS="-webview2 embed"
+          fi
           wails build -clean -trimpath -s -skipbindings -platform ${{ matrix.platform }} -o ${{ matrix.asset }} -v 2 $EXTRA_FLAGS
           echo "=== Build output ==="
           find build/bin -type f | sort
@@ -131,7 +134,7 @@ jobs:
           # 安装 Hermes 核心依赖
           "$PYTHON_DIR/python.exe" -m pip install --no-warn-script-location \
             aiohttp pydantic pyyaml rich httpx openai tiktoken \
-            beautifulsoup4 lxml playwright python-dotenv
+            beautifulsoup4 lxml python-dotenv
 
           # 创建启动脚本（清除 PYTHONPATH 防止加载系统 hermes）
           cat > "$HERMES_DIR/run-hermes.bat" << 'EOF'
@@ -175,7 +178,7 @@ jobs:
           # 安装 Hermes 核心依赖
           pip install --no-cache-dir \
             aiohttp pydantic pyyaml rich httpx openai tiktoken \
-            beautifulsoup4 lxml playwright python-dotenv
+            beautifulsoup4 lxml python-dotenv
 
           # 创建 .pth 文件：让 venv 能导入 bundled 源码（替代 PYTHONPATH）
           echo "$HERMES_DIR" > "$PYTHON_DIR/lib/python$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')/site-packages/hermes_agent_bundled.pth"
