@@ -2354,7 +2354,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 
 /* ===== Form ===== */
 .form-row {
-  margin-bottom: var(--space-4);
+  margin-bottom: calc(var(--space-4) + 8px);
 }
 
 .form-row:last-child {
@@ -3139,6 +3139,8 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: var(--text-sm);
   cursor: pointer;
   transition: all var(--fast);
+  margin-top: 8px;
+  margin-bottom: 20px;
 }
 .gfw-create-key-btn:hover {
   border-color: var(--border-light);
