@@ -3679,12 +3679,14 @@ const pageNumbers = computed<(number | string)[]>(() => {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  background: var(--bg-overlay);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 100;
+  padding: 40px;
   animation: modalOverlayIn var(--duration-250) ease;
 }
 @keyframes modalOverlayIn {
@@ -3698,9 +3700,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
   box-shadow: var(--shadow-xl);
   width: 100%;
   max-width: 640px;
-  max-height: 80vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   animation: modalPanelIn var(--duration-350) var(--ease-back);
 }
 @keyframes modalPanelIn {
