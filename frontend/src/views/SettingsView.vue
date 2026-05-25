@@ -194,7 +194,6 @@
                     </button>
                   </div>
                   <p v-else class="form-hint">暂无 API Key，点击创建</p>
-                </div>
                   <div v-if="showGfwCreateKey" class="gfw-create-key-form">
                     <HxInput v-model="newKeyName" placeholder="Key 名称" style="max-width:200px;" />
                     <HxInput v-model.number="newKeyLimit" type="number" placeholder="限额(G币)" style="max-width:120px;margin-left:8px;" :min="1" :max="1000" :step="1" />
