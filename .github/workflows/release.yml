@@ -86,12 +86,9 @@ jobs:
           if [ "${{ runner.os }}" = "Linux" ]; then
             pkg-config --exists webkit2gtk-4.1 && EXTRA_FLAGS="-tags webkit2_41" || true
           fi
-          # Windows 跳过独立二进制构建，直接走 NSIS 步骤
-          if [ "${{ runner.os }}" != "Windows" ]; then
-            wails build -clean -trimpath -s -skipbindings -platform ${{ matrix.platform }} -o ${{ matrix.asset }} -v 2 $EXTRA_FLAGS
-            echo "=== Build output ==="
-            find build/bin -type f | sort
-          fi
+          wails build -clean -trimpath -s -skipbindings -platform ${{ matrix.platform }} -o ${{ matrix.asset }} -v 2 $EXTRA_FLAGS
+          echo "=== Build output ==="
+          find build/bin -type f | sort
 
       # ── 2. 克隆 Hermes 源码 ───────────────────────────
       - name: Clone Hermes source
@@ -205,18 +202,16 @@ jobs:
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
 
 # ── 4. 构建安装包 ─────────────────────────────────
-      # Windows: 构建二进制 + NSIS 打包（包含 Hermes）
+      # Windows: NSIS 打包（包含 Hermes）
       - name: Build Windows Installer
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
 
-          # ── 0. Find or install NSIS ──────────────────────
-          Write-Host "=== 0. Locate makensis ==="
+          # ── 0. Locate makensis ────────────────────────────
+          Write-Host "=== Locate makensis ==="
           $makensis = $null
-
-          # Try pre-installed first (GitHub Windows runners include NSIS)
           $candidates = @(
             "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
             "C:\Program Files (x86)\NSIS\makensis.exe",
@@ -225,96 +220,44 @@ jobs:
             "C:\Program Files\NSIS\makensis.exe"
           )
           foreach ($c in $candidates) {
-            if (Test-Path $c) { 
-              $makensis = $c
-              Write-Host "Found at: $c"
-              break 
-            }
+            if (Test-Path $c) { $makensis = $c; Write-Host "Found: $c"; break }
           }
-
-          # Try PATH
           if (-not $makensis) {
             $cmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
-            if ($cmd) { 
-              $makensis = $cmd.Source
-              Write-Host "Found in PATH: $cmd"
-            }
+            if ($cmd) { $makensis = $cmd.Source }
           }
-
-          # Install via choco if not found (most reliable on GitHub runners)
           if (-not $makensis) {
-            Write-Host "NSIS not pre-installed, installing via choco..."
             choco install nsis -y --no-progress --limit-output --timeout 180
             $env:Path += ";${env:ProgramFiles(x86)}\NSIS"
-            
             $cmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
-            if ($cmd) {
-              $makensis = $cmd.Source
-              Write-Host "Installed at: $cmd"
-            }
+            if ($cmd) { $makensis = $cmd.Source }
           }
-
-          # Fallback: download portable
-          if (-not $makensis) {
-            Write-Host "choco failed, downloading portable..."
-            $nsisDir = "$env:TEMP\nsis-portable"
-            if (-not (Test-Path "$nsisDir\makensis.exe")) {
-              Remove-Item "$nsisDir" -Recurse -Force -ErrorAction SilentlyContinue
-              New-Item -ItemType Directory -Path $nsisDir -Force | Out-Null
-              
-              $zip = "$env:TEMP\nsis.zip"
-              Invoke-WebRequest -Uri "https://nsis.sourceforge.io/ghp.php?file=nsis-3.10.zip" -OutFile $zip -MaximumRedirection 10
-              Expand-Archive -Path $zip -DestinationPath $nsisDir -Force
-              Remove-Item $zip
-            }
-            $makensis = "$nsisDir\makensis.exe"
-          }
-
-          if (-not (Test-Path $makensis)) {
-            throw "makensis not found after all attempts"
-          }
-
-          Write-Host "Using makensis: $makensis"
+          if (-not (Test-Path $makensis)) { throw "makensis not found" }
+          Write-Host "Using: $makensis"
           & $makensis /VERSION
-          if ($LASTEXITCODE -ne 0) { throw "makensis version check failed" }
 
-          # ── 1. Build Go binary ────────────────────────────
-          Write-Host "=== 1. Build Go binary ==="
-          wails build -trimpath -s -skipbindings -platform windows/amd64 -webview2 embed -v 2
-          if ($LASTEXITCODE -ne 0) { throw "wails build failed: $LASTEXITCODE" }
-
+          # ── 1. Verify artifacts ───────────────────────────
+          Write-Host "=== Verify artifacts ==="
           $bin = Get-Item build\bin\hixns-agent.exe
           Write-Host "Binary: $([math]::Round($bin.Length/1MB,1))MB"
-
-          # ── 2. Verify Hermes environment ──────────────────
-          Write-Host "=== 2. Verify Hermes ==="
           $af = (Get-ChildItem build\bin\hermes-agent -Recurse -File -ErrorAction SilentlyContinue).Count
           $pf = (Get-ChildItem build\bin\hermes-python -Recurse -File -ErrorAction SilentlyContinue).Count
-          Write-Host "hermes-agent: $af files"
-          Write-Host "hermes-python: $pf files"
-          if ($af -eq 0 -or $pf -eq 0) {
-            throw "Hermes environment incomplete: agent=$af, python=$pf"
-          }
+          Write-Host "hermes-agent: $af files, hermes-python: $pf files"
+          if ($af -eq 0 -or $pf -eq 0) { throw "Hermes environment incomplete" }
+
+          # ── 2. Copy NSIS script to build dir ──────────────
+          New-Item -ItemType Directory -Path "build\windows" -Force | Out-Null
+          Copy-Item "scripts\installer.nsi" "build\windows\installer.nsi" -Force
+          Write-Host "NSIS script ready"
 
           # ── 3. Run NSIS ──────────────────────────────────
-          Write-Host "=== 3. Run NSIS ==="
-          $script = "build\windows\installer.nsi"
-          Write-Host "PWD: $PWD"
-          Write-Host "Script: $(Resolve-Path $script)"
-          Write-Host "Binary exists: $(Test-Path build\bin\hixns-agent.exe)"
+          Write-Host "=== Running NSIS ==="
+          & $makensis "build\windows\installer.nsi" 2>&1 | ForEach-Object { Write-Host $_ }
+          if ($LASTEXITCODE -ne 0) { throw "makensis failed: $LASTEXITCODE" }
 
-          & $makensis $script 2>&1 | ForEach-Object { Write-Host $_ }
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "=== NSIS failed, listing build/bin ==="
-            Get-ChildItem build\bin -Recurse | Select-Object FullName | ForEach-Object { Write-Host $_.FullName }
-            throw "makensis failed: $LASTEXITCODE"
-          }
-
-          # ── 4. Verify result ─────────────────────────────
-          Write-Host "=== 4. Result ==="
+          # ── 4. Result ─────────────────────────────────────
           $inst = Get-Item build\bin\HiXNS-Windows-x64-Setup.exe
           Write-Host "DONE: Installer $([math]::Round($inst.Length/1MB,1))MB"
-          Write-Host "Path: $($inst.FullName)"
 
       # Linux: 手动构建 AppImage
       - name: Build Linux AppImage
