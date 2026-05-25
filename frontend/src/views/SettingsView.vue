@@ -1,5 +1,5 @@
 <template>
-  <div class="settings-view">
+  <div class="settings-view" @contextmenu="onSettingsContextMenu">
     <div class="settings-layout">
       <!-- Left navigation -->
       <aside class="settings-nav">
@@ -366,6 +366,66 @@
         <div v-if="activeSection === 'agent'" class="content-section">
           <h2 class="section-title">Agent 设置</h2>
 
+          <!-- Hermes Agent 状态卡片 -->
+          <HxCard style="margin-bottom: 16px;">
+            <template #header>
+              <span>Hermes Agent 状态</span>
+            </template>
+            <div v-if="appStore.connectionState === 'disconnected'" class="hermes-status-card disconnected">
+              <div class="hermes-status-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </div>
+              <div class="hermes-status-info">
+                <div class="hermes-status-title">后端未连接</div>
+                <div class="hermes-status-desc">Hermes Agent 服务不可用，请检查后端是否启动</div>
+              </div>
+            </div>
+            <div v-else-if="appStore.hermesStatus" class="hermes-status-card">
+              <div class="hermes-status-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+              </div>
+              <div class="hermes-status-info">
+                <div class="hermes-status-title">
+                  <span class="status-dot connected"></span>
+                  {{ appStore.hermesStatus.available ? '已集成' : '未集成' }}
+                </div>
+                <div class="hermes-status-grid">
+                  <div class="hermes-status-row">
+                    <span class="hermes-label">版本</span>
+                    <span class="hermes-value mono">{{ appStore.hermesStatus.version || '未知' }}</span>
+                  </div>
+                  <div class="hermes-status-row">
+                    <span class="hermes-label">模式</span>
+                    <span class="hermes-value">{{ sourceLabel(appStore.hermesStatus.source) }}</span>
+                  </div>
+                  <div class="hermes-status-row">
+                    <span class="hermes-label">路径</span>
+                    <span class="hermes-value mono">{{ appStore.hermesStatus.path || 'N/A' }}</span>
+                  </div>
+                  <div class="hermes-status-row">
+                    <span class="hermes-label">运行时间</span>
+                    <span class="hermes-value">{{ appStore.uptimeText }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="hermes-status-card loading">
+              <div class="hermes-status-icon">
+                <div class="mini-spinner"></div>
+              </div>
+              <div class="hermes-status-info">
+                <div class="hermes-status-title">检测中...</div>
+              </div>
+            </div>
+          </HxCard>
+
           <HxCard style="margin-bottom: 16px;">
             <template #header>
               <span>对话行为</span>
@@ -433,11 +493,7 @@
           <HxCard style="margin-bottom: 16px;">
             <div class="form-row">
               <label class="form-label">终端后端</label>
-              <HxSelect v-model="terminalSettings.backend" style="max-width: 200px;">
-                <option value="local">本地 (local)</option>
-                <option value="docker">Docker</option>
-                <option value="ssh">SSH 远程</option>
-              </HxSelect>
+              <HxSelect v-model="terminalSettings.backend" :options="backendOptions" style="max-width: 200px;" />
               <p class="form-hint">命令执行环境</p>
             </div>
             <div class="form-row">
@@ -452,11 +508,7 @@
             </div>
             <div class="form-row">
               <label class="form-label">命令审批</label>
-              <HxSelect v-model="terminalSettings.approvalMode" style="max-width: 200px;">
-                <option value="manual">手动审批 (manual)</option>
-                <option value="smart">智能审批 (smart)</option>
-                <option value="off">关闭审批 (YOLO)</option>
-              </HxSelect>
+              <HxSelect v-model="terminalSettings.approvalMode" :options="approvalModeOptions" style="max-width: 200px;" />
               <p class="form-hint">危险命令的审批方式</p>
             </div>
           </HxCard>
@@ -511,11 +563,7 @@
             </div>
             <div class="form-row">
               <label class="form-label">推理过程</label>
-              <HxSelect v-model="displaySettings.showReasoning" style="max-width: 200px;">
-                <option value="none">不显示</option>
-                <option value="show">展开显示</option>
-                <option value="hide">折叠显示</option>
-              </HxSelect>
+              <HxSelect v-model="displaySettings.showReasoning" :options="showReasoningOptions" style="max-width: 200px;" />
               <p class="form-hint">模型的 thinking/reasoning 内容</p>
             </div>
             <div class="form-row">
@@ -554,22 +602,11 @@
             </div>
             <div class="form-row">
               <label class="form-label">STT 提供商</label>
-              <HxSelect v-model="voiceSettings.sttProvider" style="max-width: 200px;">
-                <option value="local">本地 Whisper (免费)</option>
-                <option value="groq">Groq Whisper</option>
-                <option value="openai">OpenAI Whisper</option>
-                <option value="mistral">Mistral Voxtral</option>
-              </HxSelect>
+              <HxSelect v-model="voiceSettings.sttProvider" :options="sttProviderOptions" style="max-width: 200px;" />
             </div>
             <div v-if="voiceSettings.sttProvider === 'local'" class="form-row">
               <label class="form-label">Whisper 模型</label>
-              <HxSelect v-model="voiceSettings.whisperModel" style="max-width: 200px;">
-                <option value="tiny">tiny (最快)</option>
-                <option value="base">base (推荐)</option>
-                <option value="small">small</option>
-                <option value="medium">medium</option>
-                <option value="large-v3">large-v3 (最准)</option>
-              </HxSelect>
+              <HxSelect v-model="voiceSettings.whisperModel" :options="whisperModelOptions" style="max-width: 200px;" />
             </div>
           </HxCard>
 
@@ -580,13 +617,7 @@
             </template>
             <div class="form-row">
               <label class="form-label">TTS 提供商</label>
-              <HxSelect v-model="voiceSettings.ttsProvider" style="max-width: 200px;">
-                <option value="edge">Edge TTS (免费)</option>
-                <option value="elevenlabs">ElevenLabs</option>
-                <option value="openai">OpenAI TTS</option>
-                <option value="minimax">MiniMax</option>
-                <option value="mistral">Mistral</option>
-              </HxSelect>
+              <HxSelect v-model="voiceSettings.ttsProvider" :options="ttsProviderOptions" style="max-width: 200px;" />
             </div>
             <div v-if="voiceSettings.ttsProvider !== 'edge'" class="form-row">
               <label class="form-label">TTS API Key</label>
@@ -646,14 +677,22 @@
           </div>
         </div>
       </div>
+      <!-- Context menu (inside root to avoid fragment breaking transition) -->
+      <div v-if="settingsCtx.show" class="ctx-menu" :style="{ top: settingsCtx.y + 'px', left: settingsCtx.x + 'px' }" @click.stop @contextmenu.prevent>
+        <button v-if="settingsCtx.hasSelection" @click="settingsCtxCopy" class="ctx-item">复制</button>
+        <button v-if="settingsCtx.hasSelection" @click="settingsCtxCut" class="ctx-item">剪切</button>
+        <button v-if="settingsCtx.hasContent && !settingsCtx.hasSelection" @click="settingsCtxSelectAll" class="ctx-item">全选</button>
+        <button @click="settingsCtxPaste" class="ctx-item">粘贴</button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useGfwStore } from '../stores/gfw'
 import { useChatStore } from '../stores/chat'
+import { useAppStore } from '../stores/app'
 import { storeToRefs } from 'pinia'
 import { hermesConfigSet, hermesToolsList, hermesToolsEnable, hermesToolsDisable, hermesMemoryGet, hermesMemoryEdit } from '../api'
 import IconUser from '../components/icons/IconUser.vue'
@@ -663,8 +702,55 @@ import { useToast } from '../composables/useToast'
 
 const toast = useToast()
 
+// Context menu
+const settingsCtx = reactive({ show: false, x: 0, y: 0, hasContent: false, hasSelection: false, target: null as HTMLInputElement | HTMLTextAreaElement | null })
+function onSettingsContextMenu(e: MouseEvent) {
+  let target = e.target as HTMLElement
+  // 尝试从目标元素或其父容器中找到底层 input/textarea
+  let inp = target.closest('input, textarea') as HTMLInputElement | HTMLTextAreaElement | null
+  if (!inp) {
+    const wrapper = target.closest('.hixns-input, .hixns-textarea-inner') as HTMLElement | null
+    if (wrapper) inp = wrapper.querySelector('input, textarea')
+  }
+  if (!inp) { e.preventDefault(); return }
+  e.preventDefault()
+  settingsCtx.target = inp
+  settingsCtx.hasContent = !!inp.value.length
+  settingsCtx.hasSelection = typeof inp.selectionStart === 'number' && inp.selectionStart !== inp.selectionEnd
+  settingsCtx.x = e.clientX
+  settingsCtx.y = e.clientY
+  settingsCtx.show = true
+  nextTick(() => { document.addEventListener('click', () => { settingsCtx.show = false }, { once: true }) })
+}
+function settingsCtxCopy() { try { document.execCommand('copy') } catch {}; settingsCtx.show = false }
+function settingsCtxCut() { try { document.execCommand('cut') } catch {}; settingsCtx.show = false }
+function settingsCtxPaste() {
+  const inp = settingsCtx.target
+  if (!inp) return
+  settingsCtx.show = false
+  if (navigator.clipboard?.readText) {
+    navigator.clipboard.readText().then(text => {
+      if (text) {
+        inp.focus()
+        const s = inp.selectionStart || 0, e = inp.selectionEnd || 0
+        const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(inp), 'value')?.set
+        if (setter) { setter.call(inp, inp.value.substring(0, s) + text + inp.value.substring(e)) }
+        inp.selectionStart = inp.selectionEnd = s + text.length
+        inp.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+    }).catch(() => {})
+  }
+}
+function settingsCtxSelectAll() { settingsCtx.target?.select(); settingsCtx.show = false }
+
 const gfwStore = useGfwStore()
 const chatStore = useChatStore()
+const appStore = useAppStore()
+
+function sourceLabel(source: string): string {
+  const map: Record<string, string> = { bundled: '内嵌独立', system: '系统安装', user: '用户安装', '': '未检测到' }
+  return map[source] || source
+}
 
 const { isLoggedIn, user, balance, models, apiKeys, dailyUsage, rechargePackages, loading } = storeToRefs(gfwStore)
 const { selectedModel, providerMode: storeProviderMode, customProvider } = storeToRefs(chatStore)
@@ -677,12 +763,53 @@ const showCreateKey = ref(false)
 const newKeyName = ref('')
 const newKeyLimit = ref(50)
 const userInfo = ref<{ group_name: string } | null>(null)
-const activeSection = ref('account')
+const activeSection = ref('model')
+
+// HxSelect 选项定义
+const backendOptions = [
+  { value: 'local', label: '本地 (local)' },
+  { value: 'docker', label: 'Docker' },
+  { value: 'ssh', label: 'SSH 远程' },
+]
+
+const approvalModeOptions = [
+  { value: 'manual', label: '手动审批 (manual)' },
+  { value: 'smart', label: '智能审批 (smart)' },
+  { value: 'off', label: '关闭审批 (YOLO)' },
+]
+
+const showReasoningOptions = [
+  { value: 'none', label: '不显示' },
+  { value: 'show', label: '展开显示' },
+  { value: 'hide', label: '折叠显示' },
+]
+
+const sttProviderOptions = [
+  { value: 'local', label: '本地 Whisper (免费)' },
+  { value: 'groq', label: 'Groq Whisper' },
+  { value: 'openai', label: 'OpenAI Whisper' },
+  { value: 'mistral', label: 'Mistral Voxtral' },
+]
+
+const whisperModelOptions = [
+  { value: 'tiny', label: 'tiny (最快)' },
+  { value: 'base', label: 'base (推荐)' },
+  { value: 'small', label: 'small' },
+  { value: 'medium', label: 'medium' },
+  { value: 'large-v3', label: 'large-v3 (最准)' },
+]
+
+const ttsProviderOptions = [
+  { value: 'edge', label: 'Edge TTS (免费)' },
+  { value: 'elevenlabs', label: 'ElevenLabs' },
+  { value: 'openai', label: 'OpenAI TTS' },
+  { value: 'minimax', label: 'MiniMax' },
+  { value: 'mistral', label: 'Mistral' },
+]
 
 // 设置导航搜索
 const searchQuery = ref('')
 const navItems = [
-  { key: 'account', label: '账户', keywords: '登录 注册 余额 密码 邮箱 账号', icon: 'IconUser' },
   { key: 'model', label: '模型设置', keywords: 'API 提供商 模型 provider 同步 连接测试 自定义 GFW', icon: 'IconSettings' },
   { key: 'agent', label: 'Agent', keywords: '轮次 系统提示 上下文压缩 记忆 用户档案 max turns', icon: '' },
   { key: 'terminal', label: '终端', keywords: '后端 超时 审批模式 SSH Docker 工作目录 timeout', icon: '' },
@@ -691,7 +818,6 @@ const navItems = [
   { key: 'security', label: '安全', keywords: '密钥 PII 脱敏 屏蔽 站点黑名单 工具开关 redaction', icon: '' },
   { key: 'apikeys', label: 'API Key', keywords: '密钥管理 创建 删除 限额', icon: '' },
   { key: 'usage', label: '用量统计', keywords: '统计 日报 消耗 调用次数 token', icon: '' },
-  { key: 'recharge', label: '充值', keywords: '套餐 支付 价格 余额 购买', icon: '' },
 ]
 const filteredNavItems = computed(() => {
   if (!searchQuery.value.trim()) return navItems
@@ -1638,6 +1764,7 @@ onMounted(async () => {
 .settings-layout {
   display: flex;
   height: 100%;
+  position: relative;
 }
 
 /* ===== Left Nav — VueBits Glass ===== */
@@ -2388,5 +2515,153 @@ onMounted(async () => {
 
 .form-textarea::placeholder {
   color: var(--color-text-tertiary);
+}
+
+/* ════════════════════════════════════════════════════════════
+   Hermes Status Card
+   ════════════════════════════════════════════════════════════ */
+.hermes-status-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.hermes-status-card.disconnected {
+  color: var(--error);
+}
+
+.hermes-status-card.loading {
+  color: var(--color-text-secondary);
+}
+
+.hermes-status-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 132, 255, 0.08);
+  color: var(--color-primary);
+}
+
+.hermes-status-card.disconnected .hermes-status-icon {
+  background: rgba(255, 69, 58, 0.08);
+  color: var(--error);
+}
+
+.hermes-status-card.loading .hermes-status-icon {
+  background: rgba(255, 159, 10, 0.08);
+  color: var(--warning);
+}
+
+.hermes-status-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.hermes-status-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hermes-status-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.hermes-status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+  margin-top: 10px;
+}
+
+.hermes-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.hermes-label {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+  min-width: 48px;
+}
+
+.hermes-value {
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hermes-value.mono {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 11px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-dot.connected {
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(48, 209, 88, 0.5);
+}
+
+.mini-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 159, 10, 0.3);
+  border-top-color: var(--warning);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+:deep(.ctx-menu) {
+  position: fixed;
+  z-index: 2000;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  min-width: 100px;
+  backdrop-filter: blur(16px);
+}
+
+:deep(.ctx-item) {
+  display: block;
+  width: 100%;
+  padding: 7px 14px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--fast);
+}
+
+:deep(.ctx-item:hover) {
+  background: var(--bg-elevated);
 }
 </style>
