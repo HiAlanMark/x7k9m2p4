@@ -19,7 +19,92 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
 const isDev = import.meta.env?.DEV ?? false
 const GFW_BASE = isDev ? '/proxy/gfw/api/v1' : 'https://api.gfw.net/api/v1'
 const GFW_AI = isDev ? '/proxy/gfw/v1' : 'https://api.gfw.net/v1'
-const TWO_X_BASE = isDev ? '/proxy/2x/api/v1' : 'https://api.2x.com.cn/api/v1'
+const TWO_X_BASE = isDev ? '/proxy/agent/v1/store' : '/v1/store'
+
+// ══ 2x 全局限流：所有 2x API 请求串行排队，间隔 300ms ══
+let twoXQueue: Array<() => void> = []
+let twoXIdle = true
+function twoXEnqueue(task: () => void) {
+  twoXQueue.push(task)
+  if (twoXIdle) drainTwoXQueue()
+}
+async function drainTwoXQueue() {
+  twoXIdle = false
+  while (twoXQueue.length > 0) {
+    const task = twoXQueue.shift()!
+    task()
+    await new Promise(r => setTimeout(r, 300))
+  }
+  twoXIdle = true
+}
+
+async function twoXFetch(url: string, opts?: RequestInit, retries = 2): Promise<any> {
+  return new Promise((resolve, reject) => {
+    twoXEnqueue(async () => {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const r = await fetch(url, opts)
+          if (r.status === 429) {
+            if (attempt < retries) {
+              await new Promise(r => setTimeout(r, 2000 * (attempt + 1)))
+              continue
+            }
+            resolve({ _error: true, _status: 429 })
+            return
+          }
+          const body = await r.json()
+          // 转换 PostgreSQL 数组字段为 JS 数组（2x 数据库格式）
+          normalizeTwoXResponse(body)
+          resolve(body)
+          return
+        } catch (err) {
+          if (attempt < retries) {
+            await new Promise(r => setTimeout(r, 1000 * (attempt + 1)))
+            continue
+          }
+          reject(err)
+        }
+      }
+    })
+  })
+}
+
+// 解析 PostgreSQL 数组字符串 → JS 数组
+function parsePGArray(s: any): string[] {
+  if (Array.isArray(s)) return s
+  if (typeof s !== 'string' || !s.startsWith('{')) return []
+  const inner = s.slice(1, -1)
+  if (!inner) return []
+  const result: string[] = []
+  let i = 0
+  while (i < inner.length) {
+    if (inner[i] === '"') {
+      const end = inner.indexOf('"', i + 1)
+      if (end === -1) break
+      result.push(inner.slice(i + 1, end))
+      i = end + 1
+      while (i < inner.length && inner[i] === ',') i++
+    } else {
+      const comma = inner.indexOf(',', i)
+      if (comma === -1) { result.push(inner.slice(i)); break }
+      result.push(inner.slice(i, comma))
+      i = comma + 1
+    }
+  }
+  return result
+}
+
+// 递归转换 2x API 响应中的 PostgreSQL 数组字段
+function normalizeTwoXResponse(obj: any) {
+  if (!obj || typeof obj !== 'object') return
+  if (Array.isArray(obj)) { for (const item of obj) normalizeTwoXResponse(item); return }
+  for (const key of ['tags', 'capabilities', 'capability', 'requirements', 'platforms']) {
+    if (typeof obj[key] === 'string') obj[key] = parsePGArray(obj[key])
+  }
+  for (const k of ['data', 'skills', 'results', 'result']) {
+    if (obj[k]) normalizeTwoXResponse(obj[k])
+  }
+}
 
 let gfwJwt: string | null = localStorage.getItem('gfw_jwt')
 let gfwApiKey: string | null = localStorage.getItem('gfw_api_key')
@@ -159,32 +244,27 @@ async function browserFallback<T>(cmd: string, args?: Record<string, unknown>): 
       if (args?.q) url += `&q=${encodeURIComponent(args.q as string)}`
       if (args?.category) url += `&category=${encodeURIComponent(args.category as string)}`
       if (args?.sort) url += `&sort=${args.sort}`
-      const r = await fetch(url)
-      const body = await r.json()
-      return { skills: body.data || [] } as T
+      const body = await twoXFetch(url)
+      return { skills: body.data || [], total: body.total || 0 } as T
     }
 
     case 'skill_store_search_skills': {
-      const r = await fetch(`${TWO_X_BASE}/skills/latest?q=${encodeURIComponent(args?.query as string)}&limit=50`)
-      const body = await r.json()
+      const body = await twoXFetch(`${TWO_X_BASE}/skills/latest?q=${encodeURIComponent(args?.query as string)}&limit=50`)
       return { skills: body.data || [] } as T
     }
 
     case 'skill_store_get_skill_detail': {
-      const r = await fetch(`${TWO_X_BASE}/skills/${args?.idOrSlug}`)
-      const body = await r.json()
+      const body = await twoXFetch(`${TWO_X_BASE}/skills/${args?.idOrSlug}`)
       return body.data as T
     }
 
     case 'skill_store_get_popular_skills': {
-      const r = await fetch(`${TWO_X_BASE}/skills/popular?limit=${args?.limit || 50}`)
-      const body = await r.json()
+      const body = await twoXFetch(`${TWO_X_BASE}/skills/popular?limit=${args?.limit || 50}`)
       return { skills: body.data || [] } as T
     }
 
     case 'skill_store_get_rankings': {
-      const r = await fetch(`${TWO_X_BASE}/rankings/${args?.rankingType}`)
-      const body = await r.json()
+      const body = await twoXFetch(`${TWO_X_BASE}/rankings/${args?.rankingType}`)
       return { rankings: body.skills || [] } as T
     }
 
@@ -421,8 +501,12 @@ export async function hermesCronRemove(id: string) {
 export async function hermesCronRun(id: string) {
   return agentPost('/v1/agent/cron/run', { id })
 }
+export async function hermesCronEdit(id: string, updates: { schedule?: string; prompt?: string; name?: string; skills?: string }) {
+  return agentPost('/v1/agent/cron/edit', { id, ...updates })
+}
+
 export async function hermesCronUpdate(id: string, updates: { schedule?: string; prompt?: string; name?: string }) {
-  return agentPost('/v1/agent/cron/update', { id, ...updates })
+  return hermesCronEdit(id, updates)
 }
 
 // --- Sessions ---
@@ -545,6 +629,34 @@ async function checkAgentHealth(agentUrl: string): Promise<boolean> {
   }
 }
 
+export interface AgentStatus {
+  status: string
+  uptime: number
+  agent: string
+  version: string
+  runtime: string
+  tools: string[]
+  platform: string
+  hermes: {
+    available: boolean
+    path?: string
+    version?: string
+    source_dir?: string
+    skills_dir: string
+    source: string
+  }
+}
+
+export async function getAgentStatus(agentUrl: string): Promise<AgentStatus | null> {
+  try {
+    const r = await fetch(`${agentUrl}/v1/agent/status`, { signal: AbortSignal.timeout(3000) })
+    if (!r.ok) return null
+    return await r.json()
+  } catch {
+    return null
+  }
+}
+
 async function agentChat(
   content: string,
   model: string,
@@ -654,7 +766,10 @@ async function agentChat(
               onError(evt.message || '未知错误')
               return
             case 'done':
-              fullText = evt.content || fullText
+              fullText = evt.final_response || evt.content || fullText
+              if (evt.token_usage) {
+                usage = evt.token_usage
+              }
               onDone(fullText, usage)
               return
           }
@@ -671,7 +786,10 @@ async function agentChat(
         try {
           const evt = JSON.parse(data)
           if (evt.type === 'text') { fullText += evt.content; onChunk(evt.content) }
-          else if (evt.type === 'done') { fullText = evt.content || fullText }
+          else if (evt.type === 'done') {
+            fullText = evt.final_response || evt.content || fullText
+            if (evt.token_usage) { usage = evt.token_usage }
+          }
         } catch { /* ignore */ }
       }
     }

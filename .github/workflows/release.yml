@@ -109,11 +109,11 @@ jobs:
           PYTHON_DIR="$BUILD_DIR/hermes-python"
           mkdir -p "$HERMES_DIR" "$PYTHON_DIR"
 
-          # 复制 Hermes 源码
-          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py; do
+          # 复制 Hermes 全部源码（必须包含所有 MAPPING 中的模块）
+          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py utils.py toolset_distributions.py trajectory_compressor.py hermes_bootstrap.py hermes_time.py rl_cli.py; do
             [ -f "/tmp/hermes-src/$f" ] && cp "/tmp/hermes-src/$f" "$HERMES_DIR/"
           done
-          for d in agent tools hermes_cli gateway plugins cron acp_adapter tui_gateway skills; do
+          for d in agent tools hermes_cli gateway plugins cron acp_adapter tui_gateway skills providers hermes_bootstrap hermes_time rl_cli acp_registry; do
             [ -d "/tmp/hermes-src/$d" ] && cp -r "/tmp/hermes-src/$d" "$HERMES_DIR/$d"
           done
           [ -f "/tmp/hermes-src/pyproject.toml" ] && cp "/tmp/hermes-src/pyproject.toml" "$HERMES_DIR/"
@@ -123,8 +123,9 @@ jobs:
           unzip -q /tmp/py.zip -d "$PYTHON_DIR/"
           rm /tmp/py.zip
 
-          # 启用 site 模块
+          # 启用 site 模块 + 添加 hermes-agent 源码路径（替代 PYTHONPATH）
           echo "import site" >> "$PYTHON_DIR/python311._pth"
+          echo "../hermes-agent" >> "$PYTHON_DIR/python311._pth"
 
           # 安装 pip
           curl -fsSL "https://bootstrap.pypa.io/get-pip.py" -o "$PYTHON_DIR/get-pip.py"
@@ -135,12 +136,14 @@ jobs:
             aiohttp pydantic pyyaml rich httpx openai tiktoken \
             beautifulsoup4 lxml playwright python-dotenv
 
-          # 创建启动脚本
+          # 创建启动脚本（清除 PYTHONPATH 防止加载系统 hermes）
           cat > "$HERMES_DIR/run-hermes.bat" << 'EOF'
           @echo off
+          setlocal
+          set PYTHONPATH=
           set SCRIPT_DIR=%~dp0
-          set PYTHON_DIR=%SCRIPT_DIR%..\hermes-python
-          "%PYTHON_DIR%\python.exe" -m hermes_cli %*
+          set PYTHON_DIR=%SCRIPT_DIR%..\\hermes-python
+          "%PYTHON_DIR%\\python.exe" -m hermes_cli %*
           EOF
 
           # 清理
@@ -159,11 +162,11 @@ jobs:
           PYTHON_DIR="$BUILD_DIR/hermes-python"
           mkdir -p "$HERMES_DIR" "$PYTHON_DIR"
 
-          # 复制 Hermes 源码
-          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py; do
+          # 复制 Hermes 全部源码（必须包含所有 MAPPING 中的模块）
+          for f in run_agent.py model_tools.py toolsets.py cli.py hermes_state.py hermes_constants.py hermes_logging.py batch_runner.py utils.py toolset_distributions.py trajectory_compressor.py hermes_bootstrap.py hermes_time.py rl_cli.py; do
             [ -f "/tmp/hermes-src/$f" ] && cp "/tmp/hermes-src/$f" "$HERMES_DIR/"
           done
-          for d in agent tools hermes_cli gateway plugins cron acp_adapter tui_gateway skills; do
+          for d in agent tools hermes_cli gateway plugins cron acp_adapter tui_gateway skills providers hermes_bootstrap hermes_time rl_cli acp_registry; do
             [ -d "/tmp/hermes-src/$d" ] && cp -r "/tmp/hermes-src/$d" "$HERMES_DIR/$d"
           done
           [ -f "/tmp/hermes-src/pyproject.toml" ] && cp "/tmp/hermes-src/pyproject.toml" "$HERMES_DIR/"
@@ -177,13 +180,18 @@ jobs:
             aiohttp pydantic pyyaml rich httpx openai tiktoken \
             beautifulsoup4 lxml playwright python-dotenv
 
+          # 创建 .pth 文件：让 venv 能导入 bundled 源码（替代 PYTHONPATH）
+          echo "$HERMES_DIR" > "$PYTHON_DIR/lib/python$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')/site-packages/hermes_agent_bundled.pth"
+
           deactivate
 
-          # 创建启动脚本
+          # 创建启动脚本（清除 PYTHONPATH 防止加载系统 hermes）
           cat > "$HERMES_DIR/run-hermes.sh" << 'SCRIPT'
           #!/bin/bash
           SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
           PYTHON_DIR="$SCRIPT_DIR/../hermes-python"
+          # 清除 PYTHONPATH，防止 bundled venv 加载系统 hermes 模块
+          unset PYTHONPATH
           exec "$PYTHON_DIR/bin/python3" -m hermes_cli "$@"
           SCRIPT
           chmod +x "$HERMES_DIR/run-hermes.sh"

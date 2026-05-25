@@ -76,28 +76,28 @@ defineExpose({ focus: () => areaRef.value?.focus(), blur: () => areaRef.value?.b
 .hixns-textarea-label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   user-select: none;
 }
 
 .hixns-textarea-inner {
   position: relative;
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-input);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
+  -webkit-backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
   padding: 10px 12px;
-  transition: all 0.3s var(--ease-out-expo);
+  transition: border-color var(--fast), box-shadow var(--fast);
 }
 
 .hixns-textarea-wrap.focused .hixns-textarea-inner {
-  border-color: var(--color-border-glow);
-  box-shadow: var(--shadow-glow-sm);
-  background: var(--color-bg-card);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(90,200,250,0.1);
 }
 
 .hixns-textarea-wrap.error .hixns-textarea-inner {
-  border-color: var(--color-error);
-  box-shadow: 0 0 0 3px rgba(255,69,58,0.1);
+  border-color: var(--error);
 }
 
 .hixns-textarea-wrap.disabled .hixns-textarea-inner {
@@ -113,13 +113,13 @@ defineExpose({ focus: () => areaRef.value?.focus(), blur: () => areaRef.value?.b
   font-family: var(--font-family);
   font-size: 13px;
   line-height: 1.6;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   resize: vertical;
   min-height: 0;
 }
 
 .hixns-textarea::placeholder {
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
 }
 
 .hixns-textarea:disabled {
@@ -132,19 +132,19 @@ defineExpose({ focus: () => areaRef.value?.focus(), blur: () => areaRef.value?.b
   right: 10px;
   font-size: 10px;
   font-family: var(--font-mono);
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   pointer-events: none;
 }
 
 .hixns-textarea-error {
   font-size: 11px;
-  color: var(--color-error);
+  color: var(--error);
   margin: 0;
 }
 
 .hixns-textarea-hint {
   font-size: 11px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   margin: 0;
 }
 </style>

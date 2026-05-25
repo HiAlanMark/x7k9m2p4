@@ -1,6 +1,5 @@
 <template>
   <span class="hixns-badge" :class="badgeClass">
-    <span v-if="variant !== 'default'" class="hixns-badge-dot" :style="{ backgroundColor: dotColor }" />
     <slot />
   </span>
 </template>

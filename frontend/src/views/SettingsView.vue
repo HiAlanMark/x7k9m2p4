@@ -101,63 +101,177 @@
             <template #header>
               <span>内置模型服务</span>
             </template>
-            <div class="form-row">
-              <label class="form-label">GFW API Key</label>
-              <HxInput v-model="gfwApiKey" type="password" placeholder="gfw-..." />
-              <p class="form-hint">在 gfw.net 控制台获取 API Key</p>
-            </div>
 
+            <!-- 认证方式选择 -->
             <div class="form-row">
-              <label class="form-label">
-                提供商
-                <HxButton variant="ghost" size="sm" :loading="gfwSyncing" @click="syncGfwModels" style="margin-left:8px;">
-                  {{ gfwSyncing ? '同步中...' : '同步' }}
-                </HxButton>
-              </label>
-              <div v-if="gfwProviders.length > 0" class="provider-chips">
+              <label class="form-label">认证方式</label>
+              <div class="gfw-auth-modes">
                 <button
-                  :class="['chip', { active: !selectedProvider }]"
-                  @click="selectedProvider = ''"
-                >全部</button>
+                  :class="['gfw-auth-mode', { active: gfwAuthMode === 'account' }]"
+                  @click="switchGfwAuthMode('account')"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  <span>账户登录</span>
+                </button>
                 <button
-                  v-for="p in gfwProviders"
-                  :key="p"
-                  :class="['chip', { active: selectedProvider === p }]"
-                  @click="selectedProvider = p"
-                >{{ p }} <span class="chip-count">{{ providerModelCount(p) }}</span></button>
+                  :class="['gfw-auth-mode', { active: gfwAuthMode === 'manual' }]"
+                  @click="switchGfwAuthMode('manual')"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                  <span>手动输入 Key</span>
+                </button>
               </div>
-              <p v-else class="form-hint">点击「同步」获取提供商列表</p>
             </div>
 
-            <div class="form-row">
-              <label class="form-label">模型</label>
-              <HxSelect 
-                v-model="selectedModel" 
-                v-if="filteredGfwModels.length > 0"
-                :options="gfwModelOptions"
-              />
-              <HxInput v-else v-model="selectedModel" placeholder="输入模型名称" />
-            </div>
+            <!-- 账户登录模式 -->
+            <template v-if="gfwAuthMode === 'account'">
+              <div v-if="!isLoggedIn">
+                <div class="form-row">
+                  <label class="form-label">邮箱</label>
+                  <HxInput v-model="gfwAccountEmail" type="email" placeholder="请输入邮箱" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">密码</label>
+                  <HxInput v-model="gfwAccountPassword" type="password" placeholder="请输入密码" @keydown.enter="handleGfwAccountLogin" />
+                </div>
+                <div class="form-actions">
+                  <HxButton variant="primary" :loading="gfwAccountLoggingIn" @click="handleGfwAccountLogin">
+                    {{ gfwAccountLoggingIn ? '登录中...' : '登录' }}
+                  </HxButton>
+                </div>
+              </div>
 
-            <!-- 当前选中模型的详情 -->
-            <div v-if="selectedGfwModel" class="model-detail">
-              <div class="detail-row">
-                <span class="detail-label">provider</span>
-                <span class="detail-value">{{ selectedGfwModel.provider }}</span>
+              <div v-else>
+                <!-- 用户信息行 -->
+                <div class="form-row">
+                  <div class="gfw-user-info">
+                    <div class="gfw-user-avatar">
+                      <IconUser :size="20" />
+                    </div>
+                    <div class="gfw-user-detail">
+                      <div class="gfw-user-name">{{ user?.nickname || user?.email }}</div>
+                      <div class="gfw-user-balance">{{ balance?.toFixed(2) }} G币</div>
+                    </div>
+                    <HxButton variant="ghost" size="sm" @click="gfwStore.logout(); gfwAccountEmail=''; gfwAccountPassword=''; gfwSelectedKeyId=''">登出</HxButton>
+                  </div>
+                </div>
+
+                <!-- API Key 选择 -->
+                <div class="form-row">
+                  <label class="form-label">
+                    API Key
+                    <HxButton variant="ghost" size="sm" :loading="gfwKeysLoading" @click="gfwStore.fetchApiKeys()" style="margin-left:8px;">
+                      {{ gfwKeysLoading ? '刷新中...' : '刷新' }}
+                    </HxButton>
+                  </label>
+                  <div v-if="apiKeys.length > 0" class="gfw-key-list">
+                    <button
+                      v-for="key in apiKeys.slice(0, 5)"
+                      :key="key.id"
+                      :class="['gfw-key-item', { active: gfwSelectedKeyId === key.id }]"
+                      @click="gfwSelectedKeyId = key.id; gfwApiKey = key.full_key || key.key_prefix + '***'"
+                    >
+                      <div class="gfw-key-info">
+                        <span class="gfw-key-name">{{ key.name }}</span>
+                        <span class="gfw-key-prefix">{{ key.key_prefix }}****</span>
+                      </div>
+                      <span class="gfw-key-quota">{{ key.gcoin_limit ? key.gcoin_limit + 'G' : '无限额' }}</span>
+                      <svg v-if="gfwSelectedKeyId === key.id" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </button>
+                  </div>
+                  <p v-else class="form-hint">暂无 API Key，点击创建</p>
+                </div>
+
+                <!-- 创建新 Key -->
+                <div class="form-row" v-if="isLoggedIn">
+                  <button class="gfw-create-key-btn" @click="showGfwCreateKey = !showGfwCreateKey">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    创建新 Key
+                  </button>
+                  <div v-if="showGfwCreateKey" class="gfw-create-key-form">
+                    <HxInput v-model="newKeyName" placeholder="Key 名称" style="max-width:200px;" />
+                    <HxInput v-model.number="newKeyLimit" type="number" placeholder="限额(G币)" style="max-width:120px;margin-left:8px;" :min="1" :max="1000" :step="1" />
+                    <HxButton variant="primary" size="sm" :loading="gfwCreatingKey" @click="createGfwKey" style="margin-left:8px;">创建</HxButton>
+                  </div>
+                </div>
               </div>
-              <div class="detail-row">
-                <span class="detail-label">model</span>
-                <span class="detail-value">{{ selectedGfwModel.model_code }}</span>
+            </template>
+
+            <!-- 手动输入 Key 模式 -->
+            <template v-else>
+              <div class="form-row">
+                <label class="form-label">GFW API Key</label>
+                <HxInput v-model="gfwApiKey" type="password" placeholder="gfw-..." />
+                <p class="form-hint">在 gfw.net 控制台获取 API Key</p>
               </div>
-              <div class="detail-row" v-if="selectedGfwModel.input_price">
-                <span class="detail-label">price</span>
-                <span class="detail-value">¥{{ selectedGfwModel.input_price }}/M in · ¥{{ selectedGfwModel.output_price }}/M out</span>
+            </template>
+
+            <!-- 模型设置 — 仅在手动模式或已登录时显示 -->
+            <template v-if="gfwAuthMode === 'manual' || isLoggedIn">
+              <div class="form-row">
+                <label class="form-label">
+                  提供商
+                  <HxButton variant="ghost" size="sm" :loading="gfwSyncing" @click="syncGfwModels" style="margin-left:8px;">
+                    {{ gfwSyncing ? '同步中...' : '同步' }}
+                  </HxButton>
+                </label>
+                <div v-if="gfwProviders.length > 0" class="provider-chips">
+                  <button
+                    :class="['chip', { active: !selectedProvider }]"
+                    @click="selectedProvider = ''"
+                  >全部</button>
+                  <button
+                    v-for="p in gfwProviders"
+                    :key="p"
+                    :class="['chip', { active: selectedProvider === p }]"
+                    @click="selectedProvider = p"
+                  >{{ p }} <span class="chip-count">{{ providerModelCount(p) }}</span></button>
+                </div>
+                <p v-else class="form-hint">点击「同步」获取提供商列表</p>
               </div>
-              <div class="detail-row" v-if="selectedGfwModel.context_length">
-                <span class="detail-label">context</span>
-                <span class="detail-value">{{ formatContext(selectedGfwModel.context_length) }}</span>
+
+              <div class="form-row">
+                <label class="form-label">模型</label>
+                <HxSelect
+                  v-model="selectedModel"
+                  v-if="filteredGfwModels.length > 0"
+                  :options="gfwModelOptions"
+                />
+                <HxInput v-else v-model="selectedModel" placeholder="输入模型名称" />
               </div>
-            </div>
+
+              <!-- 当前选中模型的详情 -->
+              <div v-if="selectedGfwModel" class="model-detail">
+                <div class="detail-row">
+                  <span class="detail-label">provider</span>
+                  <span class="detail-value">{{ selectedGfwModel.provider }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">model</span>
+                  <span class="detail-value">{{ selectedGfwModel.model_code }}</span>
+                </div>
+                <div class="detail-row" v-if="selectedGfwModel.input_price">
+                  <span class="detail-label">price</span>
+                  <span class="detail-value">¥{{ selectedGfwModel.input_price }}/M in · ¥{{ selectedGfwModel.output_price }}/M out</span>
+                </div>
+                <div class="detail-row" v-if="selectedGfwModel.context_length">
+                  <span class="detail-label">context</span>
+                  <span class="detail-value">{{ formatContext(selectedGfwModel.context_length) }}</span>
+                </div>
+              </div>
+            </template>
+            <p v-else class="form-hint" style="text-align:center;padding:12px 0;">请先登录后再选择模型</p>
           </HxCard>
 
           <!-- 自定义提供商模式 -->
@@ -251,92 +365,149 @@
           <div class="form-actions" style="margin-top: 20px;">
             <HxButton variant="primary" @click="saveModelSettings">保存设置</HxButton>
             <span v-if="saveSuccess" class="save-feedback">设置已保存</span>
+            <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
+              <span class="save-dot blue"></span> 已编辑未保存
+            </span>
+            <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
+              <span class="save-dot green"></span> 正在自动保存
+            </span>
+            <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              已保存
+            </span>
           </div>
-        </div>
-
-        <!-- API Keys section -->
-        <div v-if="activeSection === 'apikeys'" class="content-section">
-          <h2 class="section-title">API Key 管理</h2>
-
-          <HxCard>
-            <div class="no-padding">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>名称</th>
-                    <th>Key 前缀</th>
-                    <th>限额</th>
-                    <th>已用</th>
-                    <th>状态</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="key in apiKeys.slice(0, 10)" :key="key.id">
-                    <td class="cell-name">{{ key.name }}</td>
-                    <td class="cell-mono">{{ key.key_prefix }}</td>
-                    <td>{{ key.gcoin_limit || '无限制' }} G币</td>
-                    <td>{{ key.used_quota.toFixed(4) }}</td>
-                    <td>
-                      <span :class="['status-tag', key.is_active ? 'active' : 'inactive']">
-                        {{ key.is_active ? '启用' : '停用' }}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </HxCard>
-
-          <div style="margin-top: 16px;">
-            <HxButton variant="secondary" @click="showCreateKey = !showCreateKey">
-              + 创建新 Key
-            </HxButton>
-          </div>
-
-          <HxCard v-if="showCreateKey" style="margin-top: 12px;">
-            <div class="form-row">
-              <label class="form-label">Key 名称</label>
-              <HxInput v-model="newKeyName" placeholder="例如: Desktop Key" style="max-width: 300px;" />
-            </div>
-            <div class="form-row">
-              <label class="form-label">G 币限额</label>
-              <HxInput v-model.number="newKeyLimit" type="number" style="max-width: 200px;" :min="1" :max="1000" :step="1" />
-            </div>
-            <div class="form-actions">
-              <HxButton variant="primary" @click="createKey">创建</HxButton>
-            </div>
-          </HxCard>
         </div>
 
         <!-- Usage section -->
         <div v-if="activeSection === 'usage'" class="content-section">
-          <h2 class="section-title">用量统计 (近 7 天)</h2>
+          <h2 class="section-title">用量统计</h2>
 
-          <HxCard>
-            <div class="no-padding">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>日期</th>
-                    <th>请求数</th>
-                    <th>输入 Token</th>
-                    <th>输出 Token</th>
-                    <th>费用 (G币)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="u in dailyUsage" :key="u.date">
-                    <td>{{ u.date }}</td>
-                    <td>{{ u.request_count }}</td>
-                    <td>{{ u.input_tokens.toLocaleString() }}</td>
-                    <td>{{ u.output_tokens.toLocaleString() }}</td>
-                    <td class="cell-cost">{{ u.total_cost.toFixed(4) }}</td>
-                  </tr>
-                  <tr v-if="!dailyUsage || dailyUsage.length === 0">
-                    <td colspan="5" class="empty-cell">暂无数据</td>
-                  </tr>
-                </tbody>
-              </table>
+          <!-- Summary cards -->
+          <div class="usage-summary">
+            <div class="usage-card">
+              <div class="usage-card-label">总请求</div>
+              <div class="usage-card-value">{{ usageTotal.requests.toLocaleString() }}</div>
+            </div>
+            <div class="usage-card">
+              <div class="usage-card-label">输入 Tokens</div>
+              <div class="usage-card-value">{{ formatNum(usageTotal.inputTokens) }}</div>
+            </div>
+            <div class="usage-card">
+              <div class="usage-card-label">输出 Tokens</div>
+              <div class="usage-card-value">{{ formatNum(usageTotal.outputTokens) }}</div>
+            </div>
+          </div>
+
+          <!-- Daily chart: bar chart -->
+          <HxCard style="margin-top: 16px;">
+            <template #header>
+              <span>Tokens 用量趋势（近 {{ dailyUsage.length }} 天）</span>
+            </template>
+            <div class="bar-chart">
+              <div class="bar-chart__y-labels">
+                <span v-for="n in 5" :key="n" class="bar-chart__y-label">{{ yTick(maxTokens, n, 5) }}</span>
+              </div>
+              <div class="bar-chart__grid">
+                <div v-for="n in 5" :key="n" class="bar-chart__grid-line"></div>
+              </div>
+              <div class="bar-chart__bars">
+                <div v-for="day in dailyUsage" :key="day.date" class="bar-group">
+                  <div class="bar-col">
+                    <div class="bar bar--input" :style="{ height: barH(day.input_tokens, maxTokens) + '%' }">
+                      <span class="bar-label">{{ shortNum(day.input_tokens) }}</span>
+                    </div>
+                  </div>
+                  <div class="bar-col">
+                    <div class="bar bar--output" :style="{ height: barH(day.output_tokens, maxTokens) + '%' }">
+                      <span class="bar-label">{{ shortNum(day.output_tokens) }}</span>
+                    </div>
+                  </div>
+                  <div class="bar-date">{{ formatDate(day.date) }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="bar-legend">
+              <span class="bar-legend__item"><span class="bar-legend__dot bar-legend__dot--input"></span> 输入</span>
+              <span class="bar-legend__item"><span class="bar-legend__dot bar-legend__dot--output"></span> 输出</span>
+            </div>
+          </HxCard>
+
+          <!-- Per-model breakdown from chat history -->
+          <HxCard style="margin-top: 16px;">
+            <template #header>
+              <span>各模型用量</span>
+            </template>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>模型</th>
+                  <th>请求数</th>
+                  <th>输入 Tokens</th>
+                  <th>输出 Tokens</th>
+                  <th>合计</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="m in modelStats" :key="m.model">
+                  <td class="cell-mono">{{ m.model }}</td>
+                  <td>{{ m.requests }}</td>
+                  <td>{{ formatNum(m.inputTokens) }}</td>
+                  <td>{{ formatNum(m.outputTokens) }}</td>
+                  <td class="cell-cost">{{ formatNum(m.total) }}</td>
+                </tr>
+                <tr v-if="modelStats.length === 0">
+                  <td colspan="5" class="empty-cell">暂无对话记录</td>
+                </tr>
+              </tbody>
+            </table>
+          </HxCard>
+
+          <!-- Recent requests log -->
+          <HxCard style="margin-top: 16px;">
+            <template #header>
+              <div class="card-header-row">
+                <span>近期请求记录</span>
+                <span class="page-info">共 {{ requestLog.length }} 条，第 {{ reqLogPage }}/{{ reqLogTotalPages }} 页</span>
+              </div>
+            </template>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>模型</th>
+                  <th>角色</th>
+                  <th>内容摘要</th>
+                  <th>Tokens</th>
+                  <th>耗时</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in paginatedRequestLog" :key="r.id">
+                  <td>{{ r.time }}</td>
+                  <td class="cell-mono">{{ r.model || '-' }}</td>
+                  <td>
+                    <span :class="['role-tag', r.role]">{{ r.role === 'user' ? '提问' : '回复' }}</span>
+                  </td>
+                  <td class="cell-preview">{{ r.preview }}</td>
+                  <td>{{ r.tokens.toLocaleString() }}</td>
+                  <td>{{ r.duration }}</td>
+                </tr>
+                <tr v-if="paginatedRequestLog.length === 0">
+                  <td colspan="6" class="empty-cell">暂无请求记录</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="pagination" v-if="reqLogTotalPages > 1">
+              <button class="page-btn" :disabled="reqLogPage === 1" @click="reqLogPage--">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
+              <template v-for="p in pageNumbers" :key="p">
+                <button v-if="typeof p === 'number'" class="page-btn" :class="{ active: reqLogPage === p }" @click="reqLogPage = p">{{ p }}</button>
+                <span v-else class="page-ellipsis">{{ p }}</span>
+              </template>
+              <button class="page-btn" :disabled="reqLogPage === reqLogTotalPages" @click="reqLogPage++">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
             </div>
           </HxCard>
         </div>
@@ -446,23 +617,19 @@
             <template #header>
               <span>上下文压缩</span>
             </template>
-            <div class="form-row">
-              <label class="form-label">最大回合数</label>
-              <HxInput v-model.number="agentSettings.maxTurns" type="number" style="max-width: 120px;" :min="1" :max="50" :step="1" />
-              <span class="form-help">单次对话最大往返次数</span>
-            </div>
-            <div class="form-row">
-              <label class="form-label">压缩阈值</label>
-              <HxInput v-model.number="agentSettings.compressionThreshold" type="number" step="0.05" min="0.1" max="0.95" style="max-width: 120px;" :showNumberControls="true" />
-              <span class="form-help">触发压缩的记忆阈值</span>
-            </div>
-            <div class="form-row">
-              <label class="form-label">压缩目标</label>
-              <HxInput v-model.number="agentSettings.compressionTarget" type="number" step="0.05" min="0.05" max="0.5" style="max-width: 120px;" :showNumberControls="true" />
-              <span class="form-help">压缩后目标大小比例</span>
-            </div>
-            <div class="form-actions">
-              <HxButton variant="primary" @click="saveAgentSettings">保存</HxButton>
+            <div class="toolset-grid">
+              <label class="toolset-item">
+                <span class="toolset-label">最大回合数</span>
+                <HxInput v-model.number="agentSettings.maxTurns" type="number" :min="1" :max="50" :step="1" />
+              </label>
+              <label class="toolset-item">
+                <span class="toolset-label">压缩阈值</span>
+                <HxInput v-model.number="agentSettings.compressionThreshold" type="number" step="0.05" min="0.1" max="0.95" :showNumberControls="true" />
+              </label>
+              <label class="toolset-item">
+                <span class="toolset-label">压缩目标</span>
+                <HxInput v-model.number="agentSettings.compressionTarget" type="number" step="0.05" min="0.05" max="0.5" :showNumberControls="true" />
+              </label>
             </div>
           </HxCard>
 
@@ -470,19 +637,31 @@
             <template #header>
               <span>持久记忆</span>
             </template>
-            <div class="form-row">
-              <label class="form-label">记忆系统</label>
-              <HxToggle v-model="agentSettings.memoryEnabled" :label="agentSettings.memoryEnabled ? '已启用' : '已禁用'" />
-            </div>
-            <div class="form-row">
-              <label class="form-label">用户画像</label>
-              <HxToggle v-model="agentSettings.userProfileEnabled" :label="agentSettings.userProfileEnabled ? '已启用' : '已禁用'" />
+            <div class="toolset-grid">
+              <label class="toolset-item">
+                <span class="toolset-label">记忆系统</span>
+                <HxToggle v-model="agentSettings.memoryEnabled" :label="agentSettings.memoryEnabled ? '已启用' : '已禁用'" />
+              </label>
+              <label class="toolset-item">
+                <span class="toolset-label">用户画像</span>
+                <HxToggle v-model="agentSettings.userProfileEnabled" :label="agentSettings.userProfileEnabled ? '已启用' : '已禁用'" />
+              </label>
             </div>
           </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
             <HxButton variant="primary" @click="saveAgentSettings">保存设置</HxButton>
             <span v-if="agentSaveOk" class="save-feedback">已保存</span>
+            <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
+              <span class="save-dot blue"></span> 已编辑未保存
+            </span>
+            <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
+              <span class="save-dot green"></span> 正在自动保存
+            </span>
+            <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              已保存
+            </span>
           </div>
         </div>
 
@@ -548,6 +727,16 @@
           <div class="form-actions">
             <HxButton variant="primary" @click="saveTerminalSettings">保存设置</HxButton>
             <span v-if="terminalSaveOk" class="save-feedback">已保存</span>
+            <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
+              <span class="save-dot blue"></span> 已编辑未保存
+            </span>
+            <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
+              <span class="save-dot green"></span> 正在自动保存
+            </span>
+            <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              已保存
+            </span>
           </div>
         </div>
 
@@ -584,6 +773,16 @@
           <div class="form-actions" style="margin-top: 16px;">
             <HxButton variant="primary" @click="saveDisplaySettings">保存设置</HxButton>
             <span v-if="displaySaveOk" class="save-feedback">已保存</span>
+            <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
+              <span class="save-dot blue"></span> 已编辑未保存
+            </span>
+            <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
+              <span class="save-dot green"></span> 正在自动保存
+            </span>
+            <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              已保存
+            </span>
           </div>
         </div>
 
@@ -593,8 +792,7 @@
 
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <HxBadge variant="green">STT</HxBadge>
-              <span style="margin-left:8px;">语音转文字</span>
+              <span>STT · 语音转文字</span>
             </template>
             <div class="form-row">
               <label class="form-label">启用 STT</label>
@@ -612,8 +810,7 @@
 
           <HxCard>
             <template #header>
-              <HxBadge variant="purple">TTS</HxBadge>
-              <span style="margin-left:8px;">文字转语音</span>
+              <span>TTS · 文字转语音</span>
             </template>
             <div class="form-row">
               <label class="form-label">TTS 提供商</label>
@@ -628,6 +825,16 @@
           <div class="form-actions" style="margin-top: 16px;">
             <HxButton variant="primary" @click="saveVoiceSettings">保存设置</HxButton>
             <span v-if="voiceSaveOk" class="save-feedback">已保存</span>
+            <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
+              <span class="save-dot blue"></span> 已编辑未保存
+            </span>
+            <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
+              <span class="save-dot green"></span> 正在自动保存
+            </span>
+            <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              已保存
+            </span>
           </div>
         </div>
 
@@ -650,8 +857,7 @@
 
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <HxBadge variant="red">网站</HxBadge>
-              <span style="margin-left:8px;">访问限制</span>
+              <span>网站 · 访问限制</span>
             </template>
             <div class="form-row">
               <label class="form-label">网站黑名单</label>
@@ -662,18 +868,29 @@
 
           <HxCard>
             <template #header>
-              <HxBadge variant="orange">工具</HxBadge>
-              <span style="margin-left:8px;">工具权限</span>
+              <span>工具 · 工具权限</span>
             </template>
-            <div class="form-row" v-for="ts in toolsetList" :key="ts.id">
-              <label class="form-label">{{ ts.label }}</label>
-              <HxToggle v-model="ts.enabled" :label="ts.enabled ? '启用' : '禁用'" />
+            <div class="toolset-grid">
+              <label v-for="ts in toolsetList" :key="ts.id" class="toolset-item">
+                <span class="toolset-label">{{ ts.label }}</span>
+                <HxToggle v-model="ts.enabled" :label="ts.enabled ? '启用' : '禁用'" />
+              </label>
             </div>
           </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
             <HxButton variant="primary" @click="saveSecuritySettings">保存设置</HxButton>
             <span v-if="securitySaveOk" class="save-feedback">已保存</span>
+            <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
+              <span class="save-dot blue"></span> 已编辑未保存
+            </span>
+            <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
+              <span class="save-dot green"></span> 正在自动保存
+            </span>
+            <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              已保存
+            </span>
           </div>
         </div>
       </div>
@@ -816,8 +1033,7 @@ const navItems = [
   { key: 'display', label: '显示', keywords: '工具进度 推理过程 费用 markdown 代码高亮 语法', icon: '' },
   { key: 'voice', label: '语音', keywords: 'STT TTS 语音识别 语音合成 Whisper Edge ElevenLabs', icon: '' },
   { key: 'security', label: '安全', keywords: '密钥 PII 脱敏 屏蔽 站点黑名单 工具开关 redaction', icon: '' },
-  { key: 'apikeys', label: 'API Key', keywords: '密钥管理 创建 删除 限额', icon: '' },
-  { key: 'usage', label: '用量统计', keywords: '统计 日报 消耗 调用次数 token', icon: '' },
+  { key: 'usage', label: '用量统计', keywords: '统计 日报 消耗 调用次数 token 图表 模型', icon: '' },
 ]
 const filteredNavItems = computed(() => {
   if (!searchQuery.value.trim()) return navItems
@@ -944,6 +1160,21 @@ const gfwApiKey = ref(localStorage.getItem('gfw_api_key') || '')
 const gfwModels = ref<any[]>([])
 const gfwSyncing = ref(false)
 const selectedProvider = ref('')
+
+// GFW 认证方式
+const gfwAuthMode = ref<'account' | 'manual'>((localStorage.getItem('gfw_auth_mode') as 'account' | 'manual') || 'account')
+const gfwAccountEmail = ref(localStorage.getItem('gfw_saved_email') || '')
+const gfwAccountPassword = ref('')
+const gfwAccountLoggingIn = ref(false)
+const gfwKeysLoading = ref(false)
+const gfwSelectedKeyId = ref('')
+const showGfwCreateKey = ref(false)
+const gfwCreatingKey = ref(false)
+
+function switchGfwAuthMode(mode: 'account' | 'manual') {
+  gfwAuthMode.value = mode
+  localStorage.setItem('gfw_auth_mode', mode)
+}
 
 const selectedGfwModel = computed(() => {
   return gfwModels.value.find(m => m.model_code === selectedModel.value) || null
@@ -1534,6 +1765,54 @@ async function createKey() {
   }
 }
 
+// GFW 账户登录
+async function handleGfwAccountLogin() {
+  if (!gfwAccountEmail.value || !gfwAccountPassword.value) {
+    toast.error('请输入邮箱和密码')
+    return
+  }
+  gfwAccountLoggingIn.value = true
+  try {
+    await gfwStore.login(gfwAccountEmail.value, gfwAccountPassword.value)
+    await gfwStore.fetchUserInfo()
+    await gfwStore.fetchApiKeys()
+    // 记住账户
+    localStorage.setItem('gfw_saved_email', gfwAccountEmail.value)
+    gfwAccountPassword.value = ''
+    toast.success('登录成功')
+  } catch (e: any) {
+    toast.error('登录失败', e?.message || '请检查邮箱和密码')
+  } finally {
+    gfwAccountLoggingIn.value = false
+  }
+}
+
+// GFW 创建 Key
+async function createGfwKey() {
+  if (!newKeyName.value) {
+    toast.error('请输入 Key 名称')
+    return
+  }
+  gfwCreatingKey.value = true
+  try {
+    const result = await gfwStore.createApiKey(newKeyName.value, newKeyLimit.value)
+    await gfwStore.fetchApiKeys()
+    // 自动选中新创建的 key
+    if (gfwStore.apiKeys.length > 0) {
+      const latest = gfwStore.apiKeys[gfwStore.apiKeys.length - 1]
+      gfwSelectedKeyId.value = latest.id
+      gfwApiKey.value = latest.full_key || latest.key_prefix + '***'
+    }
+    showGfwCreateKey.value = false
+    newKeyName.value = ''
+    toast.success('Key 创建成功')
+  } catch (e: any) {
+    toast.error('创建失败', e?.message)
+  } finally {
+    gfwCreatingKey.value = false
+  }
+}
+
 function saveSettings() {
   saveModelSettings()
 }
@@ -1550,7 +1829,7 @@ const agentSettings = ref({
   userProfileEnabled: true,
 })
 
-async function saveAgentSettings() {
+async function saveAgentSettings(silent = false) {
   const s = agentSettings.value
   try {
     await Promise.all([
@@ -1566,7 +1845,7 @@ async function saveAgentSettings() {
     }
     agentSaveOk.value = true
     setTimeout(() => { agentSaveOk.value = false }, 2000)
-    toast.success('Agent 设置已保存')
+    if (!silent) toast.success('Agent 设置已保存')
   } catch (e: any) {
     toast.error('保存失败', e?.message)
   }
@@ -1586,7 +1865,7 @@ const terminalSettings = ref({
   dockerMount: '',
 })
 
-async function saveTerminalSettings() {
+async function saveTerminalSettings(silent = false) {
   const s = terminalSettings.value
   try {
     await Promise.all([
@@ -1597,7 +1876,7 @@ async function saveTerminalSettings() {
     if (s.cwd) await hermesConfigSet('terminal.cwd', s.cwd)
     terminalSaveOk.value = true
     setTimeout(() => { terminalSaveOk.value = false }, 2000)
-    toast.success('终端设置已保存')
+    if (!silent) toast.success('终端设置已保存')
   } catch (e: any) {
     toast.error('保存失败', e?.message)
   }
@@ -1613,7 +1892,7 @@ const displaySettings = ref({
   syntaxHighlight: true,
 })
 
-async function saveDisplaySettings() {
+async function saveDisplaySettings(silent = false) {
   const s = displaySettings.value
   try {
     await Promise.all([
@@ -1623,7 +1902,7 @@ async function saveDisplaySettings() {
     ])
     displaySaveOk.value = true
     setTimeout(() => { displaySaveOk.value = false }, 2000)
-    toast.success('显示设置已保存')
+    if (!silent) toast.success('显示设置已保存')
   } catch (e: any) {
     toast.error('保存失败', e?.message)
   }
@@ -1639,7 +1918,7 @@ const voiceSettings = ref({
   ttsApiKey: '',
 })
 
-async function saveVoiceSettings() {
+async function saveVoiceSettings(silent = false) {
   const s = voiceSettings.value
   try {
     await Promise.all([
@@ -1650,7 +1929,7 @@ async function saveVoiceSettings() {
     if (s.sttProvider === 'local') await hermesConfigSet('stt.local.model', s.whisperModel)
     voiceSaveOk.value = true
     setTimeout(() => { voiceSaveOk.value = false }, 2000)
-    toast.success('语音设置已保存')
+    if (!silent) toast.success('语音设置已保存')
   } catch (e: any) {
     toast.error('保存失败', e?.message)
   }
@@ -1681,7 +1960,7 @@ const toolsetList = ref([
 
 // toolset 开关状态从真实 Hermes API 加载 (见 loadToolsets)
 
-async function saveSecuritySettings() {
+async function saveSecuritySettings(silent = false) {
   const s = securitySettings.value
   try {
     await Promise.all([
@@ -1698,14 +1977,14 @@ async function saveSecuritySettings() {
     }
     securitySaveOk.value = true
     setTimeout(() => { securitySaveOk.value = false }, 2000)
-    toast.success('安全设置已保存')
+    if (!silent) toast.success('安全设置已保存')
   } catch (e: any) {
     toast.error('保存失败', e?.message)
   }
 }
 
 // 从真实 Hermes API 加载 toolset 开关状态
-async function loadToolsets() {
+async function loadToolsets(): Promise<void> {
   try {
     const data = await hermesToolsList()
     if (data.tools && Array.isArray(data.tools)) {
@@ -1749,8 +2028,178 @@ onMounted(async () => {
     await gfwStore.fetchDailyUsage()
     await gfwStore.fetchRechargePackages()
   }
-  loadToolsets()
-  loadConfigValues()
+  await loadToolsets()
+  await loadConfigValues()
+  _initialLoadDone = true
+})
+
+// ===== Auto-save (8s: 5s wait + 3s save) =====
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+let dirtyTimer: ReturnType<typeof setTimeout> | null = null
+type SaveState = 'idle' | 'dirty' | 'saving' | 'saved'
+const saveState = ref<SaveState>('idle')
+const _pendingSave = new Set<string>()
+let _initialLoadDone = false
+
+function scheduleAutoSave(category: string) {
+  if (!_initialLoadDone) return
+  _pendingSave.add(category)
+  if (saveState.value === 'idle') saveState.value = 'dirty'
+  if (dirtyTimer) clearTimeout(dirtyTimer)
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  // 5秒后从 dirty -> saving
+  dirtyTimer = setTimeout(() => {
+    dirtyTimer = null
+    saveState.value = 'saving'
+  }, 5000)
+  // 8秒后执行保存
+  autoSaveTimer = setTimeout(async () => {
+    autoSaveTimer = null
+    const cats = [..._pendingSave]
+    _pendingSave.clear()
+    try {
+      const saves: Promise<void>[] = []
+      if (cats.includes('agent')) saves.push(saveAgentSettings(true))
+      if (cats.includes('terminal')) saves.push(saveTerminalSettings(true))
+      if (cats.includes('display')) saves.push(saveDisplaySettings(true))
+      if (cats.includes('voice')) saves.push(saveVoiceSettings(true))
+      if (cats.includes('security')) saves.push(saveSecuritySettings(true))
+      if (saves.length) await Promise.all(saves)
+    } finally {
+      saveState.value = 'saved'
+      setTimeout(() => { if (saveState.value === 'saved') saveState.value = 'idle' }, 3000)
+    }
+  }, 8000)
+}
+
+// 手动保存时重置状态
+function resetSaveState() {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  if (dirtyTimer) clearTimeout(dirtyTimer)
+  autoSaveTimer = null
+  dirtyTimer = null
+  _pendingSave.clear()
+  saveState.value = 'saved'
+  setTimeout(() => { if (saveState.value === 'saved') saveState.value = 'idle' }, 2000)
+}
+
+function watchSettings(obj: ReturnType<typeof ref>, cat: string) {
+  watch(obj, () => { scheduleAutoSave(cat) }, { deep: true })
+}
+
+watchSettings(agentSettings, 'agent')
+watchSettings(terminalSettings, 'terminal')
+watchSettings(displaySettings, 'display')
+watchSettings(voiceSettings, 'voice')
+watchSettings(securitySettings, 'security')
+// ===== Usage Stats =====
+const usageTotal = computed(() => ({
+  requests: dailyUsage.value.reduce((s, u) => s + u.request_count, 0),
+  inputTokens: dailyUsage.value.reduce((s, u) => s + u.input_tokens, 0),
+  outputTokens: dailyUsage.value.reduce((s, u) => s + u.output_tokens, 0),
+  cost: dailyUsage.value.reduce((s, u) => s + u.total_cost, 0),
+}))
+
+const maxTokens = computed(() => {
+  let m = 0
+  for (const d of dailyUsage.value) {
+    m = Math.max(m, d.input_tokens, d.output_tokens)
+  }
+  return m || 1
+})
+
+function barH(val: number, max: number): number {
+  return max > 0 ? (val / max) * 100 : 0
+}
+function yTick(max: number, n: number, total: number): string {
+  return shortNum(Math.round((max / total) * n))
+}
+function formatDate(date: string): string {
+  const d = new Date(date)
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+function shortNum(n: number): string {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M'
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'
+  return String(n)
+}
+function formatNum(n: number): string {
+  return n.toLocaleString()
+}
+
+interface ModelStat { model: string; requests: number; inputTokens: number; outputTokens: number; total: number }
+
+const modelStats = computed<ModelStat[]>(() => {
+  const map = new Map<string, ModelStat>()
+  const allMsgs = chatStore.sessions.flatMap(s => s.messages)
+  for (const m of allMsgs) {
+    if (!m.model) continue
+    const key = m.model
+    if (!map.has(key)) map.set(key, { model: key, requests: 0, inputTokens: 0, outputTokens: 0, total: 0 })
+    const st = map.get(key)!
+    st.requests++
+    const tu = m.token_usage
+    if (tu) {
+      const inp = tu.prompt_tokens || tu.input_tokens || 0
+      const out = tu.completion_tokens || tu.output_tokens || 0
+      st.inputTokens += inp
+      st.outputTokens += out
+      st.total += inp + out
+    }
+  }
+  return [...map.values()].sort((a, b) => b.total - a.total)
+})
+
+interface RequestEntry { id: string; time: string; model: string; role: string; preview: string; tokens: number; duration: string }
+
+const REQ_LOG_PAGE_SIZE = 20
+const reqLogPage = ref(1)
+
+const requestLog = computed<RequestEntry[]>(() => {
+  const entries: RequestEntry[] = []
+  const allMsgs = chatStore.sessions.flatMap(s => s.messages)
+  for (const m of allMsgs.slice(-500).reverse()) {
+    const tu = m.token_usage
+    const total = tu ? ((tu.prompt_tokens || tu.input_tokens || 0) + (tu.completion_tokens || tu.output_tokens || 0)) : 0
+    const dur = m.duration_ms ? `${(m.duration_ms / 1000).toFixed(1)}s` : '-'
+    const preview = m.content ? m.content.slice(0, 80).replace(/\n/g, ' ') : ''
+    entries.push({
+      id: m.id,
+      time: new Date(m.timestamp).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      model: m.model || '',
+      role: m.role,
+      preview,
+      tokens: total,
+      duration: dur,
+    })
+  }
+  return entries
+})
+
+const reqLogTotalPages = computed(() => Math.max(1, Math.ceil(requestLog.value.length / REQ_LOG_PAGE_SIZE)))
+const paginatedRequestLog = computed(() => {
+  const start = (reqLogPage.value - 1) * REQ_LOG_PAGE_SIZE
+  return requestLog.value.slice(start, start + REQ_LOG_PAGE_SIZE)
+})
+
+// Watch: reset page when requestLog changes
+import { watch } from 'vue'
+watch(requestLog, () => { reqLogPage.value = 1 })
+
+// Smart page numbers for pagination (e.g. 1 2 3 ... 10 11)
+const pageNumbers = computed<(number | string)[]>(() => {
+  const total = reqLogTotalPages.value
+  const current = reqLogPage.value
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const pages: (number | string)[] = []
+  pages.push(1)
+  if (current > 3) pages.push('…')
+  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+    pages.push(i)
+  }
+  if (current < total - 2) pages.push('…')
+  if (total > 1) pages.push(total)
+  return pages
 })
 </script>
 
@@ -1913,6 +2362,70 @@ onMounted(async () => {
 
 .form-row:last-child {
   margin-bottom: 0;
+}
+
+/* 横向行：label + input + help 对齐 */
+.form-row-horizontal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.form-row-horizontal .form-label {
+  margin-bottom: 0;
+  min-width: 80px;
+}
+.form-row-horizontal .form-help {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* 工具权限网格 */
+.toolset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+.toolset-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--glass-bg, rgba(255,255,255,0.04));
+  border: 1px solid var(--border-base, rgba(255,255,255,0.08));
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--fast);
+  min-width: 0;
+}
+.toolset-item:hover {
+  border-color: var(--border-focus, rgba(255,255,255,0.18));
+}
+.toolset-label {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 卡片内的输入框样式 (scoped穿透) */
+.toolset-item :deep(.hixns-input) {
+  flex: none;
+  width: 140px;
+}
+.toolset-item :deep(.hixns-input__field) {
+  background: var(--glass-base, rgba(0,0,0,0.25));
+  color: var(--text-primary);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  text-align: center;
+  font-size: var(--text-sm);
+}
+.toolset-item :deep(.hixns-input__field:focus) {
+  border-color: var(--border-focus);
 }
 
 .form-label {
@@ -2157,6 +2670,227 @@ onMounted(async () => {
 .status-tag.active { background: var(--color-bg-input); color: var(--color-success); }
 .status-tag.inactive { background: var(--color-bg-input); color: var(--color-error); }
 
+/* ===== Usage Stats ===== */
+.usage-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+.usage-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  text-align: center;
+}
+.usage-card-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  margin-bottom: 4px;
+}
+.usage-card-value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+/* Bar Chart */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: var(--space-3) 0;
+  height: 200px;
+  position: relative;
+}
+.bar-chart__y-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  padding-bottom: 24px;
+}
+.bar-chart__y-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  min-height: 12px;
+}
+.bar-chart__grid {
+  position: absolute;
+  left: 36px;
+  right: 0;
+  top: 0;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.bar-chart__grid-line {
+  border-bottom: 1px dashed rgba(255,255,255,0.06);
+}
+.bar-chart__bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 4px;
+  height: 100%;
+  padding-bottom: 24px;
+  overflow-x: auto;
+}
+.bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 40px;
+  flex: 1;
+  max-width: 60px;
+}
+.bar-col {
+  display: flex;
+  align-items: flex-end;
+  height: calc(100% - 24px);
+}
+.bar {
+  width: 16px;
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+  position: relative;
+  transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bar--input { background: var(--accent); opacity: 0.85; }
+.bar--output { background: #a78bfa; opacity: 0.85; }
+.bar-label {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.bar:hover .bar-label { opacity: 1; }
+.bar-date {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  margin-top: 4px;
+}
+.bar-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-base);
+}
+.bar-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.bar-legend__dot {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+}
+.bar-legend__dot--input { background: var(--accent); }
+.bar-legend__dot--output { background: #a78bfa; }
+
+/* Role tag */
+.role-tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.role-tag.user {
+  background: rgba(90, 200, 250, 0.12);
+  color: var(--accent);
+}
+.role-tag.assistant {
+  background: rgba(167, 139, 250, 0.12);
+  color: #a78bfa;
+}
+
+.cell-preview {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-info {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  margin-left: auto;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 0 4px;
+  border-top: 1px solid var(--border-base);
+  margin-top: 8px;
+}
+.page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border-base);
+  border-radius: 6px;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.page-btn:hover:not(:disabled):not(.active) {
+  background: var(--glass-bg-hover, rgba(255,255,255,0.08));
+  border-color: var(--accent);
+}
+.page-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.page-ellipsis {
+  padding: 0 4px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
 /* ===== Packages ===== */
 .packages-grid {
   display: grid;
@@ -2240,6 +2974,146 @@ onMounted(async () => {
   border-color: var(--border-focus);
   color: var(--text-primary);
   box-shadow: var(--glow-sm);
+}
+
+/* GFW Auth Mode */
+.gfw-auth-modes {
+  display: flex;
+  gap: var(--space-2);
+}
+.gfw-auth-mode {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+  background: var(--glass-base);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--fast);
+}
+.gfw-auth-mode:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+.gfw-auth-mode.active {
+  background: var(--primary-light);
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+  box-shadow: var(--glow-sm);
+}
+
+/* GFW User Info */
+.gfw-user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--glass-base);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+}
+.gfw-user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.gfw-user-detail {
+  flex: 1;
+}
+.gfw-user-name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+.gfw-user-balance {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
+/* GFW Key List */
+.gfw-key-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gfw-key-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+  background: var(--glass-base);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--fast);
+}
+.gfw-key-item:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--border-light);
+}
+.gfw-key-item.active {
+  border-color: var(--border-focus);
+  background: var(--primary-light);
+  color: var(--text-primary);
+}
+.gfw-key-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.gfw-key-name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+.gfw-key-prefix {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+.gfw-key-quota {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+/* GFW Create Key */
+.gfw-create-key-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--border-base);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--fast);
+}
+.gfw-create-key-btn:hover {
+  border-color: var(--border-light);
+  color: var(--text-primary);
+  background: var(--glass-base);
+}
+.gfw-create-key-form {
+  display: flex;
+  align-items: center;
+  margin-top: var(--space-2);
 }
 
 /* Provider Chips */
@@ -2422,7 +3296,49 @@ onMounted(async () => {
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--color-success);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   animation: fadeIn 0.2s ease;
+}
+
+/* 自动保存状态 */
+.save-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.save-dot.blue {
+  background: #4da3ff;
+  box-shadow: 0 0 8px #4da3ff88;
+  animation: breathe-blue 1.5s ease-in-out infinite;
+}
+.save-dot.green {
+  background: #4caf50;
+  box-shadow: 0 0 8px #4caf5088;
+  animation: breathe-green 1.2s ease-in-out infinite;
+}
+
+@keyframes breathe-blue {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.4); opacity: 1; }
+}
+@keyframes breathe-green {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.3); opacity: 1; }
+}
+
+.save-dirty { color: #4da3ff; }
+.save-saving { color: #4caf50; }
+.save-saved svg {
+  stroke: var(--color-success);
+  animation: popIn 0.3s ease;
+}
+@keyframes popIn {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 @keyframes fadeIn {

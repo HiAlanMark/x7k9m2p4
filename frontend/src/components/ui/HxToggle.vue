@@ -68,6 +68,12 @@ function onChange(e: Event) {
   overflow: hidden;
 }
 
+/* 亮色主题 - 轨道默认蓝色 */
+[data-theme="light"] .hixns-toggle-track {
+  background: rgba(10, 132, 255, 0.1);
+  border-color: rgba(10, 132, 255, 0.3);
+}
+
 .hixns-toggle-track::before {
   content: '';
   position: absolute;
@@ -107,6 +113,16 @@ function onChange(e: Event) {
     inset 0 0 8px rgba(255, 255, 255, 0.1);
 }
 
+/* 亮色主题 - 选中状态蓝色 */
+[data-theme="light"] .hixns-toggle-input:checked + .hixns-toggle-track {
+  background: rgba(10, 132, 255, 0.9);
+  border-color: rgba(10, 132, 255, 1);
+  box-shadow: 
+    0 0 12px rgba(10, 132, 255, 0.4),
+    0 0 24px rgba(10, 132, 255, 0.2),
+    inset 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
 .hixns-toggle-input:checked + .hixns-toggle-track .hixns-toggle-thumb {
   left: 21px;
   background: linear-gradient(135deg, #ffffff 0%, #e8f4ff 100%);
@@ -114,6 +130,15 @@ function onChange(e: Event) {
     0 2px 6px rgba(10, 132, 255, 0.4),
     0 1px 3px rgba(10, 132, 255, 0.2),
     inset 0 1px 2px rgba(255, 255, 255, 0.9);
+}
+
+/* 亮色主题 - 选中时滑块带蓝色 */
+[data-theme="light"] .hixns-toggle-input:checked + .hixns-toggle-track .hixns-toggle-thumb {
+  background: linear-gradient(135deg, rgba(10, 132, 255, 1) 0%, rgba(90, 200, 250, 1) 100%);
+  box-shadow: 
+    0 2px 6px rgba(10, 132, 255, 0.5),
+    0 1px 3px rgba(10, 132, 255, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.4);
 }
 
 .hixns-toggle:hover .hixns-toggle-track {

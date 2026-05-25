@@ -1,30 +1,27 @@
 <template>
   <div class="chat-view">
-    <div class="messages" ref="messagesRef" @scroll="onMessagesScroll">
+    <div class="messages" ref="messagesRef" @scroll="onMessagesScroll" @click="onMessagesClick" @contextmenu.prevent="showBodyContextMenu">
       <!-- Empty state -->
       <div v-if="messages.length === 0" class="empty-state">
         <div class="empty-inner animate-spring-in">
-          <div class="terminal-header">
-            <span class="terminal-dot red"></span>
-            <span class="terminal-dot yellow"></span>
-            <span class="terminal-dot green"></span>
-            <span class="terminal-title">hixns</span>
-          </div>
-          <div class="terminal-body">
-            <div class="terminal-line">
-              <span class="t-prompt">$</span>
-              <span class="t-cmd">hixns</span>
-              <span class="t-flag">--interactive</span>
+          <!-- Status Panel (replaces old terminal) -->
+          <div class="status-panel">
+            <div class="status-panel-header">
+              <span class="status-panel-dot" :class="appStore.connectionState"></span>
+              <span class="status-panel-title">Hi!XNS Agent</span>
+              <span class="status-panel-version">v{{ appVersion }}</span>
             </div>
-            <div class="terminal-line output">
-              <span class="t-text">Hi!XNS Agent v0.5.0</span>
-            </div>
-            <div class="terminal-line output">
-              <span class="t-text dim">56+ 模型可用 · gfw.net</span>
-            </div>
-            <div class="terminal-line output">
-              <span class="t-status">ready</span>
-              <span class="t-cursor">_</span>
+            <div class="status-panel-body">
+              <div v-if="appStore.connectionState === 'connected'" class="status-panel-ready">
+                <span class="status-panel-ready-text">就绪 · {{ appStore.hermesStatus?.version?.split(' ')[0] || 'Hermes 已集成' }}</span>
+              </div>
+              <div v-else-if="appStore.connectionState === 'connecting'" class="status-panel-ready">
+                <div class="status-panel-spinner"></div>
+                <span class="status-panel-ready-text">连接中...</span>
+              </div>
+              <div v-else class="status-panel-ready">
+                <span class="status-panel-ready-text error">后端未连接</span>
+              </div>
             </div>
           </div>
           <div class="quick-actions stagger-children">
@@ -51,121 +48,136 @@
       <!-- Messages -->
       <template v-for="(msg, idx) in messages" :key="msg.id">
         <div v-if="msg.role === 'system'" class="sys-line">
-          <span class="sys-prefix">[sys]</span>
-          <span class="sys-text">{{ msg.content }}</span>
+          <span class="sys-badge">
+            <svg class="sys-icon" width="12" height="12" viewBox="0 0 1024 1024" fill="currentColor"><path d="M511.914667 85.333333c-235.52 0-426.666667 191.146667-426.666667 426.666667s191.146667 426.666667 426.666667 426.666667 426.666667-191.146667 426.666666-426.666667-191.146667-426.666667-426.666666-426.666667z m0 768c-188.586667 0-341.333333-152.746667-341.333334-341.333333s152.746667-341.333333 341.333334-341.333333 341.333333 152.746667 341.333333 341.333333-152.746667 341.333333-341.333333 341.333333z"/><path d="M512 640c-35.2 0-64 28.8-64 64S476.8 768 512 768s64-28.8 64-64S547.2 640 512 640z"/><path d="M512 256c-36.906667 0-66.176 29.269333-63.872 63.872l15.616 234.88c1.621333 23.936 22.741333 42.581333 48.256 42.581333s46.634667-18.645333 48.213333-42.581333l15.658667-234.88C578.176 285.269333 548.906667 256 512 256z"/></svg>
+            <span class="sys-text">{{ msg.content }}</span>
+          </span>
         </div>
 
-        <div v-else-if="msg.role === 'user' || msg.role === 'assistant' || (msg.content && msg.content.trim())" class="msg" :class="msg.role">
-          <div class="msg-header">
-            <span class="msg-author" :class="msg.role">{{ msg.role === 'user' ? '我' : 'Hi!XNS' }}</span>
-            <span class="msg-time">{{ formatTime(msg.timestamp) }}</span>
+        <div v-else-if="msg.role === 'user' || msg.role === 'assistant' || (msg.content && msg.content.trim())" class="msg-wrapper" :class="msg.role">
+          
+          <!-- User Message: Right-aligned Glass Bubble -->
+          <div v-if="msg.role === 'user'" class="msg-bubble user-bubble">
+            <div class="msg-content user-content">{{ msg.content }}</div>
+            <div class="msg-time user-time">{{ formatTime(msg.timestamp) }}</div>
           </div>
 
-          <div v-if="msg.role === 'user'" class="msg-content user-content">{{ msg.content }}</div>
-          <div v-else class="msg-content ai-content markdown-body" v-html="renderMarkdown(msg.content)"></div>
+          <!-- AI Message: Left-aligned Glass Card -->
+          <div v-else class="msg-card ai-card">
+            <div class="card-header">
+              <span class="author-badge"><span class="ai-dot"></span> Hi!XNS</span>
+              <span class="meta-info">
+                <span v-if="msg.model" class="meta-tag">{{ msg.model }}</span>
+                <template v-if="msg.duration_ms">
+                  <span class="meta-dot"></span>
+                  <span>{{ (msg.duration_ms / 1000).toFixed(1) }}s</span>
+                </template>
+              </span>
+            </div>
 
-          <!-- Tool calls -->
-          <div v-if="msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length" class="tool-section">
-            <div v-for="(tc, i) in msg.tool_calls" :key="i" class="tool-row">
-              <div class="tool-head" @click="(tc as any)._open = !(tc as any)._open">
-                <span class="tool-tri">{{ (tc as any)._open ? '\u25BC' : '\u25B6' }}</span>
-                <span :class="['tool-indicator', tc.status]"></span>
-                <span class="tool-fn">{{ tc.tool }}</span>
-                <span class="tool-st">{{ tc.status === 'completed' ? '完成' : tc.status === 'failed' ? '失败' : '运行中' }}</span>
-                <span class="tool-time">{{ formatTime(msg.timestamp) }}</span>
-              </div>
-              <div v-if="(tc as any)._open" class="tool-body">
-                <div v-if="tc.input" class="tool-block">
-                  <div class="tool-block-title">参数</div>
-                  <pre class="tool-pre">{{ formatJson(tc.input) }}</pre>
+            <div class="card-content markdown-body" v-html="renderMarkdown(msg.content)"></div>
+
+            <!-- Tool calls: Accordion -->
+            <div v-if="msg.tool_calls && msg.tool_calls.length" class="tool-accordion">
+              <div v-for="(tc, i) in msg.tool_calls" :key="i" class="tool-item">
+                <div class="tool-header" @click="(tc as any)._open = !(tc as any)._open">
+                  <span class="tool-tri">{{ (tc as any)._open ? '▾' : '▸' }}</span>
+                  <span :class="['tool-status', tc.status]"></span>
+                  <span class="tool-name">{{ tc.tool }}</span>
+                  <span class="tool-label">{{ tc.status === 'completed' ? '完成' : tc.status === 'failed' ? '失败' : '运行中...' }}</span>
                 </div>
-                <div v-if="tc.output" class="tool-block">
-                  <div class="tool-block-title">结果</div>
-                  <pre class="tool-pre">{{ tc.output }}</pre>
+                <div v-if="(tc as any)._open" class="tool-body">
+                  <div v-if="tc.input" class="tool-section">
+                    <div class="tool-label-sm">Input</div>
+                    <pre class="tool-json">{{ formatJson(tc.input) }}</pre>
+                  </div>
+                  <div v-if="tc.output" class="tool-section">
+                    <div class="tool-label-sm">Output</div>
+                    <pre class="tool-json">{{ tc.output }}</pre>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Meta + Actions -->
-          <div v-if="msg.role === 'assistant'" class="msg-footer">
-            <div v-if="msg.model || msg.token_usage" class="msg-meta">
-              <span v-if="msg.model">{{ msg.model }}</span>
-              <template v-if="msg.token_usage">
-                <span class="meta-dot"></span>
-                <span>⬆ {{ (msg.token_usage.prompt_tokens || 0).toLocaleString() }}</span>
-                <span class="meta-dot"></span>
-                <span>⬇ {{ (msg.token_usage.completion_tokens || 0).toLocaleString() }} tok</span>
-              </template>
-              <template v-if="msg.duration_ms">
-                <span class="meta-dot"></span>
-                <span>{{ (msg.duration_ms / 1000).toFixed(1) }}s</span>
-              </template>
-            </div>
-            <div class="msg-actions">
-              <button class="action-btn" @click="copyMessage(msg.content)" :title="'复制'">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              </button>
-              <button class="action-btn" @click="regenerateMessage(idx)" :disabled="isStreaming" :title="'重新生成'">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-              </button>
+            <div class="card-footer">
+              <span v-if="msg.token_usage" class="footer-tokens">
+                <span class="token-item">输入 {{ (msg.token_usage.prompt_tokens || 0).toLocaleString() }}</span>
+                <span class="token-item">输出 {{ (msg.token_usage.completion_tokens || 0).toLocaleString() }}</span>
+              </span>
+              <div class="action-group">
+                <button class="action-icon" @click="copyMessage(msg.content)" title="复制">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+                <button class="action-icon" @click="regenerateMessage(idx)" :disabled="isStreaming" title="重新生成">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </template>
 
-      <!-- Streaming -->
-      <div v-if="isStreaming" class="msg assistant streaming">
-        <div class="msg-header">
-          <span class="msg-author assistant">Hi!XNS</span>
-          <span class="msg-time">现在</span>
-          <span v-if="agentIteration > 0" class="iteration-badge">轮次 {{ agentIteration }}/{{ agentMaxIter }}</span>
-        </div>
-
-        <!-- Agent 状态 -->
-        <div v-if="agentStatus && !currentResponse && !currentToolCalls.length" class="agent-status-bar">
-          <div class="thinking-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-          <span class="status-text">{{ agentStatus }}</span>
-        </div>
-
-        <!-- 等待响应：无文字且无工具调用且无状态 -->
-        <div v-if="!currentResponse && !currentToolCalls.length && !agentStatus" class="thinking-state">
-          <div class="thinking-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-          <span class="thinking-text">思考中</span>
-        </div>
-
-        <!-- 权限审批弹窗 -->
-        <div v-if="pendingApproval" class="approval-card">
-          <div class="approval-header">
-            <svg width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/> <path d="M512 298.666667a42.666667 42.666667 0 0 0-42.666667 42.666666v170.666667a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V341.333333a42.666667 42.666667 0 0 0-42.666667-42.666666zM512 640a42.666667 42.666667 0 0 0-42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667 42.666666h0.426667a42.666667 42.666667 0 0 0 42.666666-42.666666 42.666667 42.666667 0 0 0-42.666666-42.666667z"/></svg>
-            <span>需要您的授权</span>
+      <!-- Streaming: AI Card Structure -->
+      <div v-if="isStreaming" class="msg-wrapper assistant streaming">
+        <div class="msg-card ai-card glass-glow">
+          <div class="card-header">
+            <span class="author-badge"><span class="ai-dot pulsing"></span> Hi!XNS</span>
+            <span class="meta-info">
+              <span v-if="agentIteration > 0" class="meta-tag">Iter {{ agentIteration }}/{{ agentMaxIter }}</span>
+              <span class="meta-dot"></span>
+              <span>Thinking...</span>
+            </span>
           </div>
-          <div class="approval-body">
-            <div class="approval-cmd">
-              <span class="approval-label">命令</span>
-              <code>{{ pendingApproval.command }}</code>
+
+          <!-- Thinking State -->
+          <div v-if="agentStatus && !currentResponse && !currentToolCalls.length" class="thinking-state">
+            <div class="thinking-dots">
+              <span></span><span></span><span></span>
             </div>
-            <div class="approval-reason">{{ pendingApproval.reason }}</div>
+            <span class="status-text">{{ agentStatus }}</span>
           </div>
-          <div class="approval-actions">
-            <button class="approve-btn" @click="approveCommand">允许执行</button>
-            <button class="deny-btn" @click="denyCommand">拒绝</button>
+
+          <div v-if="!currentResponse && !currentToolCalls.length && !agentStatus" class="thinking-state">
+            <div class="thinking-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <span class="status-text">思考中...</span>
           </div>
-        </div>
 
-        <!-- 有文字内容时显示 -->
-        <template v-if="currentResponse">
-          <div class="msg-content ai-content markdown-body" v-html="renderMarkdown(currentResponse)"></div>
-          <span class="block-cursor">█</span>
-        </template>
+          <!-- Approval -->
+          <div v-if="pendingApproval" class="approval-card">
+            <div class="approval-header">
+              <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/><path d="M512 298.666667a42.666667 42.666667 0 0 0-42.666667 42.666666v170.666667a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V341.333333a42.666667 42.666667 0 0 0-42.666667-42.666666zM512 640a42.666667 42.666667 0 0 0-42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667 42.666666h0.426667a42.666667 42.666667 0 0 0 42.666666-42.666666 42.666667 42.666667 0 0 0-42.666666-42.666667z"/></svg>
+              <span>需要您的授权</span>
+            </div>
+            <div class="approval-body">
+              <div class="approval-cmd">
+                <span class="approval-label">Command</span>
+                <code>{{ pendingApproval.command }}</code>
+              </div>
+              <div class="approval-reason">{{ pendingApproval.reason }}</div>
+            </div>
+            <div class="approval-actions">
+              <button class="approve-btn" @click="approveCommand">允许执行</button>
+              <button class="deny-btn" @click="denyCommand">拒绝</button>
+            </div>
+          </div>
 
-        <!-- 工具调用 -->
-        <div v-if="currentToolCalls.length" class="tool-section streaming-tools">
-          <div v-for="(tc, i) in currentToolCalls" :key="i" class="tool-row compact">
-            <span v-if="tc.status === 'running'" class="tool-spinner"></span>
-            <span v-else :class="['tool-indicator', tc.status]"></span>
-            <span class="tool-fn">{{ tc.tool }}</span>
-            <span :class="['tool-st', tc.status]">{{ tc.status === 'completed' ? '完成' : tc.status === 'failed' ? '失败' : '执行中...' }}</span>
+          <!-- Response Content -->
+          <template v-if="currentResponse">
+            <div class="card-content markdown-body" :class="{ streaming: isStreaming }" v-html="renderMarkdown(currentResponse)"></div>
+          </template>
+
+          <!-- Streaming Tools -->
+          <div v-if="currentToolCalls.length" class="tool-streaming">
+            <div v-for="(tc, i) in currentToolCalls" :key="i" class="tool-item active">
+              <div class="tool-header">
+                <span v-if="tc.status === 'running'" class="tool-spinner-sm"></span>
+                <span v-else :class="['tool-status', tc.status]"></span>
+                <span class="tool-name">{{ tc.tool }}</span>
+                <span class="tool-label">{{ tc.status === 'completed' ? '完成' : tc.status === 'failed' ? '失败' : '执行中...' }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -179,24 +191,11 @@
       </div>
     </div>
 
-    <!-- Scroll to bottom FAB -->
-    <transition name="fab-fade">
-      <button v-if="showScrollBtn" class="scroll-fab" @click="scrollToBottom(true)" title="滚动到底部">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-    </transition>
-
-    <!-- Input -->
     <div class="input-area">
-      <div class="input-box" :class="{ focused: inputFocused }">
-        <span class="input-chevron">></span>
-        
-        <!-- File Upload Button -->
-        <button @click="triggerFileUpload" class="upload-btn" title="上传文件 (文档/PPT/图片/视频)">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21.44 11.05l-9.19 9.19a1 1 0 0 1-1.41 0l-9.19-9.19a1 1 0 0 1 1.41-1.41l8.5 8.5a1 1 0 0 0 1.41 0l8.5-8.5a1 1 0 0 1 1.41 1.41z"/>
-            <line x1="12" y1="19" x2="12" y2="5"/>
-          </svg>
+      <!-- Upload bar floating above input -->
+      <div class="upload-bar">
+        <button @click="triggerFileUpload" class="upload-btn" title="上传文件">
+          <svg width="18" height="14" viewBox="0 0 1329 1024" fill="currentColor"><path d="M1036.572 951.784h-780.721c-62.416 0-113.411-47.899-115.072-107.38l-78.125-495.818v-2.735c0-60.873 51.662-110.396 115.164-110.396h14.961v-63.036c0-60.873 51.651-110.396 115.13-110.396h234.199c42.067 0 105.428 34.714 140.178 74.338h302.237c48.717 0 161.228 35.661 166.943 104.891 45.468 14.762 78.311 56.069 78.311 104.599v2.747l-78.137 495.807c-1.659 59.493-52.643 107.38-115.072 107.38zM136.887 343.559l78.008 495.07v2.747c0 21.109 18.374 38.279 40.957 38.279h780.721c22.582 0 40.957-17.17 40.957-38.279v-2.747l78.008-495.07c-1.274-20.046-19.146-35.989-40.932-35.989h-37.075v-59.903c-1.823-3.846-12.027-14.026-34.48-24.113-23.096-10.357-46.52-15.078-58.536-15.078h-341.532l-10.87-17.147c-17.953-28.368-70.714-57.191-90-57.191h-234.199c-22.593 0-40.968 17.182-40.968 38.279v135.152h-89.135c-21.775 0-39.647 15.942-40.921 36z"/><path d="M100.875 306.542h1086.428v69.779h-1086.428z"/></svg>
         </button>
         <input 
           type="file" 
@@ -207,56 +206,74 @@
           class="file-input-hidden"
         />
         
+        <!-- File Previews to the right of upload button -->
+        <template v-if="attachedFiles.length > 0">
+          <span v-for="(file, index) in attachedFiles.slice(0, 6)" :key="file.id" class="file-chip">
+            <span class="file-chip-name">{{ file.file.name }}</span>
+            <button @click="removeFile(index)" class="file-chip-remove" title="移除">
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </span>
+          <span v-if="attachedFiles.length > 6" class="file-overflow">+{{ attachedFiles.length - 6 }}</span>
+        </template>
+      </div>
+
+      <div class="fab-anchor">
+        <transition name="fab-fade">
+          <button v-if="showScrollBtn" class="scroll-fab" @click="scrollToBottom(true)" title="滚动到底部">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </transition>
+
+        <div class="input-capsule" :class="{ focused: inputFocused }">
+        <span class="prompt-symbol">❯</span>
+        
         <textarea
           v-model="inputText"
           @keydown.enter.exact.prevent="sendMessage"
           @focus="inputFocused = true"
           @blur="inputFocused = false"
-          placeholder="输入消息... (Shift+Enter 换行)"
+          @contextmenu.prevent="showContextMenu"
+          placeholder="输入指令..."
           rows="1"
           ref="textareaRef"
         ></textarea>
         
-        <!-- File Previews (thumbnails on right) -->
-        <div class="file-previews" v-if="attachedFiles.length > 0">
-          <div v-for="(file, index) in attachedFiles" :key="file.id" class="file-thumbnail">
-            <template v-if="file.type.includes('image')">
-              <img :src="getFilePreviewUrl(file.file)" class="thumbnail-img" />
-            </template>
-            <template v-else>
-              <span class="thumbnail-icon">{{ getFileIcon(file.type) }}</span>
-            </template>
-            <button @click="removeFile(index)" class="thumbnail-remove" title="移除">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-        </div>
-        
         <button @click="sendMessage" :disabled="!inputText.trim() && attachedFiles.length === 0" class="send-btn">
-          <span class="send-key">发送</span>
-          <svg class="send-arrow" width="12" height="12" viewBox="0 0 1024 1024" fill="currentColor"><path d="M853.333333 128a42.666667 42.666667 0 0 0-42.666666 42.666667v298.666666c0 71.210667-56.789333 128-128 128H170.666667a42.666667 42.666667 0 0 0-42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667 42.666667h512c117.632 0 213.333333-95.701333 213.333333-213.333334V170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M384 384a42.666667 42.666667 0 0 0-30.165333 12.501333l-213.333334 213.333334a42.666667 42.666667 0 0 0 0 60.330666l213.333334 213.333334a42.666667 42.666667 0 0 0 60.330666 0 42.666667 42.666667 0 0 0 0-60.330667L231.168 640l182.997333-182.997333a42.666667 42.666667 0 0 0 0-60.330667A42.666667 42.666667 0 0 0 384 384z"/></svg>
+          <svg class="send-arrow" width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M853.333333 128a42.666667 42.666667 0 0 0-42.666666 42.666667v298.666666c0 71.210667-56.789333 128-128 128H170.666667a42.666667 42.666667 0 0 0-42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667 42.666667h512c117.632 0 213.333333-95.701333 213.333333-213.333334V170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M384 384a42.666667 42.666667 0 0 0-30.165333 12.501333l-213.333334 213.333334a42.666667 42.666667 0 0 0 0 60.330666l213.333334 213.333334a42.666667 42.666667 0 0 0 60.330666 0 42.666667 42.666667 0 0 0 0-60.330667L231.168 640l182.997333-182.997333a42.666667 42.666667 0 0 0 0-60.330667A42.666667 42.666667 0 0 0 384 384z"/></svg>
         </button>
         <button @click="cancelExecution" class="cancel-btn" v-if="isStreaming">
           <span>停止</span>
           <svg class="cancel-icon" width="10" height="10" viewBox="0 0 1024 1024" fill="currentColor"><path d="M213.333333 85.333333C143.146667 85.333333 85.333333 143.146667 85.333333 213.333333v597.333334c0 70.186667 57.813333 128 128 128h597.333334c70.186667 0 128-57.813333 128-128V213.333333c0-70.186667-57.813333-128-128-128z"/></svg>
         </button>
       </div>
-      <div class="input-status">
-        <HxBadge variant="info" size="sm">{{ chatStore.getActiveConfig().model || '未选择模型' }}</HxBadge>
-        <HxBadge :variant="chatStore.providerMode === 'custom' ? 'warning' : 'success'" size="sm">{{ chatStore.providerMode === 'custom' ? '自定义' : 'gfw' }}</HxBadge>
-        <HxBadge :variant="isStreaming ? 'primary' : 'default'" size="sm" :dot="isStreaming">{{ isStreaming ? '生成中' : '就绪' }}</HxBadge>
-        <span v-if="messages.length > 0" class="status-sep">·</span>
-        <button v-if="messages.length > 0" class="export-btn" @click="exportChat" title="导出为 Markdown">导出</button>
       </div>
+      <div class="input-status">
+        <span class="status-pill">{{ chatStore.getActiveConfig().model || '未选择模型' }}</span>
+        <span class="status-dot-sep">·</span>
+        <span class="status-pill" :class="chatStore.providerMode === 'custom' ? 'warning' : 'success'">{{ chatStore.providerMode === 'custom' ? 'Custom API' : 'gfw.net' }}</span>
+        <span class="status-dot-sep">·</span>
+        <span class="status-pill" :class="{ streaming: isStreaming }">{{ isStreaming ? 'Generating' : 'Ready' }}</span>
+        <span v-if="messages.length > 0" class="status-dot-sep">·</span>
+        <button v-if="messages.length > 0" class="export-btn" @click="exportChat" title="导出对话为 Markdown 文件">导出 Markdown</button>
+      </div>
+    </div>
+    <!-- Context menu -->
+    <div v-if="ctxMenu.show" class="ctx-menu" :style="{ top: ctxMenu.y + 'px', left: ctxMenu.x + 'px' }" @click.stop @contextmenu.prevent>
+      <button v-if="ctxMenu.hasSelection && ctxMenu.source === 'body'" @click="ctxBodyCopy" class="ctx-item">复制</button>
+      <button v-if="ctxMenu.hasSelection && ctxMenu.source === 'input'" @click="ctxCopy" class="ctx-item">复制</button>
+      <button v-if="ctxMenu.hasSelection && ctxMenu.source === 'input'" @click="ctxCut" class="ctx-item">剪切</button>
+      <button v-if="ctxMenu.hasContent && !ctxMenu.hasSelection && ctxMenu.source === 'input'" @click="ctxSelectAll" class="ctx-item">全选</button>
+      <button v-if="ctxMenu.source === 'input'" @click="ctxPaste" class="ctx-item">粘贴</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch, onMounted } from 'vue'
+import { ref, nextTick, watch, onMounted, reactive } from 'vue'
 import { useChatStore } from '../stores/chat'
 import { useAppStore } from '../stores/app'
 import { useGfwStore } from '../stores/gfw'
@@ -283,12 +300,92 @@ const toast = useToast()
 const chatStore = useChatStore()
 const appStore = useAppStore()
 const gfwStore = useGfwStore()
+const appVersion = __APP_VERSION__
 const { messages, isStreaming, currentResponse, currentToolCalls, selectedModel } = storeToRefs(chatStore)
 
 const inputText = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// Context menu state
+const ctxMenu = reactive({ show: false, x: 0, y: 0, hasContent: false, hasSelection: false, source: '' as 'input' | 'body' | '' })
+
+function showContextMenu(e: MouseEvent) {
+  const ta = textareaRef.value
+  ctxMenu.hasContent = !!ta?.value.length
+  ctxMenu.hasSelection = ta ? ta.selectionStart !== ta.selectionEnd : false
+  ctxMenu.source = 'input'
+  ctxMenu.x = e.clientX
+  ctxMenu.y = e.clientY
+  ctxMenu.show = true
+  nextTick(() => {
+    document.addEventListener('click', hideContextMenu, { once: true })
+  })
+}
+
+function showBodyContextMenu(e: MouseEvent) {
+  const sel = window.getSelection()
+  const hasText = !!(sel && sel.toString().trim())
+  if (!hasText) return  // 没有选中文字时不显示菜单
+  ctxMenu.hasSelection = true
+  ctxMenu.hasContent = false
+  ctxMenu.source = 'body'
+  ctxMenu.x = e.clientX
+  ctxMenu.y = e.clientY
+  ctxMenu.show = true
+  nextTick(() => {
+    document.addEventListener('click', hideContextMenu, { once: true })
+  })
+}
+
+function hideContextMenu() {
+  ctxMenu.show = false
+}
+
+function ctxCopy() {
+  const ta = textareaRef.value
+  if (!ta) return
+  ta.focus()
+  try { document.execCommand('copy') } catch {}
+  hideContextMenu()
+}
+
+function ctxBodyCopy() {
+  try { document.execCommand('copy') } catch {}
+  hideContextMenu()
+}
+
+function ctxCut() {
+  const ta = textareaRef.value
+  if (!ta) return
+  ta.focus()
+  try { document.execCommand('cut') } catch {}
+  ta.dispatchEvent(new Event('input', { bubbles: true }))
+  hideContextMenu()
+}
+
+function ctxPaste() {
+  const ta = textareaRef.value
+  if (!ta) return
+  hideContextMenu()
+  if (navigator.clipboard?.readText) {
+    navigator.clipboard.readText().then(text => {
+      if (text) {
+        ta.focus()
+        const start = ta.selectionStart
+        const end = ta.selectionEnd
+        ta.setRangeText(text, start, end, 'end')
+        ta.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+    }).catch(() => { /* 非 HTTPS 环境不可用，请用 Ctrl+V */ })
+  }
+}
+
+function ctxSelectAll() {
+  textareaRef.value?.select()
+  hideContextMenu()
+}
 const attachedFiles = ref<Array<{ id: string; file: File; type: string; name: string; size: number }>>([])
 const agentStatus = ref('')
 const agentIteration = ref(0)
@@ -306,8 +403,26 @@ renderer.code = function({ text, lang }: Tokens.Code) {
     ? hljs.highlight(text, { language }).value
     : hljs.highlightAuto(text).value
   const displayLang = lang || 'text'
-  return `<div class="code-block"><div class="code-header"><span class="code-lang">${displayLang}</span><button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-block').querySelector('code').textContent).then(()=>{this.textContent='已复制';setTimeout(()=>{this.textContent='复制'},1500)})">复制</button></div><pre><code class="hljs language-${displayLang}">${highlighted}</code></pre></div>`
+  
+  // Generate line numbers
+  const lines = text.split('\n').length
+  const lineNumbers = Array.from({ length: lines }, (_, i) => i + 1).join('\n')
+  
+  // Escape line numbers for HTML
+  const escapedLineNumbers = lineNumbers.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+  return `<div class="code-window"><div class="code-tab"><span class="code-lang-icon">${getLangIcon(displayLang)} ${displayLang}</span><button class="code-copy-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span></button></div><div class="code-body"><div class="code-gutter">${escapedLineNumbers}</div><pre><code class="hljs language-${displayLang}">${highlighted}</code></pre></div></div>`
 }
+
+function getLangIcon(lang: string): string {
+  const map: Record<string, string> = {
+    python: '🐍', js: '🟨', typescript: '🔷', ts: '🔷', html: '🌐', css: '🎨',
+    bash: '💻', sh: '💻', shell: '💻', json: '📦', yaml: '📝', yml: '📝',
+    sql: '🗄️', go: '🐹', rust: '🦀', java: '☕', cpp: '⚙️', c: '⚙️', vue: '🟩', svelte: '🔴'
+  }
+  return map[lang.toLowerCase()] || '📄'
+}
+
 marked.setOptions({ renderer })
 
 // File upload functions
@@ -558,10 +673,52 @@ function onMessagesScroll() {
   showScrollBtn.value = scrollHeight - scrollTop - clientHeight > 200
 }
 
+// Click delegation for code copy buttons (handles v-html inline onclick fallback)
+function onMessagesClick(e: MouseEvent) {
+  const btn = (e.target as HTMLElement).closest('.code-copy-btn')
+  if (!btn) return
+  e.preventDefault()
+  const codeEl = btn.closest('.code-window')?.querySelector('code')
+  if (!codeEl) return
+  const text = codeEl.textContent || ''
+  copyToClipboard(text, btn)
+}
+
+function copyToClipboard(text: string, btn?: HTMLElement) {
+  // Try modern API first
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (btn) updateCopyBtn(btn)
+    }).catch(() => {
+      fallbackCopy(text, btn)
+    })
+  } else {
+    fallbackCopy(text, btn)
+  }
+}
+
+function fallbackCopy(text: string, btn?: HTMLElement) {
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.position = 'fixed'
+  ta.style.left = '-9999px'
+  document.body.appendChild(ta)
+  ta.select()
+  try { document.execCommand('copy'); if (btn) updateCopyBtn(btn) } catch (_) {}
+  document.body.removeChild(ta)
+}
+
+function updateCopyBtn(btn: HTMLElement) {
+  const span = btn.querySelector('span')
+  if (!span) return
+  const original = span.textContent || 'Copy'
+  span.textContent = '已复制!'
+  setTimeout(() => { span.textContent = original }, 1500)
+}
+
 function copyMessage(content: string) {
-  navigator.clipboard.writeText(content).then(() => {
-    toast.success('已复制', undefined, 1500)
-  }).catch(() => {})
+  copyToClipboard(content)
+  toast.success('已复制', undefined, 1500)
 }
 
 async function regenerateMessage(idx: number) {
@@ -669,7 +826,7 @@ function exportChat() {
 </script>
 
 <style scoped>
-/* ===== Layout ===== */
+/* ===== Glass IDE Layout ===== */
 .chat-view {
   display: flex;
   flex-direction: column;
@@ -682,11 +839,36 @@ function exportChat() {
 .messages {
   flex: 1;
   overflow-y: auto;
-  padding: 0;
-  padding-bottom: 140px; /* 给浮动 input-area 留出足够空间（input-area padding-top 48px + 输入框 ~60px + 底部 16px + 余量） */
+  padding: 45px 45px;
+  padding-bottom: 140px;
+  scroll-behavior: smooth;
+  /* Top & bottom inward Gaussian blur fade */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    black 60px,
+    black calc(100% - 150px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    black 60px,
+    black calc(100% - 150px),
+    transparent 100%
+  );
 }
 
-/* ===== Empty state - Terminal ===== */
+/* Scrollbar styling */
+.messages::-webkit-scrollbar { width: 6px; }
+.messages::-webkit-scrollbar-track { background: transparent; }
+.messages::-webkit-scrollbar-thumb { 
+  background: var(--glass-border); 
+  border-radius: 10px; 
+}
+.messages::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+/* ===== Empty State ===== */
 .empty-state {
   display: flex;
   align-items: center;
@@ -700,67 +882,84 @@ function exportChat() {
   width: 100%;
 }
 
-.terminal-header {
+.status-panel {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px) saturate(1.4);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  flex-direction: column;
+  background: var(--glass-base);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
   border: 1px solid var(--glass-border);
-  border-bottom: none;
-  border-radius: 12px 12px 0 0;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.terminal-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-.terminal-dot.red { background: #FF5F57; }
-.terminal-dot.yellow { background: #FEBC2E; }
-.terminal-dot.green { background: #28C840; }
-
-.terminal-title {
-  margin-left: 8px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-text-tertiary);
-}
-
-.terminal-body {
-  background: #0D1117;
-  border: 1px solid var(--color-border);
-  border-top: none;
-  border-radius: 0 0 8px 8px;
-  padding: 16px 18px;
-}
-
-.terminal-line {
+.status-panel-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--font-mono);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.status-panel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-panel-dot.connected { background: var(--success); box-shadow: 0 0 8px rgba(48, 209, 88, 0.4); }
+.status-panel-dot.connecting { background: var(--warning); box-shadow: 0 0 8px rgba(255, 159, 10, 0.4); }
+.status-panel-dot.disconnected { background: var(--error); }
+
+.status-panel-title {
   font-size: 13px;
-  line-height: 2;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.t-prompt { color: #22C55E; user-select: none; }
-.t-cmd { color: #E6EDF3; font-weight: 600; }
-.t-flag { color: #7EE787; }
-.t-text { color: #8B949E; }
-.t-text.dim { color: #484F58; }
-.t-status { color: #3B82F6; }
-
-.t-cursor {
-  color: #E6EDF3;
-  animation: blink 1s step-end infinite;
+.status-panel-version {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
 }
 
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+.status-panel-body {
+  padding: 12px 16px;
+}
+
+.status-panel-ready {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-panel-ready-text {
+  font-size: 13px;
+  color: var(--primary-text);
+  font-weight: 500;
+}
+
+.status-panel-ready-text.error {
+  color: var(--error);
+}
+
+.status-panel-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 159, 10, 0.3);
+  border-top-color: var(--warning);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Quick actions */
@@ -768,31 +967,30 @@ function exportChat() {
   margin-top: 20px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 8px;
 }
 
 .quick-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
+  padding: 10px 14px;
   cursor: pointer;
-  border-radius: var(--radius-btn);
+  border-radius: 12px;
   border: 1px solid transparent;
-  transition: all 0.15s;
+  transition: all 0.2s var(--ease-expo);
 }
 
 .quick-item:hover {
-  background: var(--glass-bg);
+  background: var(--glass-base);
   border-color: var(--glass-border);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(16px);
 }
 
 .qa-icon {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   user-select: none;
   flex-shrink: 0;
 }
@@ -800,192 +998,419 @@ function exportChat() {
 .qa-text {
   font-family: var(--font-mono);
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
-.quick-item:hover .qa-text {
-  color: var(--color-text-primary);
+.quick-item:hover .qa-text { color: var(--text-primary); }
+.quick-item:hover .qa-icon { color: var(--primary-text); }
+
+/* ===== Message Wrappers ===== */
+.msg-wrapper {
+  display: flex;
+  margin-bottom: 24px;
+  transition: all 0.3s var(--ease-expo);
 }
 
-.quick-item:hover .qa-icon {
-  color: var(--color-primary);
+.msg-wrapper.user {
+  justify-content: flex-end;
 }
 
-/* ===== Messages — VueBits Glass Cards ===== */
-.msg {
-  padding: var(--space-5) var(--space-12);
-  border-bottom: 1px solid var(--border-subtle);
-  transition: all var(--normal);
+.msg-wrapper.assistant {
+  justify-content: flex-start;
 }
 
-.msg:last-child {
-  border-bottom: none;
+/* ===== User Bubble ===== */
+.msg-bubble.user-bubble {
+  max-width: 75%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  animation: bubblePop 0.3s var(--ease-expo) both;
 }
 
-.msg.user {
-  background: transparent;
-}
-
-.msg.assistant {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--glass-inset), var(--shadow-sm);
-  animation: msgSlideIn 0.5s var(--ease-expo) both;
-  margin: var(--space-2) 0;
-}
-
-.msg.assistant:hover {
-  border-color: var(--border-light);
-  box-shadow: var(--glass-inset), var(--shadow-md);
-}
-
-@keyframes msgSlideIn {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+@keyframes bubblePop {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.msg-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-}
-
-.msg-author {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.msg-author.user { color: var(--text-tertiary); }
-.msg-author.assistant { color: var(--primary); }
-
-.msg-time {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-tertiary);
-  opacity: 0.6;
-}
-
-/* Content */
-.msg-content {
-  font-size: var(--text-sm);
-  line-height: var(--leading-relaxed);
-  color: var(--text-primary);
-}
-
 .user-content {
+  background: linear-gradient(135deg, rgba(90, 200, 250, 0.22) 0%, rgba(90, 200, 250, 0.12) 100%);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(90, 200, 250, 0.32);
+  border-right-color: rgba(90, 200, 250, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.08), 0 0 12px rgba(90, 200, 250, 0.1);
+  border-radius: 18px 18px 4px 18px;
+  padding: 10px 16px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-primary);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-/* ===== Markdown ===== */
-.markdown-body { word-break: break-word; }
-.markdown-body :deep(p) { margin: 6px 0; }
+.user-time {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  padding-right: 4px;
+  opacity: 0.6;
+}
+
+/* ===== AI Glass Card ===== */
+.msg-card.ai-card {
+  width: 100%;
+  max-width: 900px;
+  background: var(--glass-base);
+  backdrop-filter: blur(48px) saturate(2);
+  -webkit-backdrop-filter: blur(48px) saturate(2);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--glass-inset), 0 4px 20px rgba(0, 0, 0, 0.05);
+  animation: cardSlideIn 0.4s var(--ease-expo) both;
+  overflow: hidden;
+}
+
+.msg-card.ai-card.glass-glow {
+  border-color: rgba(10, 132, 255, 0.2);
+  box-shadow: 0 0 12px rgba(10, 132, 255, 0.1);
+}
+
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.author-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-text);
+}
+
+.ai-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(48, 209, 88, 0.4);
+}
+
+.ai-dot.pulsing {
+  animation: pulseDot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.8); }
+}
+
+.meta-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+
+.meta-tag {
+  font-family: var(--font-mono);
+  background: rgba(10, 132, 255, 0.08);
+  color: var(--primary-text);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.meta-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.meta-tokens {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.meta-icon {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.meta-icon.token-down {
+  transform: scaleY(-1);
+}
+
+.card-content {
+  padding: 20px 24px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.footer-tokens {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.token-item {
+  white-space: nowrap;
+}
+
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.action-icon:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--glass-border);
+  color: var(--text-primary);
+}
+
+.action-icon:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ===== Tools: Accordion ===== */
+.tool-accordion {
+  border-top: 1px solid var(--glass-border);
+  margin: 0 16px;
+}
+
+.tool-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.tool-header:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  padding-left: 8px;
+}
+
+.tool-tri {
+  font-size: 8px;
+  color: var(--text-tertiary);
+  width: 12px;
+  transition: transform 0.2s;
+}
+
+.tool-status {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.tool-status.completed { background: var(--success); }
+.tool-status.failed { background: var(--error); }
+.tool-status.running {
+  background: var(--warning);
+  animation: pulseDot 1s ease infinite;
+}
+
+.tool-name {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tool-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+
+.tool-body {
+  padding: 4px 0 8px 20px;
+}
+
+.tool-section {
+  margin-top: 6px;
+}
+
+.tool-label-sm {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.tool-json {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ===== Markdown Styles ===== */
+.markdown-body { word-break: break-word; color: var(--text-primary); }
+.markdown-body :deep(p) { margin: 8px 0; }
 .markdown-body :deep(p:first-child) { margin-top: 0; }
 .markdown-body :deep(p:last-child) { margin-bottom: 0; }
 
 .markdown-body :deep(h1),
 .markdown-body :deep(h2),
 .markdown-body :deep(h3) {
-  margin: 16px 0 6px;
+  margin: 20px 0 8px;
   font-weight: 700;
-  color: var(--color-text-primary);
-  letter-spacing: -0.3px;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+  line-height: 1.3;
 }
-.markdown-body :deep(h1) { font-size: 18px; }
-.markdown-body :deep(h2) { font-size: 16px; }
-.markdown-body :deep(h3) { font-size: 14px; font-weight: 600; }
+.markdown-body :deep(h1) { font-size: 20px; }
+.markdown-body :deep(h2) { font-size: 17px; }
+.markdown-body :deep(h3) { font-size: 15px; font-weight: 600; }
 
-.markdown-body :deep(strong) {
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
+.markdown-body :deep(strong) { font-weight: 600; color: var(--text-primary); }
 
-/* Code blocks with syntax highlighting */
-.markdown-body :deep(.code-block) {
-  margin: 12px 0;
-  border-radius: 6px;
+/* Code Window (IDE Style) */
+.markdown-body :deep(.code-window) {
+  margin: 16px 0;
+  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #21262D;
+  border: 1px solid var(--glass-border);
+  background: #0D1117;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
 }
 
-.markdown-body :deep(.code-header) {
+.markdown-body :deep(.code-tab) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 14px;
-  background: #161B22;
-  border-bottom: 1px solid #21262D;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--glass-border);
 }
 
-.markdown-body :deep(.code-lang) {
-  font-family: var(--font-mono);
+.markdown-body :deep(.code-lang-icon) {
   font-size: 11px;
   font-weight: 600;
-  color: #7D8590;
+  color: #8B949E;
   text-transform: lowercase;
 }
 
-.markdown-body :deep(.code-copy) {
-  font-family: var(--font-mono);
+.markdown-body :deep(.code-copy-btn) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 10px;
-  color: #7D8590;
-  background: transparent;
-  border: 1px solid #30363D;
-  border-radius: 4px;
-  padding: 2px 8px;
+  color: #8B949E;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 3px 8px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: all 0.15s;
 }
 
-.markdown-body :deep(.code-copy:hover) {
+.markdown-body :deep(.code-copy-btn:hover) {
   color: #E6EDF3;
-  border-color: #484F58;
+  border-color: rgba(90, 200, 250, 0.4);
+  background: rgba(90, 200, 250, 0.15);
 }
 
-.markdown-body :deep(.code-block pre) {
-  background: #0D1117;
+.markdown-body :deep(.code-body) {
+  display: flex;
+  overflow: auto;
+}
+
+.markdown-body :deep(.code-gutter) {
+  flex-shrink: 0;
+  padding: 16px 8px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  color: #484F58;
+  background: rgba(255, 255, 255, 0.01);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  user-select: none;
+  white-space: pre;
+}
+
+.markdown-body :deep(.code-body pre) {
   margin: 0;
-  padding: 14px 16px;
-  overflow-x: auto;
+  padding: 16px;
+  overflow: auto;
+  flex: 1;
+  background: transparent;
   border: none;
   border-radius: 0;
 }
 
-.markdown-body :deep(.code-block pre code) {
+.markdown-body :deep(code.hljs) {
   background: none;
-  border: none;
   padding: 0;
   color: #E6EDF3;
   font-family: var(--font-mono);
   font-size: 13px;
-  line-height: 1.6;
-}
-
-/* Fallback for pre without code-block wrapper */
-.markdown-body :deep(pre) {
-  background: #0D1117;
-  border: 1px solid #21262D;
-  border-radius: 6px;
-  padding: 14px 16px;
-  overflow-x: auto;
-  margin: 12px 0;
-}
-
-.markdown-body :deep(pre code) {
-  background: none;
-  padding: 0;
-  border: none;
-  color: #E6EDF3;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 /* highlight.js token colors (GitHub Dark) */
@@ -998,204 +1423,97 @@ function exportChat() {
 .markdown-body :deep(.hljs-addition) { color: #A5D6FF; }
 
 .markdown-body :deep(.hljs-number),
-.markdown-body :deep(.hljs-literal),
-.markdown-body :deep(.hljs-meta .hljs-meta-string) { color: #79C0FF; }
+.markdown-body :deep(.hljs-literal) { color: #79C0FF; }
 
 .markdown-body :deep(.hljs-comment),
 .markdown-body :deep(.hljs-deletion) { color: #8B949E; }
 
 .markdown-body :deep(.hljs-function),
-.markdown-body :deep(.hljs-title),
-.markdown-body :deep(.hljs-title.function_) { color: #D2A8FF; }
+.markdown-body :deep(.hljs-title) { color: #D2A8FF; }
 
 .markdown-body :deep(.hljs-variable),
-.markdown-body :deep(.hljs-attr),
-.markdown-body :deep(.hljs-params) { color: #FFA657; }
-
-.markdown-body :deep(.hljs-class .hljs-title),
-.markdown-body :deep(.hljs-title.class_) { color: #FFA657; }
+.markdown-body :deep(.hljs-attr) { color: #FFA657; }
 
 .markdown-body :deep(.hljs-symbol),
 .markdown-body :deep(.hljs-bullet) { color: #7EE787; }
 
 .markdown-body :deep(.hljs-regexp) { color: #7EE787; }
 
-.markdown-body :deep(.hljs-selector-class),
-.markdown-body :deep(.hljs-selector-attr),
-.markdown-body :deep(.hljs-selector-pseudo) { color: #D2A8FF; }
-
-.markdown-body :deep(.hljs-template-tag),
-.markdown-body :deep(.hljs-template-variable) { color: #FFA657; }
-
-.markdown-body :deep(.hljs-doctag) { color: #FF7B72; }
-
 .markdown-body :deep(.hljs-tag) { color: #7EE787; }
 .markdown-body :deep(.hljs-name) { color: #7EE787; }
 .markdown-body :deep(.hljs-attribute) { color: #79C0FF; }
 
-.markdown-body :deep(code) {
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border);
-  padding: 1px 5px;
-  border-radius: 4px;
+/* Inline code */
+.markdown-body :deep(code:not(.hljs)) {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+  padding: 2px 6px;
+  border-radius: 6px;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .markdown-body :deep(ul),
-.markdown-body :deep(ol) {
-  padding-left: 20px;
-  margin: 8px 0;
-}
-.markdown-body :deep(li) { margin: 3px 0; }
+.markdown-body :deep(ol) { padding-left: 22px; margin: 10px 0; }
+.markdown-body :deep(li) { margin: 4px 0; line-height: 1.65; }
 
 .markdown-body :deep(blockquote) {
-  border-left: 2px solid var(--color-border);
-  padding: 6px 14px;
-  margin: 12px 0;
-  color: var(--color-text-secondary);
+  border-left: 3px solid var(--primary);
+  padding: 8px 16px;
+  margin: 14px 0;
+  color: var(--text-secondary);
+  background: rgba(90, 200, 250, 0.03);
+  border-radius: 0 8px 8px 0;
 }
 
 .markdown-body :deep(a) {
-  color: var(--color-primary);
+  color: var(--primary-text);
   text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
 }
-.markdown-body :deep(a:hover) { text-decoration: underline; }
+.markdown-body :deep(a:hover) { border-bottom-color: var(--primary-text); }
 
 .markdown-body :deep(hr) {
   border: none;
-  border-top: 1px solid var(--color-border);
-  margin: 14px 0;
+  border-top: 1px solid var(--glass-border);
+  margin: 18px 0;
 }
 
 .markdown-body :deep(table) {
   width: 100%;
   border-collapse: collapse;
-  margin: 12px 0;
+  margin: 14px 0;
   font-size: 13px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
 }
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
-  border: 1px solid var(--color-border);
-  padding: 6px 10px;
+  border: 1px solid var(--glass-border);
+  padding: 8px 12px;
   text-align: left;
 }
 .markdown-body :deep(th) {
-  background: var(--color-bg-input);
+  background: rgba(255, 255, 255, 0.04);
   font-weight: 600;
 }
 
 .markdown-body :deep(img) {
   max-width: 100%;
-  border-radius: 6px;
-  margin: 6px 0;
+  border-radius: 8px;
+  margin: 8px 0;
+  border: 1px solid var(--glass-border);
 }
 
-/* ===== Tool calls ===== */
-.tool-section {
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-border);
-}
-
-.tool-row { margin-bottom: 2px; }
-
-.tool-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 0;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  transition: color 0.12s;
-}
-
-.tool-head:hover { color: var(--color-text-primary); }
-
-.tool-tri {
-  font-size: 8px;
-  color: var(--color-text-tertiary);
-  width: 10px;
-  user-select: none;
-}
-
-.tool-indicator {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.tool-indicator.completed { background: var(--color-success); }
-.tool-indicator.failed { background: var(--color-error); }
-.tool-indicator.running {
-  background: var(--color-warning);
-  animation: pulse 1.5s ease infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-.tool-fn {
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.tool-st {
-  color: var(--color-text-tertiary);
-  font-size: 11px;
-}
-
-.tool-time {
-  margin-left: auto;
-  font-size: 10px;
-  color: var(--color-text-tertiary);
-  opacity: 0.5;
-}
-
-.tool-body {
-  padding: 4px 0 6px 16px;
-}
-
-.tool-block { margin-top: 4px; }
-
-.tool-block-title {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 3px;
-}
-
-.tool-pre {
-  background: #0D1117;
-  color: #8B949E;
-  border: 1px solid #21262D;
-  padding: 10px 12px;
-  border-radius: 4px;
-  max-height: 180px;
-  overflow: auto;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-/* ===== Streaming ===== */
-
-/* Thinking state — waiting for first response */
+/* ===== Streaming & Thinking ===== */
 .thinking-state {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 0;
+  padding: 20px 24px;
 }
 
 .thinking-dots {
@@ -1204,128 +1522,71 @@ function exportChat() {
   gap: 4px;
 }
 
-.thinking-dots .dot {
+.thinking-dots span {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-primary);
-  animation: dotBounce 1.4s ease-in-out infinite;
+  background: var(--primary-text);
+  animation: dotPulse 1.2s ease infinite;
 }
 
-.thinking-dots .dot:nth-child(2) { animation-delay: 0.16s; }
-.thinking-dots .dot:nth-child(3) { animation-delay: 0.32s; }
+.thinking-dots span:nth-child(1) { animation-delay: 0s; }
+.thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
 
-@keyframes dotBounce {
-  0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1.1); }
+@keyframes dotPulse {
+  0%, 60%, 100% { opacity: 0.2; transform: scale(0.8); }
+  30% { opacity: 1; transform: scale(1.2); }
 }
 
-.thinking-text {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-text-tertiary);
-  animation: fadeInOut 2s ease infinite;
+.thinking-state .status-text {
+  font-size: 13px;
+  color: var(--primary-text);
+  animation: thinkingPulse 2.4s ease infinite;
 }
 
-@keyframes fadeInOut {
+@keyframes thinkingPulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
 }
 
-/* Tool spinner — rotating ring for running tools */
-.tool-spinner {
+/* Cursor: inline at end of last line via ::after */
+.card-content.streaming::after {
+  content: '\258C';
+  display: inline;
+  font-family: var(--font-mono);
+  color: var(--primary-text);
+  animation: cursorBlink 0.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  margin-left: 1px;
+  text-shadow: 0 0 8px rgba(90, 200, 250, 0.6);
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 0.1; }
+  45%, 55% { opacity: 1; }
+}
+
+.tool-streaming .tool-item.active {
+  opacity: 1;
+}
+
+.tool-spinner-sm {
   width: 10px;
   height: 10px;
-  border: 1.5px solid var(--color-border);
-  border-top-color: var(--color-primary);
+  border: 1.5px solid var(--glass-border);
+  border-top-color: var(--primary-text);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.streaming-tools .tool-row.compact {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 0;
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.tool-st.running {
-  color: var(--color-primary);
-}
-
-.tool-st.completed {
-  color: var(--color-success);
-}
-
-.tool-st.failed {
-  color: var(--color-error);
-}
-
-.block-cursor {
-  font-family: var(--font-mono);
-  color: var(--color-primary);
-  animation: blink 1s step-end infinite;
-  font-size: 14px;
-  margin-left: 1px;
-}
-
-.streaming .msg-author {
-  position: relative;
-}
-
-/* Connecting dots */
-.connecting {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 48px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-text-tertiary);
-}
-
-/* Agent status bar */
-.agent-status-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-}
-
-.agent-status-bar .status-text {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-primary);
-  animation: fadeInOut 2s ease infinite;
-}
-
-/* Iteration badge */
-.iteration-badge {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-primary);
-  background: var(--color-primary-light);
-  padding: 2px 8px;
-  border-radius: 8px;
-  font-weight: 600;
-}
-
-/* Approval card */
+/* Approval Card */
 .approval-card {
-  margin: 10px 0;
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(16px) saturate(var(--glass-saturate));
-  border: 1px solid var(--color-warning);
-  border-radius: 10px;
+  margin: 12px 0;
+  background: var(--glass-base);
+  backdrop-filter: blur(16px) saturate(1.5);
+  border: 1px solid var(--warning);
+  border-radius: 12px;
   overflow: hidden;
   animation: slideIn 0.2s ease;
 }
@@ -1340,522 +1601,410 @@ function exportChat() {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: rgba(245, 158, 11, 0.08);
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-warning);
-  font-family: var(--font-mono);
+  background: rgba(255, 159, 10, 0.08);
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--warning);
   font-size: 12px;
   font-weight: 600;
 }
 
-.approval-body {
-  padding: 12px 14px;
-}
+.approval-body { padding: 12px 14px; }
 
-.approval-cmd {
-  margin-bottom: 8px;
-}
+.approval-cmd { margin-bottom: 8px; }
 
 .approval-label {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  display: block;
   margin-bottom: 4px;
 }
 
 .approval-cmd code {
   display: block;
-  background: #0D1117;
+  background: rgba(0, 0, 0, 0.2);
   color: #FF7B72;
   padding: 8px 10px;
   border-radius: 6px;
   font-family: var(--font-mono);
   font-size: 12px;
-  word-break: break-all;
-  white-space: pre-wrap;
 }
 
 .approval-reason {
   font-size: 12px;
-  color: var(--color-text-secondary);
-  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 .approval-actions {
   display: flex;
   gap: 8px;
   padding: 10px 14px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--glass-border);
 }
 
 .approve-btn {
-  padding: 5px 14px;
-  background: var(--color-success);
+  padding: 6px 16px;
+  background: var(--success);
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: #fff;
-  font-family: var(--font-mono);
-  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.12s;
 }
-
-.approve-btn:hover { opacity: 0.85; }
 
 .deny-btn {
-  padding: 5px 14px;
+  padding: 6px 16px;
   background: transparent;
-  border: 1px solid var(--color-error);
-  border-radius: 6px;
-  color: var(--color-error);
-  font-family: var(--font-mono);
-  font-size: 11px;
+  border: 1px solid var(--error);
+  border-radius: 8px;
+  color: var(--error);
   cursor: pointer;
-  transition: all 0.12s;
 }
 
-.deny-btn:hover { background: rgba(239, 68, 68, 0.08); }
-
-.connecting-dots {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.connecting-dots .dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--color-text-tertiary);
-  animation: dotBounce 1.4s ease-in-out infinite;
-}
-
-.connecting-dots .dot:nth-child(2) { animation-delay: 0.16s; }
-.connecting-dots .dot:nth-child(3) { animation-delay: 0.32s; }
-
-/* ===== Meta ===== */
-.msg-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 10px;
-}
-
-.msg-meta {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-text-tertiary);
-}
-
-.msg-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.msg:hover .msg-actions {
-  opacity: 1;
-}
-
-.action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  transition: all 0.12s;
-}
-
-.action-btn:hover:not(:disabled) {
-  background: var(--color-bg-input);
-  border-color: var(--color-border);
-  color: var(--color-text-primary);
-}
-
-.action-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-/* ===== Scroll FAB ===== */
-.scroll-fab {
-  position: absolute;
-  right: 24px;
-  bottom: 120px;
-  z-index: 15;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--glass-shadow-inset), var(--shadow-card);
-  transition: all 0.25s var(--spring-bounce);
-}
-
-.scroll-fab:hover {
-  background: var(--color-bg-input);
-  color: var(--color-text-primary);
-  border-color: var(--color-text-tertiary);
-  transform: translateY(-3px) scale(1.08);
-  box-shadow: var(--glass-shadow-inset), var(--shadow-float);
-}
-
-.scroll-fab:active {
-  transform: scale(0.92);
-}
-
-.fab-fade-enter-active,
-.fab-fade-leave-active {
-  transition: opacity 0.2s, transform 0.2s;
-}
-.fab-fade-enter-from,
-.fab-fade-leave-to {
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-.meta-dot {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--color-text-tertiary);
-  margin: 0 8px;
-  opacity: 0.5;
-}
-
-/* ===== System messages ===== */
+/* ===== System Messages ===== */
 .sys-line {
-  padding: 8px 48px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-text-tertiary);
-  background: var(--color-tool-bg);
-  border-bottom: 1px solid var(--color-border-subtle);
+  display: flex;
+  justify-content: center;
+  padding: 14px 48px;
 }
 
-.sys-prefix {
-  color: var(--color-warning);
-  margin-right: 8px;
-  font-weight: 600;
+.sys-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  background: var(--glass-base);
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 4px 14px 4px 10px;
+  animation: pillIn 0.3s var(--ease-expo) both;
+}
+
+@keyframes pillIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.sys-icon {
+  flex-shrink: 0;
+  color: var(--warning);
 }
 
 .sys-text {
   word-break: break-word;
 }
 
-/* ===== Input — iOS 27 floating glass ===== */
+/* ===== Scroll FAB (dynamic, anchored to input-capsule) ===== */
+.fab-anchor {
+  position: relative;
+}
+
+.scroll-fab {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 15;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--glass-base);
+  backdrop-filter: blur(16px) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--glass-inset), 0 4px 16px rgba(0,0,0,0.15);
+  transition: all 0.3s var(--ease-expo);
+}
+
+.scroll-fab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+  transform: translateY(-3px) scale(1.08);
+  box-shadow: var(--glass-inset), 0 8px 24px rgba(0,0,0,0.2);
+}
+
+.scroll-fab:active { transform: scale(0.92); }
+
+.fab-fade-enter-active, .fab-fade-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.fab-fade-enter-from, .fab-fade-leave-to { opacity: 0; transform: translateY(8px); }
+
+/* ===== Input: Floating Glass Capsule ===== */
 .input-area {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 0 48px 16px;
-  padding-top: 48px;
+  padding: 0 45px 20px;
+  padding-top: 24px;
   z-index: 10;
-  background: linear-gradient(to top,
-    var(--color-bg-page) 0%,
-    var(--color-bg-page) 30%,
-    transparent 100%
-  );
+  background: linear-gradient(to top, var(--color-bg-page) 0%, transparent 100%);
 }
 
-.input-box {
+.input-capsule {
   display: flex;
-  align-items: flex-start;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  padding: 12px 16px;
+  align-items: center;
+  background: var(--glass-base);
+  backdrop-filter: blur(32px) saturate(1.5);
+  -webkit-backdrop-filter: blur(32px) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 10px 12px 10px 16px;
   gap: 10px;
-  box-shadow: var(--glass-shadow-inset), var(--shadow-float);
-  transition: border-color 0.25s var(--spring-smooth),
-              box-shadow 0.25s var(--spring-smooth),
-              transform 0.2s var(--spring-bounce);
-  min-height: 56px;
+  box-shadow: var(--glass-inset), 0 8px 32px rgba(0,0,0,0.1);
+  transition: all 0.3s var(--ease-expo);
+  min-height: 52px;
 }
 
-.input-box.focused {
-  border-color: var(--color-border-glow);
-  box-shadow: 
-    var(--glass-shadow-inset),
-    var(--shadow-float),
-    0 0 8px rgba(10,132,255,0.4),
-    0 0 16px rgba(10,132,255,0.2),
-    inset 0 0 8px rgba(10,132,255,0.05);
-  transform: none;
+.input-capsule.focused {
+  border-color: rgba(10, 132, 255, 0.4);
+  box-shadow: var(--glass-inset), 0 8px 32px rgba(0,0,0,0.1), 0 0 12px rgba(10, 132, 255, 0.2);
 }
 
-.input-chevron {
+.prompt-symbol {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
-  color: var(--color-text-tertiary);
-  line-height: 1.6;
-  padding-top: 2px;
+  color: var(--primary-text);
   user-select: none;
   flex-shrink: 0;
+  animation: pulse 2s ease-in-out infinite;
 }
 
-/* File upload button */
+/* ===== Upload bar (floating above input) ===== */
+.upload-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+
 .upload-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  color: var(--color-text-tertiary);
+  width: 34px;
+  height: 34px;
+  background: var(--glass-base);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.2s var(--spring-smooth);
+  transition: all 0.2s var(--ease-expo);
   flex-shrink: 0;
-  margin-top: 1px;
 }
 
 .upload-btn:hover {
-  background: var(--color-bg-input);
-  border-color: var(--color-border-glow);
-  color: var(--color-primary);
-  box-shadow: 0 0 8px rgba(10,132,255,0.2);
+  background: rgba(90, 200, 250, 0.15);
+  border-color: rgba(90, 200, 250, 0.35);
+  color: var(--info);
+  box-shadow: 0 0 8px rgba(90, 200, 250, 0.15);
 }
 
-.file-input-hidden {
-  display: none;
-}
-
-/* File previews (thumbnails on right side) */
-.file-previews {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  padding-left: 8px;
-  margin-left: 8px;
-  border-left: 1px solid var(--color-border);
-  max-width: 180px;
-  overflow-x: auto;
-  flex-shrink: 0;
-}
-
-.file-thumbnail {
-  position: relative;
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s var(--spring-smooth);
-}
-
-.file-thumbnail:hover {
-  border-color: var(--color-border-glow);
-  box-shadow: 0 0 8px rgba(10,132,255,0.2);
-}
-
-.thumbnail-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.thumbnail-icon {
-  font-size: 18px;
-  line-height: 1;
-}
-
-.thumbnail-remove {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 16px;
-  height: 16px;
-  background: var(--color-danger);
-  border: none;
-  border-radius: 50%;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: all 0.15s;
-  padding: 0;
-}
-
-.file-thumbnail:hover .thumbnail-remove {
-  opacity: 1;
-}
-
-.thumbnail-remove:hover {
-  background: var(--color-danger-hover);
-  transform: scale(1.1);
-}
-
-/* File list transitions */
-.file-list-enter-active,
-.file-list-leave-active {
-  transition: all 0.25s var(--spring-smooth);
-}
-
-.file-list-enter-from {
-  opacity: 0;
-  transform: translateX(10px) scale(0.9);
-}
-
-.file-list-leave-to {
-  opacity: 0;
-  transform: translateX(10px) scale(0.9);
-}
+.file-input-hidden { display: none; }
 
 textarea {
   flex: 1;
   background: transparent;
   border: none;
   outline: none;
-  box-shadow: none;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   resize: none;
   font-size: 14px;
-  font-family: var(--font-family);
-  padding: 2px 0;
-  line-height: 1.6;
+  padding: 4px 0;
+  line-height: 1.5;
   min-height: 22px;
+  max-height: 120px;
+  font-family: 'Noto Sans SC', var(--font-sans), sans-serif;
 }
 
-textarea:focus {
-  outline: none;
-  box-shadow: none;
-  border: none;
-}
-
-textarea::placeholder {
-  color: var(--color-text-tertiary);
-}
+textarea:focus { outline: none; }
+textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC', var(--font-sans), sans-serif; }
 
 .send-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-btn);
-  color: var(--color-text-tertiary);
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(10, 132, 255, 0.15);
+  border: 1px solid rgba(10, 132, 255, 0.2);
+  border-radius: 50%;
+  color: var(--primary-text);
   cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  transition: all 0.2s var(--spring-bounce);
-  white-space: nowrap;
+  transition: all 0.2s var(--ease-expo);
   flex-shrink: 0;
-  margin-top: 1px;
 }
 
 .send-btn:hover:not(:disabled) {
-  border-color: var(--color-text-secondary);
-  color: var(--color-text-primary);
-  background: var(--color-bg-input);
-  transform: scale(1.04);
+  background: rgba(10, 132, 255, 0.3);
+  box-shadow: 0 0 10px rgba(10, 132, 255, 0.2);
+  transform: scale(1.05);
 }
 
-.send-btn:active:not(:disabled) {
-  transform: scale(0.95);
-}
-
-.send-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.send-key { font-weight: 500; }
+.send-btn:active:not(:disabled) { transform: scale(0.95); }
+.send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .cancel-btn {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
-  background: var(--color-error);
-  border: none;
-  border-radius: 6px;
-  color: #fff;
+  padding: 6px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  color: var(--error);
   cursor: pointer;
-  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  transition: opacity 0.12s;
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-top: 1px;
 }
 
-.cancel-btn:hover { opacity: 0.85; }
-.cancel-icon { font-size: 9px; }
-.send-arrow { font-size: 12px; }
+/* File previews */
+/* File Chips */
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--glass-base);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: 'Noto Sans SC', var(--font-sans), sans-serif;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+  transition: all 0.2s var(--ease-expo);
+}
 
+.file-chip:hover {
+  border-color: rgba(90, 200, 250, 0.3);
+}
+
+.file-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.file-chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.file-chip-remove:hover {
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.file-overflow {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+/* Remove old preview styles */
+
+/* Input Status */
 .input-status {
   display: flex;
   align-items: center;
-  padding: 6px 2px 0;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-text-tertiary);
-  opacity: 0.6;
-  gap: 0;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 
-.status-item { padding: 0 4px; }
-.status-item.active { color: var(--color-primary); opacity: 1; }
-.status-sep { padding: 0 2px; opacity: 0.3; }
+.status-pill {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--glass-base);
+  border: 1px solid var(--glass-border);
+}
+
+.status-pill.warning { color: var(--warning); border-color: rgba(255, 159, 10, 0.2); background: rgba(255, 159, 10, 0.05); }
+.status-pill.success { color: var(--success); border-color: rgba(48, 209, 88, 0.2); background: rgba(48, 209, 88, 0.05); }
+.status-pill.streaming { color: var(--primary-text); border-color: rgba(10, 132, 255, 0.2); background: rgba(10, 132, 255, 0.05); }
+
+.status-dot-sep { font-size: 12px; opacity: 0.4; }
 
 .export-btn {
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  color: var(--color-text-tertiary);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 1px 6px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--glass-base);
+  border: 1px solid var(--glass-border);
+  color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.12s;
-  margin-left: 2px;
+  transition: all 0.2s var(--ease-expo);
+  font-family: 'Noto Sans SC', var(--font-sans), sans-serif;
 }
+
 .export-btn:hover {
-  color: var(--color-text-primary);
-  border-color: var(--color-text-secondary);
-  background: var(--color-bg-input);
+  color: var(--primary-text);
+  border-color: var(--border-light);
+  background: rgba(90, 200, 250, 0.1);
 }
 
+/* Context menu */
+.ctx-menu {
+  position: fixed;
+  z-index: 2000;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  min-width: 120px;
+  backdrop-filter: blur(16px);
+}
 
-/* ===== Scrollbar ===== */
-.messages::-webkit-scrollbar { width: 6px; }
-.messages::-webkit-scrollbar-track { background: transparent; }
-.messages::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
-.messages::-webkit-scrollbar-thumb:hover { background: var(--color-text-tertiary); }
+.ctx-item {
+  display: block;
+  width: 100%;
+  padding: 7px 14px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--fast);
+}
+
+.ctx-item:hover {
+  background: var(--bg-elevated);
+}
 </style>

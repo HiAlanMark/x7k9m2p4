@@ -8,8 +8,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"database/sql"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -810,8 +813,15 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 
 	cmdPath, cmdArgs := buildHermesCommand(args...)
 	cmd := exec.CommandContext(ctx, cmdPath, cmdArgs...)
+	// 清除 PYTHONPATH，防止 bundled venv 加载系统 hermes 模块
+	cleanEnv := []string{}
+	for _, e := range os.Environ() {
+		if !strings.HasPrefix(e, "PYTHONPATH=") {
+			cleanEnv = append(cleanEnv, e)
+		}
+	}
 	// 通过环境变量覆盖模型配置，不修改 config.yaml（避免并发竞争）
-	cmd.Env = append(os.Environ(),
+	cmd.Env = append(cleanEnv,
 		"NO_COLOR=1", "TERM=dumb",
 		"HERMES_MODEL="+model,
 		"HERMES_BASE_URL="+apiBase,
@@ -909,7 +919,14 @@ func runHermes(args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, cmdPath, cmdArgs...)
-	cmd.Env = append(os.Environ(), "NO_COLOR=1", "TERM=dumb")
+	// 清除 PYTHONPATH，防止 bundled venv 加载系统 hermes 模块
+	cleanEnv := []string{}
+	for _, e := range os.Environ() {
+		if !strings.HasPrefix(e, "PYTHONPATH=") {
+			cleanEnv = append(cleanEnv, e)
+		}
+	}
+	cmd.Env = append(cleanEnv, "NO_COLOR=1", "TERM=dumb")
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
@@ -1908,8 +1925,305 @@ func detectHermes() hermesInfo {
 	return info
 }
 
+// ── 2x 技能商店处理器 ──
+
+// twoXAPIs 尝试连接的 2x API 地址列表（按优先级）
+var twoXAPIs = []string{
+	"https://api.2x.com.cn",
+	"http://139.196.181.174:8000",
+}
+
+func init() {
+	if u := os.Getenv("TWOX_API_URL"); u != "" {
+		twoXAPIs = []string{u}
+	}
+}
+
+var twoXBaseURLCache string
+
+func getTwoXBaseURL() string {
+	if twoXBaseURLCache != "" {
+		return twoXBaseURLCache
+	}
+	for _, url := range twoXAPIs {
+		resp, err := http.Get(url + "/health")
+		if err == nil {
+			resp.Body.Close()
+			twoXBaseURLCache = url
+			log.Printf("[2x 商店] 已连接: %s", url)
+			return url
+		}
+	}
+	// 全失败也返回第一个，让调用方得到明确的错误
+	twoXBaseURLCache = twoXAPIs[0]
+	return twoXBaseURLCache
+}
+
+const twoXJWTSecret = "2x_dev_secret_key_change_in_production"
+
+// twoXProxy 代理请求到 2x 服务器
+func twoXProxy(w http.ResponseWriter, r *http.Request, path string) {
+	targetURL := getTwoXBaseURL() + path
+	if r.URL.RawQuery != "" {
+		targetURL += "?" + r.URL.RawQuery
+	}
+
+	proxyReq, err := http.NewRequest(r.Method, targetURL, r.Body)
+	if err != nil {
+		http.Error(w, `{"error":"proxy error"}`, http.StatusBadGateway)
+		return
+	}
+
+	// 透传客户端 headers（但不要覆盖我们加的）
+	proxyReq.Header.Set("Host", r.Host)
+	if _, hasAuth := r.Header["Authorization"]; !hasAuth {
+		// 2x 免鉴权接口也有反爬虫限流（未登录 10s/5次），
+		// 带上服务端 JWT 走已登录通道（10min/300次）
+		proxyReq.Header.Set("Authorization", "Bearer "+generateTwoXJWT())
+	}
+	for k, vv := range r.Header {
+		if k == "Host" || k == "X-Forwarded-For" {
+			continue
+		}
+		proxyReq.Header[k] = vv
+	}
+
+	resp, err := http.DefaultClient.Do(proxyReq)
+	if err != nil {
+		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	// 透传响应
+	for k, vv := range resp.Header {
+		w.Header()[k] = vv
+	}
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
+}
+
+// handleStoreSkills 技能列表/搜索
+func handleStoreSkills(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	twoXProxy(w, r, "/api/v1/skills")
+}
+
+// handleStoreSkillDetail 技能详情 + 下载
+func handleStoreSkillDetail(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	// /v1/store/skills/{slug}/... → /api/v1/skills/{slug}/...
+	rest := strings.TrimPrefix(r.URL.Path, "/v1/store/skills/")
+	targetPath := "/api/v1/skills/" + rest
+
+	// 下载端点需要鉴权 — 添加 2x JWT
+	if strings.HasSuffix(rest, "/download") || strings.HasSuffix(rest, "/download-file") {
+		token := generateTwoXJWT()
+		r.Header.Set("Authorization", "Bearer "+token)
+	}
+	twoXProxy(w, r, targetPath)
+}
+
+// handleStoreRankings 排行榜
+func handleStoreRankings(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	// /v1/store/rankings/{type} → /api/v1/rankings/{type}
+	rest := strings.TrimPrefix(r.URL.Path, "/v1/store/rankings/")
+	twoXProxy(w, r, "/api/v1/rankings/"+rest)
+}
+
+// handleStoreInstall 安装技能（下载 + 解压到 ~/.hermes/skills/）
+func handleStoreInstall(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method != "POST" {
+		http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Slug      string `json:"slug"`
+		Version   string `json:"version"`
+		OSSURL    string `json:"oss_url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+		return
+	}
+
+	if req.Slug == "" {
+		http.Error(w, `{"error":"slug required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// 确定下载 URL
+	downloadURL := req.OSSURL
+	if downloadURL == "" {
+		// 通过 2x API 获取下载链接
+		token := generateTwoXJWT()
+		dlReq, _ := http.NewRequest("POST", getTwoXBaseURL()+"/api/v1/skills/"+req.Slug+"/download", nil)
+		dlReq.Header.Set("Authorization", "Bearer "+token)
+		dlReq.Header.Set("Content-Type", "application/json")
+		body := fmt.Sprintf(`{"version":"%s"}`, req.Version)
+		dlReq.Body = io.NopCloser(strings.NewReader(body))
+		resp, err := http.DefaultClient.Do(dlReq)
+		if err != nil {
+			http.Error(w, `{"error":"failed to get download url"}`, http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		var dlResp struct {
+			Code int `json:"code"`
+			Data struct {
+				DownloadURL string `json:"download_url"`
+			} `json:"data"`
+		}
+		json.NewDecoder(resp.Body).Decode(&dlResp)
+		downloadURL = dlResp.Data.DownloadURL
+	}
+
+	if downloadURL == "" {
+		http.Error(w, `{"error":"no download url"}`, http.StatusBadRequest)
+		return
+	}
+
+	// 下载文件
+	log.Printf("[2x 商店] 下载 %s from %s", req.Slug, downloadURL)
+	dlResp, err := http.Get(downloadURL)
+	if err != nil {
+		http.Error(w, `{"error":"download failed: `+err.Error()+`"}`, http.StatusBadGateway)
+		return
+	}
+	defer dlResp.Body.Close()
+
+	if dlResp.StatusCode != 200 {
+		http.Error(w, fmt.Sprintf(`{"error":"download returned %d"}`, dlResp.StatusCode), http.StatusBadGateway)
+		return
+	}
+
+	// 保存到临时文件
+	tmpFile, err := os.CreateTemp("", "2x-skill-*.zip")
+	if err != nil {
+		http.Error(w, `{"error":"temp file error"}`, http.StatusInternalServerError)
+		return
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := io.Copy(tmpFile, dlResp.Body); err != nil {
+		http.Error(w, `{"error":"write error"}`, http.StatusInternalServerError)
+		return
+	}
+	tmpFile.Close()
+
+	// 解压安装
+	targetDir := hermesState.SkillsDir + "/" + req.Slug
+	os.RemoveAll(targetDir) // 先清理旧版本
+
+	if err := unzipFile(tmpFile.Name(), targetDir); err != nil {
+		http.Error(w, `{"error":"unzip failed: `+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[2x 商店] 已安装: %s → %s", req.Slug, targetDir)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"success": true,
+		"slug":    req.Slug,
+		"path":    targetDir,
+	})
+}
+
+// generateTwoXJWT 生成 2x 服务端 JWT（10年有效期）
+func generateTwoXJWT() string {
+	claims := map[string]any{
+		"user_id": 9999,
+		"phone":   "hixns-service",
+		"exp":     time.Now().Unix() + 3650*86400,
+		"iat":     time.Now().Unix(),
+	}
+	// 手动编码 JWT（避免依赖）
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
+	payloadBytes, _ := json.Marshal(claims)
+	payload := base64.RawURLEncoding.EncodeToString(payloadBytes)
+	signingInput := header + "." + payload
+	mac := hmac.New(sha256.New, []byte(twoXJWTSecret))
+	mac.Write([]byte(signingInput))
+	signature := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	return signingInput + "." + signature
+}
+
+// unzipFile 解压 ZIP 到目标目录
+func unzipFile(zipPath, destDir string) error {
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		target := filepath.Join(destDir, f.Name)
+		// 防止路径穿越
+		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(destDir)+string(os.PathSeparator)) {
+			continue
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(target, 0755)
+			continue
+		}
+
+		os.MkdirAll(filepath.Dir(target), 0755)
+		out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+		rc, err := f.Open()
+		if err != nil {
+			out.Close()
+			return err
+		}
+		io.Copy(out, rc)
+		rc.Close()
+		out.Close()
+	}
+	return nil
+}
+
 // 全局 Hermes 信息（启动时检测一次）
 var hermesState hermesInfo
+
+// handleStatus 返回详细的系统状态（包括 Hermes 连接状态）
+func handleStatus(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	tools := make([]string, len(toolDefs))
+	for i, t := range toolDefs {
+		fn, _ := t["function"].(map[string]any)
+		tools[i], _ = fn["name"].(string)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"status":  "ok",
+		"uptime":  time.Since(startTime).Seconds(),
+		"agent":   "Hi!XNS Agent",
+		"version": "0.5.0",
+		"runtime": "go " + runtime.Version(),
+		"tools":   tools,
+		"platform": runtime.GOOS + " " + runtime.GOARCH,
+		"hermes":  hermesState,
+	})
+}
+
+var startTime = time.Now()
 
 // ============================================================
 // 内嵌前端静态文件 (go:embed)
@@ -1937,6 +2251,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/agent/health", handleHealth)
+	mux.HandleFunc("/v1/agent/status", handleStatus)
 	mux.HandleFunc("/v1/agent/chat", handleChat)
 	mux.HandleFunc("/v1/agent/cancel", handleCancel)
 	mux.HandleFunc("/v1/agent/install-skill", handleInstallSkill)
@@ -1959,6 +2274,12 @@ func main() {
 	mux.HandleFunc("/v1/agent/tools/list", handleToolsList)
 	mux.HandleFunc("/v1/agent/tools/enable", handleToolsEnable)
 	mux.HandleFunc("/v1/agent/tools/disable", handleToolsDisable)
+
+	// ── 2x 技能商店代理 ──
+	mux.HandleFunc("/v1/store/skills", handleStoreSkills)
+	mux.HandleFunc("/v1/store/skills/", handleStoreSkillDetail)  // /v1/store/skills/{slug}/...
+	mux.HandleFunc("/v1/store/rankings/", handleStoreRankings)
+	mux.HandleFunc("/v1/store/install", handleStoreInstall)
 
 	// 通用 HTTP 代理 — 解决 Wails 模式下的跨域问题
 	mux.HandleFunc("/proxy/custom/", func(w http.ResponseWriter, r *http.Request) {
@@ -2129,7 +2450,9 @@ func main() {
 	})
 
 	if err != nil {
-		log.Fatalf("[Hi!XNS] Wails 启动失败: %v", err)
+		log.Printf("[Hi!XNS] Wails 桌面窗口跳过 (无图形环境): %v", err)
+		// Don't exit — keep HTTP server running for headless/dev mode
+		select {}
 	}
 }
 

@@ -14,28 +14,31 @@
       </span>
     </div>
     
-    <!-- 下拉选项 -->
-    <div 
-      v-if="isOpen"
-      ref="dropdownRef"
-      class="hixns-select__dropdown"
-      :style="dropdownStyle"
-    >
-      <div
-        v-for="opt in options"
-        :key="opt.value"
-        class="hixns-select__option"
-        :class="{ 'hixns-select__option--selected': opt.value === modelValue }"
-        @click="selectOption(opt)"
+    <!-- 下拉选项 - 使用 Teleport 渲染到 body 避免父容器影响 -->
+    <Teleport to="body" :disabled="false">
+      <div 
+        v-show="isOpen"
+        ref="dropdownRef"
+        class="hixns-select__dropdown"
+        :style="dropdownStyle"
+        @click.stop
       >
-        {{ opt.label }}
+        <div
+          v-for="opt in options"
+          :key="opt.value"
+          class="hixns-select__option"
+          :class="{ 'hixns-select__option--selected': opt.value === modelValue }"
+          @click="selectOption(opt)"
+        >
+          {{ opt.label }}
+        </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 
 interface Option {
   value: string | number
@@ -74,7 +77,9 @@ function toggle() {
   if (props.disabled) return
   isOpen.value = !isOpen.value
   if (isOpen.value) {
-    setTimeout(updateDropdownPosition, 0)
+    nextTick(() => {
+      updateDropdownPosition()
+    })
   }
 }
 
@@ -87,209 +92,47 @@ function selectOption(option: Option) {
 function updateDropdownPosition() {
   if (!triggerRef.value || !dropdownRef.value) return
   
-  const triggerRect = triggerRef.value.getBoundingClientRect()
-  const viewportHeight = window.innerHeight
+  const rect = triggerRef.value.getBoundingClientRect()
   const dropdownHeight = Math.min(props.options.length * 40, 240)
+  const spaceBelow = window.innerHeight - rect.bottom
   
-  const spaceBelow = viewportHeight - triggerRect.bottom
-  const spaceAbove = triggerRect.top
-  
-  if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+  // 计算位置：相对于视口
+  let top: number
+  if (spaceBelow < dropdownHeight && rect.top > dropdownHeight + 8) {
     // 向上展开
-    dropdownStyle.value = {
-      top: `${triggerRect.top - dropdownHeight - 4}px`,
-      left: `${triggerRect.left}px`,
-      right: 'auto',
-      bottom: 'auto',
-      marginTop: '0',
-      marginBottom: '0',
-    }
+    top = rect.top - dropdownHeight - 4
   } else {
     // 向下展开
-    dropdownStyle.value = {
-      top: `${triggerRect.bottom + 4}px`,
-      left: `${triggerRect.left}px`,
-      right: 'auto',
-      bottom: 'auto',
-      marginTop: '0',
-      marginBottom: '0',
-    }
+    top = rect.bottom + 4
+  }
+  
+  // 确保不超出视口
+  top = Math.max(8, Math.min(top, window.innerHeight - dropdownHeight - 8))
+  
+  dropdownStyle.value = {
+    position: 'fixed',
+    top: `${top}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    maxWidth: '400px',
   }
 }
 
 function handleClickOutside(e: MouseEvent) {
-  if (triggerRef.value && !triggerRef.value.contains(e.target as Node) &&
-      dropdownRef.value && !dropdownRef.value.contains(e.target as Node)) {
+  if (isOpen.value && triggerRef.value && !triggerRef.value.contains(e.target as Node)) {
     isOpen.value = false
   }
 }
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('scroll', updateDropdownPosition, true)
+  window.addEventListener('resize', updateDropdownPosition)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('scroll', updateDropdownPosition, true)
+  window.removeEventListener('resize', updateDropdownPosition)
 })
 </script>
-
-<style scoped>
-.hixns-select {
-  position: relative;
-  width: 100%;
-}
-
-.hixns-select__trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  min-height: 38px;
-  padding: 8px 12px;
-  
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
-  -webkit-backdrop-filter: blur(var(--blur-base)) saturate(var(--saturate));
-  
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-md);
-  
-  cursor: pointer;
-  transition: all var(--fast);
-  
-  user-select: none;
-}
-
-.hixns-select__trigger:hover {
-  background: var(--glass-bg-hover);
-  border-color: var(--border-light);
-}
-
-.hixns-select--open .hixns-select__trigger {
-  border-color: var(--border-focus);
-  box-shadow: 
-    0 0 0 1px rgba(10, 132, 255, 0.1),
-    0 0 8px rgba(10, 132, 255, 0.2),
-    inset 0 0 8px rgba(10, 132, 255, 0.05);
-  background: var(--glass-strong);
-}
-
-.hixns-select__value {
-  flex: 1;
-  font-family: var(--font-sans);
-  font-size: var(--text-base);
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hixns-select__trigger:not(:has(.hixns-select__value:not(:empty))) .hixns-select__value,
-.hixns-select__value:has(+ .hixns-select__arrow):empty {
-  color: var(--text-tertiary);
-}
-
-.hixns-select__arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  transition: transform var(--fast);
-  flex-shrink: 0;
-}
-
-.hixns-select--open .hixns-select__arrow {
-  transform: rotate(180deg);
-  color: var(--primary);
-}
-
-.hixns-select__dropdown {
-  position: fixed;
-  z-index: 2147483647;
-  min-width: max-content;
-  max-height: 240px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  
-  /* 增强的高斯模糊背景 - 暗色主题 */
-  background: rgba(15, 15, 22, 0.95);
-  backdrop-filter: blur(40px) saturate(1.8);
-  -webkit-backdrop-filter: blur(40px) saturate(1.8);
-  
-  border: 1px solid var(--border-focus);
-  border-radius: var(--radius-md);
-  
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(10, 132, 255, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  
-  padding: 4px;
-}
-
-/* 亮色主题适配 */
-[data-theme="light"] .hixns-select__dropdown {
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(10, 132, 255, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-.hixns-select__dropdown::-webkit-scrollbar {
-  width: 4px;
-}
-
-.hixns-select__dropdown::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.hixns-select__dropdown::-webkit-scrollbar-thumb {
-  background: var(--border-light);
-  border-radius: 2px;
-}
-
-.hixns-select__option {
-  padding: 8px 12px;
-  font-family: var(--font-sans);
-  font-size: var(--text-base);
-  color: var(--text-primary);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all var(--fast);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hixns-select__option:hover {
-  background: var(--primary-light);
-  color: var(--text-primary);
-}
-
-.hixns-select__option--selected {
-  background: var(--primary);
-  color: #fff;
-  font-weight: var(--font-medium);
-}
-
-/* 亮色主题适配 */
-[data-theme="light"] .hixns-select__option:hover {
-  background: rgba(10, 132, 255, 0.15);
-}
-
-[data-theme="light"] .hixns-select__option--selected {
-  background: var(--primary);
-  color: #fff;
-}
-
-.hixns-select--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.hixns-select--disabled .hixns-select__trigger {
-  cursor: not-allowed;
-}
-</style>

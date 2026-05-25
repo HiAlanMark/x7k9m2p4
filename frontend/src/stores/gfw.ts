@@ -80,8 +80,8 @@ export const useGfwStore = defineStore('gfw', () => {
     }
   }
 
-  async function fetchModels() {
-    if (models.value.length > 0) return // 缓存
+  async function fetchModels(force = false) {
+    if (!force && models.value.length > 0) return // 缓存
     loading.value = true
     try {
       models.value = await api.gfwListModels()

@@ -7,3 +7,4 @@ bin/
 src-tauri/
 agent/
 hermes_bridge.py
+.hermes/

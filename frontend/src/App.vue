@@ -35,7 +35,7 @@
     <div v-if="contextMenu.visible" class="context-menu-overlay" @click="closeContextMenu"></div>
     
     <!-- Rename Modal (moved outside sidebar) -->
-    <div v-if="renameModal.visible" class="rename-modal-overlay" @click="closeRenameModal">
+    <div v-if="renameModal.visible" class="rename-modal-overlay" @click="closeRenameModal" @contextmenu.prevent>
       <div class="rename-modal" @click.stop>
         <h3 class="rename-title">重命名会话</h3>
         <input
@@ -46,7 +46,13 @@
           placeholder="输入会话名称"
           @keydown.enter="confirmRename"
           @keydown.escape="closeRenameModal"
+          @contextmenu.prevent="showRenameCtxMenu"
         />
+        <!-- Rename context menu -->
+        <div v-if="renameCtx.show" class="ctx-menu" :style="{ top: renameCtx.y + 'px', left: renameCtx.x + 'px' }" @click.stop @contextmenu.prevent>
+          <button v-if="renameCtx.hasSelection" @click="renameCtxCopy" class="ctx-item">复制</button>
+          <button @click="renameCtxPaste" class="ctx-item">粘贴</button>
+        </div>
         <div class="rename-actions">
           <button class="rename-cancel" @click="closeRenameModal">取消</button>
           <button class="rename-confirm" @click="confirmRename">确定</button>
@@ -55,7 +61,7 @@
     </div>
     
     <!-- Sidebar -->
-    <aside class="sidebar glass">
+    <aside class="sidebar glass" @contextmenu.prevent>
       <!-- Brand -->
       <div class="sidebar-brand">
         <IconBrandLogo :width="120" :height="24" :dark="appStore.isDark" />
@@ -108,19 +114,21 @@
               @contextmenu.prevent="openContextMenu($event, s)"
             >
               <span class="session-item-title">{{ truncateTitle(s.title) }}</span>
-              <span class="session-item-count">{{ s.messages.filter(m => m.role === 'user').length }}</span>
-              <button
-                v-if="chatStore.sessions.length > 1 && confirmDeleteId !== s.id"
-                class="session-delete-btn"
-                @click.stop="confirmDeleteId = s.id"
-                title="删除会话"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M3 6h18"></path>
-                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                </svg>
-              </button>
+              <div class="session-item-actions">
+                <span class="session-item-count">{{ s.messages.filter(m => m.role === 'user').length }}</span>
+                <button
+                  v-if="chatStore.sessions.length > 1 && confirmDeleteId !== s.id"
+                  class="session-delete-btn"
+                  @click.stop="confirmDeleteId = s.id"
+                  title="删除会话"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
               <span v-if="confirmDeleteId === s.id" class="confirm-delete" @click.stop>
                 <button class="confirm-yes" @click.stop="chatStore.deleteSession(s.id); confirmDeleteId = ''">删除</button>
                 <button class="confirm-no" @click.stop="confirmDeleteId = ''">取消</button>
@@ -136,24 +144,22 @@
         <div class="session-block">
           <div class="session-row">
             <span class="session-dot" :class="chatStore.providerMode === 'custom' ? 'dot-blue' : 'dot-green'"></span>
-            <span class="session-label">{{ activeModelDisplay }}</span>
-          </div>
-          <div class="session-row">
-            <span class="session-dot dot-dim"></span>
-            <span class="session-label dim">{{ chatStore.providerMode === 'custom' ? '自定义 API' : 'gfw.net' }}</span>
+            <span class="session-label">{{ providerLabel }}</span>
           </div>
         </div>
 
         <!-- Balance -->
         <div v-if="chatStore.providerMode !== 'custom'" class="balance-line">
           <span class="balance-label">余额</span>
-          <span class="balance-value">{{ balance.toFixed(2) }} G</span>
+          <span class="balance-value" :class="{ 'balance-loading': appStore.connectionState === 'connecting' }">
+            {{ appStore.connectionState === 'connecting' ? '...' : (appStore.connectionState === 'disconnected' || balance <= 0) ? '--' : balance.toFixed(2) + ' G' }}
+          </span>
         </div>
 
         <!-- Model Selector -->
-        <div v-if="chatStore.providerMode !== 'custom'" class="model-select-wrap">
+        <div class="model-select-wrap">
           <div class="model-dropdown" :class="{ open: modelDropdownOpen }">
-            <button class="model-dropdown-trigger" @click.stop="modelDropdownOpen = !modelDropdownOpen">
+            <button class="model-dropdown-trigger" @click.stop="openModelDropdown">
               <span class="model-dropdown-value">{{ selectedModelDisplay }}</span>
               <svg class="model-dropdown-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6 9 12 15 18 9"></polyline>
@@ -164,11 +170,11 @@
                 v-for="m in dropdownModels"
                 :key="m.model_code"
                 class="model-dropdown-item"
-                :class="{ active: selectedModel === m.model_code }"
-                @click="selectedModel = m.model_code; modelDropdownOpen = false"
+                :class="{ active: isModelActive(m.model_code) }"
+                @click="selectModel(m.model_code)"
               >
                 <span class="model-item-name">{{ m.model_name }}</span>
-                <svg v-if="selectedModel === m.model_code" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <svg v-if="isModelActive(m.model_code)" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
               </div>
@@ -188,6 +194,35 @@
     
     <!-- Main Content -->
     <main class="main-content">
+      <!-- Connection Status Banner -->
+      <transition name="banner-slide">
+        <div v-if="appStore.connectionState === 'disconnected'" class="connection-banner disconnected">
+          <div class="banner-content">
+            <svg class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor">
+              <path d="M511.914667 85.333333c-235.52 0-426.666667 191.146667-426.666667 426.666667s191.146667 426.666667 426.666667 426.666667 426.666667-191.146667 426.666666-426.666667-191.146667-426.666667-426.666666-426.666667z m0 768c-188.586667 0-341.333333-152.746667-341.333334-341.333333s152.746667-341.333333 341.333334-341.333333 341.333333 152.746667 341.333333 341.333333-152.746667 341.333333-341.333333 341.333333z"></path>
+              <path d="M512 640c-35.2 0-64 28.8-64 64S476.8 768 512 768s64-28.8 64-64S547.2 640 512 640z"></path>
+              <path d="M512 256c-36.906667 0-66.176 29.269333-63.872 63.872l15.616 234.88c1.621333 23.936 22.741333 42.581333 48.256 42.581333s46.634667-18.645333 48.213333-42.581333l15.658667-234.88C578.176 285.269333 548.906667 256 512 256z"></path>
+            </svg>
+            <span>后端服务未连接 — 部分功能可能不可用</span>
+            <button class="banner-retry" @click="appStore.checkConnection()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              重试
+            </button>
+          </div>
+        </div>
+      </transition>
+      <transition name="banner-slide">
+        <div v-if="appStore.connectionState === 'connecting'" class="connection-banner connecting">
+          <div class="banner-content">
+            <div class="banner-spinner"></div>
+            <span>正在连接后端服务...</span>
+          </div>
+        </div>
+      </transition>
+      
       <router-view v-slot="{ Component }">
         <transition name="page-fade" mode="out-in">
           <component :is="Component" />
@@ -198,7 +233,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, reactive, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGfwStore } from './stores/gfw'
 import { useChatStore } from './stores/chat'
@@ -233,7 +268,46 @@ const renameModal = ref({ visible: false })
 const renameValue = ref('')
 const renameInputRef = ref<HTMLInputElement | null>(null)
 
-const { selectedModel } = storeToRefs(chatStore)
+// Rename input context menu
+const renameCtx = reactive({ show: false, x: 0, y: 0, hasSelection: false })
+
+function showRenameCtxMenu(e: MouseEvent) {
+  const inp = renameInputRef.value
+  renameCtx.hasSelection = !!(inp && inp.selectionStart !== inp.selectionEnd)
+  renameCtx.x = e.clientX
+  renameCtx.y = e.clientY
+  renameCtx.show = true
+  nextTick(() => {
+    document.addEventListener('click', () => { renameCtx.show = false }, { once: true })
+  })
+}
+
+function renameCtxCopy() {
+  try { document.execCommand('copy') } catch {}
+  renameCtx.show = false
+}
+
+function renameCtxPaste() {
+  const inp = renameInputRef.value
+  if (!inp) return
+  renameCtx.show = false
+  if (navigator.clipboard?.readText) {
+    navigator.clipboard.readText().then(text => {
+      if (text) {
+        inp.focus()
+        const start = inp.selectionStart || 0
+        const end = inp.selectionEnd || 0
+        const val = renameValue.value
+        renameValue.value = val.substring(0, start) + text + val.substring(end)
+        nextTick(() => {
+          inp.selectionStart = inp.selectionEnd = start + text.length
+        })
+      }
+    }).catch(() => {})
+  }
+}
+
+const { selectedModel, providerMode: storeProviderMode, customProvider } = storeToRefs(chatStore)
 
 const activeModelDisplay = computed(() => {
   const config = chatStore.getActiveConfig()
@@ -241,11 +315,68 @@ const activeModelDisplay = computed(() => {
 })
 
 const selectedModelDisplay = computed(() => {
+  if (storeProviderMode.value === 'custom') {
+    return customProvider.value.model || '选择模型'
+  }
   const m = gfwStore.models.find(m => m.model_code === selectedModel.value)
   return m ? m.model_name : (selectedModel.value || '选择模型')
 })
 
-const dropdownModels = computed(() => gfwStore.models)
+const dropdownModels = computed(() => {
+  if (storeProviderMode.value === 'custom') return customModels.value
+  return gfwStore.models
+})
+
+function isModelActive(code: string): boolean {
+  if (storeProviderMode.value === 'custom') return customProvider.value.model === code
+  return selectedModel.value === code
+}
+
+function selectModel(code: string) {
+  if (storeProviderMode.value === 'custom') {
+    chatStore.setCustomProvider({ ...customProvider.value, model: code })
+  } else {
+    selectedModel.value = code
+  }
+  modelDropdownOpen.value = false
+}
+
+function openModelDropdown() {
+  modelDropdownOpen.value = !modelDropdownOpen.value
+  if (modelDropdownOpen.value) {
+    if (storeProviderMode.value === 'custom') fetchCustomModels()
+    else gfwStore.fetchModels(true)
+  }
+}
+const customModels = ref<{model_code: string; model_name: string}[]>([])
+const customModelsLoading = ref(false)
+
+async function fetchCustomModels() {
+  if (storeProviderMode.value !== 'custom') return
+  const cp = customProvider.value
+  if (!cp.baseUrl || !cp.apiKey) return
+  customModelsLoading.value = true
+  try {
+    const base = cp.baseUrl.replace(/\/$/, '')
+    const r = await fetch(base + '/models', {
+      headers: { Authorization: 'Bearer ' + cp.apiKey }
+    })
+    const data = await r.json()
+    const list = data.data || data || []
+    customModels.value = (Array.isArray(list) ? list : []).map((m: any) => ({
+      model_code: m.id || m.model || '',
+      model_name: m.id || m.model || '',
+    })).filter(m => m.model_code)
+  } catch { customModels.value = [] }
+  customModelsLoading.value = false
+}
+
+const providerLabel = computed(() => {
+  if (storeProviderMode.value === 'custom') {
+    return customProvider.value.name || '自定义 API'
+  }
+  return 'G网（GFW.NET）'
+})
 
 const truncateTitle = (title: string) => {
   if (!title) return '新会话'
@@ -270,6 +401,7 @@ onMounted(() => {
   window.addEventListener('click', closeContextMenu)
   gfwStore.fetchBalance()
   gfwStore.fetchModels()
+  appStore.checkConnection()
 })
 
 onUnmounted(() => {
@@ -466,8 +598,6 @@ function deleteFromMenu() {
   overflow-y: auto;
   padding: var(--space-2);
   margin: var(--space-2) 0;
-  border-top: 1px solid var(--border-base);
-  border-bottom: 1px solid var(--border-base);
 }
 
 .session-list-header {
@@ -566,30 +696,44 @@ function deleteFromMenu() {
   background: var(--glass-base);
   padding: 2px 5px;
   border-radius: var(--radius-sm);
+  margin-left: auto;
+  transition: opacity 0.15s;
+}
+
+.session-item-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.session-item-actions:hover .session-item-count {
+  opacity: 0;
 }
 
 .session-delete-btn {
+  position: absolute;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: transparent;
+  width: 22px;
+  height: 22px;
+  background: var(--error);
   border: none;
   border-radius: var(--radius-sm);
-  color: var(--text-tertiary);
+  color: white;
   cursor: pointer;
   opacity: 0;
   transition: all var(--fast);
 }
 
-.session-item:hover .session-delete-btn {
+.session-item-actions:hover .session-delete-btn {
   opacity: 1;
 }
 
 .session-delete-btn:hover {
-  background: var(--error);
-  color: white;
+  background: #ff3b30;
 }
 
 .confirm-delete {
@@ -660,6 +804,7 @@ function deleteFromMenu() {
 
 .session-dot.dot-green { background: var(--success); }
 .session-dot.dot-blue { background: var(--info); }
+.session-dot.dot-yellow { background: var(--warning); box-shadow: 0 0 4px rgba(255, 159, 10, 0.5); }
 .session-dot.dot-dim { background: var(--text-tertiary); }
 
 .session-label {
@@ -690,6 +835,11 @@ function deleteFromMenu() {
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   color: var(--primary);
+}
+
+.balance-value.balance-loading {
+  color: var(--text-tertiary);
+  font-weight: var(--font-normal);
 }
 
 /* Model Dropdown */
@@ -1000,5 +1150,137 @@ function deleteFromMenu() {
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   Connection Banner
+   ════════════════════════════════════════════════════════════ */
+.connection-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-overlay);
+  padding-top: 32px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--glass-base);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  border-radius: 10px;
+  margin: 0 16px;
+  border: 1px solid var(--glass-border);
+  pointer-events: auto;
+}
+
+.connection-banner.disconnected {
+  background: transparent;
+  border-bottom: none;
+}
+
+.connection-banner.disconnected .banner-content {
+  color: var(--error);
+  border-color: rgba(255, 69, 58, 0.15);
+  box-shadow: 0 0 8px rgba(255, 69, 58, 0.08);
+}
+
+.connection-banner.connecting {
+  background: transparent;
+  border-bottom: none;
+}
+
+.connection-banner.connecting .banner-content {
+  color: var(--warning);
+  border-color: rgba(255, 159, 10, 0.15);
+  box-shadow: 0 0 8px rgba(255, 159, 10, 0.06);
+}
+
+.banner-retry {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: var(--glass-strong);
+  border: 1px solid var(--border-base);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: all var(--fast);
+}
+
+.banner-retry:hover {
+  background: var(--glass-solid);
+  border-color: var(--border-light);
+}
+
+.ctx-menu {
+  position: fixed;
+  z-index: 2000;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  min-width: 100px;
+  backdrop-filter: blur(16px);
+}
+
+.ctx-item {
+  display: block;
+  width: 100%;
+  padding: 7px 14px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--fast);
+}
+
+.ctx-item:hover {
+  background: var(--bg-elevated);
+}
+
+.banner-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.banner-slide-enter-active,
+.banner-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.banner-slide-enter-from {
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
+.banner-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-100%);
 }
 </style>
