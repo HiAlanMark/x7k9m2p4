@@ -211,7 +211,6 @@ jobs:
         uses: joncloud/makensis-action@v4
         with:
           script-file: scripts/installer.nsi
-          working-directory: .
           arguments: /V2
 
       # Linux: 手动构建 AppImage

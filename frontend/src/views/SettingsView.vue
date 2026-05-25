@@ -3045,50 +3045,87 @@ const pageNumbers = computed<(number | string)[]>(() => {
 
 /* GFW Key List */
 .gfw-key-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
 }
 .gfw-key-item {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-base);
+  border-radius: var(--radius-lg);
   background: var(--glass-base);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--fast);
+  position: relative;
+  overflow: hidden;
 }
 .gfw-key-item:hover {
   background: var(--glass-bg-hover);
   border-color: var(--border-light);
+  transform: translateY(-1px);
 }
 .gfw-key-item.active {
-  border-color: var(--border-focus);
-  background: var(--primary-light);
+  border-color: var(--accent);
+  background: rgba(90, 200, 250, 0.06);
   color: var(--text-primary);
+  box-shadow: 0 0 12px rgba(90, 200, 250, 0.08);
+}
+/* Active indicator */
+.gfw-key-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
 }
 .gfw-key-info {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 .gfw-key-name {
   font-size: var(--text-sm);
-  font-weight: var(--font-medium);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gfw-key-item.active .gfw-key-name {
+  color: var(--accent);
 }
 .gfw-key-prefix {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   font-family: var(--font-mono);
+  letter-spacing: 0.02em;
 }
 .gfw-key-quota {
   font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-base);
   white-space: nowrap;
+  flex-shrink: 0;
+}
+.gfw-key-item.active .gfw-key-quota {
+  background: rgba(90, 200, 250, 0.1);
+  border-color: rgba(90, 200, 250, 0.2);
+  color: var(--accent);
 }
 
 /* GFW Create Key */
