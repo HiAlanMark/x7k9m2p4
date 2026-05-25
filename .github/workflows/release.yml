@@ -267,6 +267,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
+          set -e
           BINARY="build/bin/${{ matrix.asset }}"
           APPDIR="$GITHUB_WORKSPACE/AppDir"
           rm -rf "$APPDIR"
@@ -274,32 +275,19 @@ jobs:
 
           # 复制二进制
           cp "$BINARY" "$APPDIR/usr/bin/hixns-agent"
+          chmod +x "$APPDIR/usr/bin/hixns-agent"
           # 复制 Hermes
           cp -r build/bin/hermes-agent "$APPDIR/usr/bin/" 2>/dev/null || true
           cp -r build/bin/hermes-python "$APPDIR/usr/bin/" 2>/dev/null || true
 
           # .desktop
-          cat > "$APPDIR/HiXNS.desktop" << 'EOF'
-          [Desktop Entry]
-          Name=HiXNS
-          Comment=Hi!XNS AI Agent Desktop
-          Exec=hixns-agent
-          Icon=HiXNS
-          Type=Application
-          Categories=Utility;
-          EOF
+          printf '[Desktop Entry]\nName=HiXNS\nComment=Hi!XNS AI Agent Desktop\nExec=hixns-agent\nIcon=HiXNS\nType=Application\nCategories=Utility;\n' > "$APPDIR/HiXNS.desktop"
 
           # 图标
           cp build/appicon.png "$APPDIR/HiXNS.png" 2>/dev/null || true
 
           # AppRun
-          cat > "$APPDIR/AppRun" << 'EOF'
-          #!/bin/bash
-          HERE="$(dirname "$(readlink -f "${0}")")"
-          export PATH="$HERE/usr/bin:$PATH"
-          export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"
-          exec "$HERE/usr/bin/hixns-agent" "$@"
-          EOF
+          printf '#!/bin/bash\nHERE="$(dirname "$(readlink -f "${0}")")"\nexport PATH="$HERE/usr/bin:$PATH"\nexport LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"\nexec "$HERE/usr/bin/hixns-agent" "$@"\n' > "$APPDIR/AppRun"
           chmod +x "$APPDIR/AppRun"
 
           # 下载 appimagetool
