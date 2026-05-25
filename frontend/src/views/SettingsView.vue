@@ -3675,7 +3675,104 @@ const pageNumbers = computed<(number | string)[]>(() => {
   background: var(--bg-elevated);
 }
 
-/* Modal Section Patterns */
+/* ===== Modal (copied from SkillStoreView for scoped scope) ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: modalOverlayIn var(--duration-250) ease;
+}
+@keyframes modalOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.modal-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 640px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: modalPanelIn var(--duration-350) var(--ease-back);
+}
+@keyframes modalPanelIn {
+  from { opacity: 0; transform: scale(0.92) translateY(16px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-base);
+}
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.modal-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  color: var(--primary-text);
+  flex-shrink: 0;
+}
+.modal-icon svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+.modal-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+}
+.modal-subtitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+.modal-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-150) var(--ease-expo);
+  flex-shrink: 0;
+  align-self: center;
+}
+.modal-close:hover {
+  background: var(--bg-surface);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-6);
+}
 .modal-section {
   margin-bottom: var(--space-6);
 }
@@ -3695,5 +3792,13 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: var(--text-base);
   color: var(--text-secondary);
   line-height: var(--leading-relaxed);
+}
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-base);
 }
 </style>
