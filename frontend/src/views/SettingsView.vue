@@ -3801,4 +3801,60 @@ const pageNumbers = computed<(number | string)[]>(() => {
   padding: 16px 24px;
   border-top: 1px solid var(--border-base);
 }
+
+/* GFW Quota Toggle */
+.gfw-quota-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  width: fit-content;
+  margin-bottom: var(--space-3);
+}
+.gfw-quota-btn {
+  padding: 6px 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--fast);
+}
+.gfw-quota-btn + .gfw-quota-btn {
+  border-left: 1px solid var(--border-base);
+}
+.gfw-quota-btn:hover {
+  background: var(--glass-bg-hover);
+  color: var(--text-primary);
+}
+.gfw-quota-btn.active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: var(--font-medium);
+}
+.gfw-quota-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  margin-bottom: var(--space-3);
+}
+.gfw-quota-input :deep(.hixns-input) {
+  flex: 1;
+}
+.gfw-quota-input :deep(.hixns-input__field) {
+  background: var(--glass-base);
+  color: var(--text-primary);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: var(--text-sm);
+}
+.gfw-quota-unit {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-weight: var(--font-medium);
+}
 </style>
