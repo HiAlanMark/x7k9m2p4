@@ -17,7 +17,7 @@ RequestExecutionLevel admin
 
 Section "Hi!XNS"
   SetOutPath "$INSTDIR"
-  File /r "build\bin\hixns-agent.exe"
+  File "build\bin\hixns-agent.exe"
   File /r "build\bin\hermes-agent"
   File /r "build\bin\hermes-python"
   WriteUninstaller "$INSTDIR\uninstall.exe"

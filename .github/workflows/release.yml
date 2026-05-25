@@ -281,13 +281,27 @@ jobs:
           cp -r build/bin/hermes-python "$APPDIR/usr/bin/" 2>/dev/null || true
 
           # .desktop
-          printf '[Desktop Entry]\nName=HiXNS\nComment=Hi!XNS AI Agent Desktop\nExec=hixns-agent\nIcon=HiXNS\nType=Application\nCategories=Utility;\n' > "$APPDIR/HiXNS.desktop"
+          {
+            echo '[Desktop Entry]'
+            echo 'Name=HiXNS'
+            echo 'Comment=Hi!XNS AI Agent Desktop'
+            echo 'Exec=hixns-agent'
+            echo 'Icon=HiXNS'
+            echo 'Type=Application'
+            echo 'Categories=Utility;'
+          } > "$APPDIR/HiXNS.desktop"
 
           # 图标
           cp build/appicon.png "$APPDIR/HiXNS.png" 2>/dev/null || true
 
           # AppRun
-          printf '#!/bin/bash\nHERE="$(dirname "$(readlink -f "${0}")")"\nexport PATH="$HERE/usr/bin:$PATH"\nexport LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"\nexec "$HERE/usr/bin/hixns-agent" "$@"\n' > "$APPDIR/AppRun"
+          {
+            echo '#!/bin/bash'
+            echo 'HERE="$(dirname "$(readlink -f "${0}")")"'
+            echo 'export PATH="$HERE/usr/bin:$PATH"'
+            echo 'export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"'
+            echo 'exec "$HERE/usr/bin/hixns-agent" "$@"'
+          } > "$APPDIR/AppRun"
           chmod +x "$APPDIR/AppRun"
 
           # 下载 appimagetool
@@ -319,21 +333,22 @@ jobs:
               APP_BUNDLE="build/bin/HiXNS.app"
               mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
               cp "$BINARY" "$APP_BUNDLE/Contents/MacOS/hixns-agent"
-              cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleName</key><string>Hi!XNS</string>
-              <key>CFBundleDisplayName</key><string>Hi!XNS</string>
-              <key>CFBundleIdentifier</key><string>com.hixns.agent</string>
-              <key>CFBundleVersion</key><string>${{ github.ref_name }}</string>
-              <key>CFBundleShortVersionString</key><string>${{ github.ref_name }}</string>
-              <key>LSMinimumSystemVersion</key><string>12.0</string>
-              <key>CFBundleExecutable</key><string>hixns-agent</string>
-          </dict>
-          </plist>
-          PLIST
+              # Info.plist — use echo to avoid YAML heredoc indentation issues
+              {
+                echo '<?xml version="1.0" encoding="UTF-8"?>'
+                echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
+                echo '<plist version="1.0">'
+                echo '<dict>'
+                echo '    <key>CFBundleName</key><string>Hi!XNS</string>'
+                echo '    <key>CFBundleDisplayName</key><string>Hi!XNS</string>'
+                echo '    <key>CFBundleIdentifier</key><string>com.hixns.agent</string>'
+                echo '    <key>CFBundleVersion</key><string>1.0.0</string>'
+                echo '    <key>CFBundleShortVersionString</key><string>1.0.0</string>'
+                echo '    <key>LSMinimumSystemVersion</key><string>12.0</string>'
+                echo '    <key>CFBundleExecutable</key><string>hixns-agent</string>'
+                echo '</dict>'
+                echo '</plist>'
+              } > "$APP_BUNDLE/Contents/Info.plist"
             else
               echo "::error::No macOS binary or .app found"
               find build/bin -type f
