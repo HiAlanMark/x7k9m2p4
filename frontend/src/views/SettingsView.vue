@@ -3728,9 +3728,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-md);
-  color: var(--primary-text);
+  background: var(--glass-base);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+  color: var(--accent);
   flex-shrink: 0;
 }
 .modal-icon svg {
@@ -3805,42 +3806,43 @@ const pageNumbers = computed<(number | string)[]>(() => {
   border-top: 1px solid var(--border-base);
 }
 
-/* GFW Quota Toggle */
+/* GFW Quota Toggle — Glass IDE segmented control */
 .gfw-quota-toggle {
-  display: flex;
+  display: inline-flex;
   gap: 0;
+  padding: 3px;
+  background: var(--glass-base);
   border: 1px solid var(--border-base);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  border-radius: 12px;
   width: fit-content;
   margin-bottom: var(--space-3);
 }
 .gfw-quota-btn {
+  position: relative;
   padding: 6px 20px;
   border: none;
+  border-radius: 9px;
   background: transparent;
   color: var(--text-tertiary);
   font-size: var(--text-sm);
+  font-weight: var(--font-medium);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1;
 }
-.gfw-quota-btn + .gfw-quota-btn {
-  border-left: 1px solid var(--border-base);
-}
-.gfw-quota-btn:hover {
-  background: var(--glass-bg-hover);
+.gfw-quota-btn:hover:not(.active) {
   color: var(--text-primary);
 }
 .gfw-quota-btn.active {
   background: var(--accent);
   color: #fff;
-  font-weight: var(--font-medium);
+  box-shadow: 0 2px 8px rgba(90, 200, 250, 0.15);
 }
 .gfw-quota-input {
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 220px;
+  max-width: 240px;
   margin-bottom: var(--space-3);
 }
 .gfw-quota-input :deep(.hixns-input) {
@@ -3853,11 +3855,20 @@ const pageNumbers = computed<(number | string)[]>(() => {
   border-radius: var(--radius-md);
   padding: 8px 12px;
   font-size: var(--text-sm);
+  transition: border-color 0.2s ease;
+}
+.gfw-quota-input :deep(.hixns-input__field:focus) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(90, 200, 250, 0.1);
 }
 .gfw-quota-unit {
   font-size: var(--text-sm);
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-weight: var(--font-medium);
+  padding: 4px 8px;
+  background: var(--glass-base);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
 }
 </style>
