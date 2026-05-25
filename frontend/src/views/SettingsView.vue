@@ -194,11 +194,6 @@
                     </button>
                   </div>
                   <p v-else class="form-hint">暂无 API Key，点击创建</p>
-                  <div v-if="showGfwCreateKey" class="gfw-create-key-form">
-                    <HxInput v-model="newKeyName" placeholder="Key 名称" style="max-width:200px;" />
-                    <HxInput v-model.number="newKeyLimit" type="number" placeholder="限额(G币)" style="max-width:120px;margin-left:8px;" :min="1" :max="1000" :step="1" />
-                    <HxButton variant="primary" size="sm" :loading="gfwCreatingKey" @click="createGfwKey" style="margin-left:8px;">创建</HxButton>
-                  </div>
                 </div>
               </div>
             </template>
@@ -889,6 +884,50 @@
           </div>
         </div>
       </div>
+      <!-- GFW Create Key Modal -->
+      <div v-if="showGfwCreateKey" class="modal-overlay" @click.self="showGfwCreateKey = false">
+        <div class="modal-panel" style="max-width: 480px;">
+          <div class="modal-header">
+            <div class="modal-title-row">
+              <div class="modal-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              </div>
+              <div>
+                <h2 class="modal-name">创建 API Key</h2>
+                <div class="modal-subtitle"></div>
+              </div>
+            </div>
+            <button class="modal-close" @click="showGfwCreateKey = false">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-section">
+              <h4 class="section-label">Key 名称</h4>
+              <HxInput v-model="newKeyName" placeholder="例如: 我的开发Key" />
+            </div>
+            <div class="modal-section">
+              <h4 class="section-label">使用限额</h4>
+              <div class="gfw-quota-toggle">
+                <button :class="['gfw-quota-btn', { active: newKeyUnlimited }]" @click="newKeyUnlimited = true">无限额</button>
+                <button :class="['gfw-quota-btn', { active: !newKeyUnlimited }]" @click="newKeyUnlimited = false">限额</button>
+              </div>
+              <div v-if="!newKeyUnlimited" class="gfw-quota-input">
+                <HxInput v-model.number="newKeyLimit" type="number" placeholder="输入G币数量" :min="1" :max="1000" :step="1" />
+                <span class="gfw-quota-unit">G</span>
+              </div>
+              <p class="section-text">设置该 Key 可使用的最大 G 币额度，无限额则不限制</p>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <HxButton variant="ghost" @click="showGfwCreateKey = false">取消</HxButton>
+            <HxButton variant="primary" :loading="gfwCreatingKey" @click="createGfwKey">
+              <svg width="15" height="15" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 85.333333a42.666667 42.666667 0 0 0-42.666667 42.666667v512a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V128a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M128 597.333333a42.666667 42.666667 0 0 0-42.666667 42.666667v170.666667c0 70.186667 57.813333 128 128 128h597.333334c70.186667 0 128-57.813333 128-128v-170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667 42.666667 42.666667 0 0 0-42.666667 42.666667v170.666667c0 24.064-18.602667 42.666667-42.666666 42.666666H213.333333c-24.064 0-42.666667-18.602667-42.666666-42.666666v-170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M298.666667 384a42.666667 42.666667 0 0 0-30.165334 12.501333 42.666667 42.666667 0 0 0 0 60.330667l213.333334 213.333333a42.666667 42.666667 0 0 0 60.330666 0l213.333334-213.333333a42.666667 42.666667 0 0 0 0-60.330667 42.666667 42.666667 0 0 0-60.330667 0L512 579.669333 328.832 396.501333A42.666667 42.666667 0 0 0 298.666667 384z"/></svg>
+              <span>创建</span>
+            </HxButton>
+          </div>
+        </div>
+      </div>
       <!-- Context menu (inside root to avoid fragment breaking transition) -->
       <div v-if="settingsCtx.show" class="ctx-menu" :style="{ top: settingsCtx.y + 'px', left: settingsCtx.x + 'px' }" @click.stop @contextmenu.prevent>
         <button v-if="settingsCtx.hasSelection" @click="settingsCtxCopy" class="ctx-item">复制</button>
@@ -1165,6 +1204,7 @@ const gfwKeysLoading = ref(false)
 const gfwSelectedKeyId = ref('')
 const showGfwCreateKey = ref(false)
 const gfwCreatingKey = ref(false)
+const newKeyUnlimited = ref(true)
 
 function switchGfwAuthMode(mode: 'account' | 'manual') {
   gfwAuthMode.value = mode
@@ -1790,7 +1830,8 @@ async function createGfwKey() {
   }
   gfwCreatingKey.value = true
   try {
-    const result = await gfwStore.createApiKey(newKeyName.value, newKeyLimit.value)
+    const limit = newKeyUnlimited.value ? null : newKeyLimit.value
+    const result = await gfwStore.createApiKey(newKeyName.value, limit)
     await gfwStore.fetchApiKeys()
     // 自动选中新创建的 key
     if (gfwStore.apiKeys.length > 0) {
@@ -1800,6 +1841,8 @@ async function createGfwKey() {
     }
     showGfwCreateKey.value = false
     newKeyName.value = ''
+    newKeyLimit.value = 50
+    newKeyUnlimited.value = true
     toast.success('Key 创建成功')
   } catch (e: any) {
     toast.error('创建失败', e?.message)
@@ -3630,5 +3673,27 @@ const pageNumbers = computed<(number | string)[]>(() => {
 
 :deep(.ctx-item:hover) {
   background: var(--bg-elevated);
+}
+
+/* Modal Section Patterns */
+.modal-section {
+  margin-bottom: var(--space-6);
+}
+.modal-section:last-child {
+  margin-bottom: 0;
+}
+.section-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-tertiary);
+  letter-spacing: 0.3px;
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-base);
+}
+.section-text {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
 }
 </style>
