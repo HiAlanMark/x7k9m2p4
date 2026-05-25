@@ -3088,7 +3088,9 @@ const pageNumbers = computed<(number | string)[]>(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 2px;
+  text-align: left;
 }
 .gfw-key-name {
   font-size: var(--text-sm);
