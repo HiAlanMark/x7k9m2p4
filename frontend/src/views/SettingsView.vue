@@ -182,9 +182,6 @@
                         <span class="gfw-key-prefix">{{ key.key_prefix }}****</span>
                       </div>
                       <span class="gfw-key-quota">{{ key.gcoin_limit ? key.gcoin_limit + 'G' : '无限额' }}</span>
-                      <svg v-if="gfwSelectedKeyId === key.id" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
                     </button>
                   </div>
                   <p v-else class="form-hint">暂无 API Key，点击创建</p>
@@ -3052,7 +3049,6 @@ const pageNumbers = computed<(number | string)[]>(() => {
 .gfw-key-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
   padding: 12px 14px;
   border: 1.5px solid var(--border-base);
