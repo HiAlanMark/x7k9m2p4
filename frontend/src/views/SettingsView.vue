@@ -164,12 +164,21 @@
 
                 <!-- API Key 选择 -->
                 <div class="form-row">
-                  <label class="form-label">
-                    API Key
-                    <HxButton variant="ghost" size="sm" :loading="gfwKeysLoading" @click="gfwStore.fetchApiKeys()" style="margin-left:8px;">
-                      {{ gfwKeysLoading ? '刷新中...' : '刷新' }}
-                    </HxButton>
-                  </label>
+                  <div class="gfw-api-key-header">
+                    <label class="form-label">API Key</label>
+                    <div class="gfw-api-key-actions" v-if="isLoggedIn">
+                      <button class="gfw-create-key-btn" @click="showGfwCreateKey = !showGfwCreateKey">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        创建新 Key
+                      </button>
+                      <HxButton variant="ghost" size="sm" :loading="gfwKeysLoading" @click="gfwStore.fetchApiKeys()">
+                        {{ gfwKeysLoading ? '刷新中...' : '刷新' }}
+                      </HxButton>
+                    </div>
+                  </div>
                   <div v-if="apiKeys.length > 0" class="gfw-key-list">
                     <button
                       v-for="key in apiKeys.slice(0, 5)"
@@ -186,16 +195,6 @@
                   </div>
                   <p v-else class="form-hint">暂无 API Key，点击创建</p>
                 </div>
-
-                <!-- 创建新 Key -->
-                <div class="form-row" v-if="isLoggedIn">
-                  <button class="gfw-create-key-btn" @click="showGfwCreateKey = !showGfwCreateKey">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    创建新 Key
-                  </button>
                   <div v-if="showGfwCreateKey" class="gfw-create-key-form">
                     <HxInput v-model="newKeyName" placeholder="Key 名称" style="max-width:200px;" />
                     <HxInput v-model.number="newKeyLimit" type="number" placeholder="限额(G币)" style="max-width:120px;margin-left:8px;" :min="1" :max="1000" :step="1" />
@@ -2354,7 +2353,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 
 /* ===== Form ===== */
 .form-row {
-  margin-bottom: calc(var(--space-4) + 8px);
+  margin-bottom: var(--space-4);
 }
 
 .form-row:last-child {
@@ -3040,6 +3039,23 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-family: var(--font-mono);
 }
 
+/* GFW API Key Header */
+.gfw-api-key-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+.gfw-api-key-header .form-label {
+  margin-bottom: 0;
+}
+.gfw-api-key-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 /* GFW Key List */
 .gfw-key-list {
   display: grid;
@@ -3139,8 +3155,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: var(--text-sm);
   cursor: pointer;
   transition: all var(--fast);
-  margin-top: 8px;
-  margin-bottom: 20px;
+  white-space: nowrap;
 }
 .gfw-create-key-btn:hover {
   border-color: var(--border-light);
