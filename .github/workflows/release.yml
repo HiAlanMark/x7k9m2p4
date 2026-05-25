@@ -208,66 +208,18 @@ jobs:
       # Windows: NSIS 打包（包含 Hermes）
       - name: Build Windows Installer
         if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-
-          # ── 0. Locate makensis ────────────────────────────
-          Write-Host "=== Locate makensis ==="
-          $makensis = $null
-          $candidates = @(
-            "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
-            "C:\Program Files (x86)\NSIS\makensis.exe",
-            "C:\nsis\makensis.exe",
-            "${env:ProgramFiles}\NSIS\makensis.exe",
-            "C:\Program Files\NSIS\makensis.exe"
-          )
-          foreach ($c in $candidates) {
-            if (Test-Path $c) { $makensis = $c; Write-Host "Found: $c"; break }
-          }
-          if (-not $makensis) {
-            $cmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
-            if ($cmd) { $makensis = $cmd.Source }
-          }
-          if (-not $makensis) {
-            choco install nsis -y --no-progress --limit-output --timeout 180
-            $env:Path += ";${env:ProgramFiles(x86)}\NSIS"
-            $cmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
-            if ($cmd) { $makensis = $cmd.Source }
-          }
-          if (-not (Test-Path $makensis)) { throw "makensis not found" }
-          Write-Host "Using: $makensis"
-          & $makensis /VERSION
-
-          # ── 1. Verify artifacts ───────────────────────────
-          Write-Host "=== Verify artifacts ==="
-          $bin = Get-Item build\bin\hixns-agent.exe
-          Write-Host "Binary: $([math]::Round($bin.Length/1MB,1))MB"
-          $af = (Get-ChildItem build\bin\hermes-agent -Recurse -File -ErrorAction SilentlyContinue).Count
-          $pf = (Get-ChildItem build\bin\hermes-python -Recurse -File -ErrorAction SilentlyContinue).Count
-          Write-Host "hermes-agent: $af files, hermes-python: $pf files"
-          if ($af -eq 0 -or $pf -eq 0) { throw "Hermes environment incomplete" }
-
-          # ── 2. Copy NSIS script to build dir ──────────────
-          New-Item -ItemType Directory -Path "build\windows" -Force | Out-Null
-          Copy-Item "scripts\installer.nsi" "build\windows\installer.nsi" -Force
-          Write-Host "NSIS script ready"
-
-          # ── 3. Run NSIS ──────────────────────────────────
-          Write-Host "=== Running NSIS ==="
-          & $makensis "build\windows\installer.nsi" 2>&1 | ForEach-Object { Write-Host $_ }
-          if ($LASTEXITCODE -ne 0) { throw "makensis failed: $LASTEXITCODE" }
-
-          # ── 4. Result ─────────────────────────────────────
-          $inst = Get-Item build\bin\HiXNS-Windows-x64-Setup.exe
-          Write-Host "DONE: Installer $([math]::Round($inst.Length/1MB,1))MB"
+        uses: joncloud/makensis-action@v4
+        with:
+          script-file: scripts/installer.nsi
+          working-directory: .
+          arguments: /V2
 
       # Linux: 手动构建 AppImage
       - name: Build Linux AppImage
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          set -e
+          set -eo pipefail
           BINARY="build/bin/${{ matrix.asset }}"
           APPDIR="$GITHUB_WORKSPACE/AppDir"
           rm -rf "$APPDIR"
@@ -310,13 +262,10 @@ jobs:
           cd /tmp && ./appimagetool --appimage-extract && cd "$GITHUB_WORKSPACE"
 
           # 打包
-          APPIMAGE_EXE_NAME="HiXNS-Linux-x86_64" /tmp/squashfs-root/AppRun \
-            "$APPDIR" \
-            "build/bin/HiXNS-Linux-x86_64.AppImage" \
-            2>&1 | tail -20
+          /tmp/squashfs-root/AppRun "$APPDIR" "build/bin/HiXNS-Linux-x86_64.AppImage"
 
-          echo "=== AppImage output ==="
-          ls -lh "build/bin/HiXNS-Linux-x86_64.AppImage" 2>/dev/null || echo "AppImage not found"
+          # 验证
+          ls -lh "build/bin/HiXNS-Linux-x86_64.AppImage"
           find build/bin -name "*.AppImage" -type f
 
       # macOS: 用 create-dmg
