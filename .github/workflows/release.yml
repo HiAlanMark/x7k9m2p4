@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - os: windows-2022
             platform: windows/amd64
             asset: hixns-agent.exe
           - os: ubuntu-22.04
@@ -214,44 +214,38 @@ jobs:
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
 
 # ── 4. 构建安装包 ─────────────────────────────────
-      # Windows: NSIS 打包 (GitHub runner 预装 NSIS 3.10)
+      # Windows: NSIS 打包 (windows-2022 runner 预装 NSIS 3.10)
       - name: Build Windows Installer
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           Write-Host "=== Locating makensis ==="
-          $candidates = @(
-            "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
-            "C:\Program Files (x86)\NSIS\makensis.exe",
-            "C:\Program Files\NSIS\makensis.exe"
-          )
-          $makensis = $null
-          foreach ($c in $candidates) {
-            if (Test-Path $c) { $makensis = $c; Write-Host "Found: $c"; break }
-          }
-          if (-not $makensis) {
+          # windows-2022 runner includes NSIS 3.10
+          $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (-not (Test-Path $nsisPath)) {
+            # Fallback: search PATH
             $cmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
-            if ($cmd) { $makensis = $cmd.Source; Write-Host "Found in PATH: $makensis" }
+            if ($cmd) { $nsisPath = $cmd.Source }
           }
-          if (-not $makensis) {
-            Write-Host "NSIS not found, listing C:\Program Files..."
-            Get-ChildItem "C:\Program Files*" -Recurse -Filter "makensis.exe" -ErrorAction SilentlyContinue | Select-Object FullName
-            throw "makensis.exe not found anywhere"
+          if (-not (Test-Path $nsisPath)) {
+            # Last resort: install via choco
+            Write-Host "Installing NSIS via choco..."
+            choco install nsis -y --no-progress
+            $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
           }
-
-          Write-Host "=== NSIS version ==="
-          & $makensis /VERSION
+          Write-Host "Using: $nsisPath"
+          & $nsisPath /VERSION
 
           Write-Host "=== Building ==="
           Push-Location $env:GITHUB_WORKSPACE
           Write-Host "PWD: $(Get-Location)"
-          Write-Host "Script: $(Resolve-Path scripts\installer.nsi)"
-          Test-Path build\bin\hixns-agent.exe | ForEach-Object { Write-Host "Binary exists: $_" }
+          Write-Host "Binary exists: $(Test-Path build\bin\hixns-agent.exe)"
 
-          & $makensis (Resolve-Path scripts\installer.nsi)
+          & $nsisPath scripts\installer.nsi
+          $exitCode = $LASTEXITCODE
           Pop-Location
 
-          if ($LASTEXITCODE -ne 0) { throw "NSIS exit code: $LASTEXITCODE" }
+          if ($exitCode -ne 0) { throw "NSIS exit code: $exitCode" }
 
           Write-Host "=== Result ==="
           Get-ChildItem build\bin\*.exe | Format-Table Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,1)}}
