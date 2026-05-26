@@ -2,7 +2,7 @@
 !include "x64.nsh"
 
 Name "Hi!XNS"
-OutFile "build\bin\HiXNS-Windows-x64-Setup.exe"
+OutFile "..\build\bin\HiXNS-Windows-x64-Setup.exe"
 InstallDir "$PROGRAMFILES64\HiXNS"
 RequestExecutionLevel admin
 
@@ -17,9 +17,9 @@ RequestExecutionLevel admin
 
 Section "Hi!XNS"
   SetOutPath "$INSTDIR"
-  File "build\bin\hixns-agent.exe"
-  File /r "build\bin\hermes-agent"
-  File /r "build\bin\hermes-python"
+  File "..\build\bin\hixns-agent.exe"
+  File /r "..\build\bin\hermes-agent"
+  File /r "..\build\bin\hermes-python"
   WriteUninstaller "$INSTDIR\uninstall.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "DisplayName" "Hi!XNS"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HiXNS" "UninstallString" "$INSTDIR\uninstall.exe"
