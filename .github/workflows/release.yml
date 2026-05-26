@@ -214,17 +214,26 @@ jobs:
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
 
 # ── 4. 构建安装包 ─────────────────────────────────
-      # Windows: 安装 NSIS + 打包
+      # Windows: NSIS 打包
       - name: Install NSIS (Windows)
         if: runner.os == 'Windows'
-        run: choco install nsis -y --no-progress --limit-output --timeout 180
+        shell: cmd
+        run: |
+          choco install nsis -y --no-progress --limit-output --timeout 300
+          where makensis
 
       - name: Build Windows Installer
         if: runner.os == 'Windows'
-        uses: joncloud/makensis-action@v4
-        with:
-          script-file: scripts/installer.nsi
-          arguments: /V2
+        shell: cmd
+        run: |
+          echo === Building Windows Installer ===
+          cd /d "%GITHUB_WORKSPACE%"
+          echo === Files in build/bin ===
+          dir build\bin
+          echo === Running makensis ===
+          makensis /V2 "scripts\installer.nsi"
+          echo === Result ===
+          dir build\bin\HiXNS-Windows-x64-Setup.exe
 
       # Linux: 手动构建 AppImage
       - name: Build Linux AppImage
@@ -237,17 +246,15 @@ jobs:
           rm -rf "$APPDIR"
           mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/icons/hicolor/256x256/apps"
 
-          # 复制二进制 — 命名为 hixns（必须与 .desktop 文件名一致）
+          # 复制二进制 — 必须命名为 hixns
           cp "$BINARY" "$APPDIR/usr/bin/hixns"
           chmod +x "$APPDIR/usr/bin/hixns"
-          echo "=== Binary ==="
-          file "$APPDIR/usr/bin/hixns"
 
           # 复制 Hermes
           cp -r build/bin/hermes-agent "$APPDIR/usr/bin/" 2>/dev/null || true
           cp -r build/bin/hermes-python "$APPDIR/usr/bin/" 2>/dev/null || true
 
-          # .desktop — 文件名必须与 Exec 和二进制名一致
+          # .desktop — 文件名 hixns.desktop，Icon=hixns
           echo '[Desktop Entry]' > "$APPDIR/hixns.desktop"
           echo 'Name=HiXNS' >> "$APPDIR/hixns.desktop"
           echo 'Comment=Hi!XNS AI Agent Desktop' >> "$APPDIR/hixns.desktop"
@@ -255,8 +262,6 @@ jobs:
           echo 'Icon=hixns' >> "$APPDIR/hixns.desktop"
           echo 'Type=Application' >> "$APPDIR/hixns.desktop"
           echo 'Categories=Utility;' >> "$APPDIR/hixns.desktop"
-          echo "=== Desktop ==="
-          cat "$APPDIR/hixns.desktop"
 
           # 图标
           cp build/appicon.png "$APPDIR/hixns.png" 2>/dev/null || true
@@ -269,23 +274,23 @@ jobs:
           echo 'exec "$HERE/usr/bin/hixns" "$@"' >> "$APPDIR/AppRun"
           chmod +x "$APPDIR/AppRun"
 
-          # 构建 AppImage
-          echo "=== Building AppImage ==="
+          # 下载并运行 linuxdeploy
           curl -fsSL "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -o /tmp/linuxdeploy
           chmod +x /tmp/linuxdeploy
 
           export OUTPUT="build/bin/HiXNS-Linux-x86_64.AppImage"
           /tmp/linuxdeploy --appdir "$APPDIR" --output appimage 2>&1
-          EXIT_CODE=$?
-          echo "linuxdeploy exit: $EXIT_CODE"
+          RET=$?
+          echo "linuxdeploy exit: $RET"
 
-          # linuxdeploy 输出文件名基于 .desktop 文件名
+          # linuxdeploy 默认输出为 <desktop-name>-x86_64.AppImage
           if [ -f "build/bin/hixns-x86_64.AppImage" ]; then
             mv "build/bin/hixns-x86_64.AppImage" "$OUTPUT"
-            echo "Renamed to $OUTPUT"
+          elif [ -f "build/bin/HiXNS-x86_64.AppImage" ]; then
+            mv "build/bin/HiXNS-x86_64.AppImage" "$OUTPUT"
           fi
 
-          echo "=== Build output ==="
+          echo "=== Final output ==="
           ls -lhR build/bin/ 2>/dev/null
 
       # macOS: 用 create-dmg
