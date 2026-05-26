@@ -65,7 +65,7 @@ export const useAppStore = defineStore('app', () => {
     
     try {
       const isDev = import.meta.env?.DEV ?? false
-      const agentUrl = isDev ? '/proxy/agent' : ''
+      const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
       
       const status = await getAgentStatus(agentUrl)
       

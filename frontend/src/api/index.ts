@@ -454,7 +454,7 @@ export async function configGetAll() {
 // Hermes Agent API — 真实对接 Go Server → Hermes CLI
 // ============================================================
 
-const AGENT_BASE = isDev ? '/proxy/agent' : 'http://127.0.0.1:9800'  // Wails 模式下通过 HTTP 访问 Go 后端
+const AGENT_BASE = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
 
 async function agentFetch(path: string, opts?: RequestInit) {
   const r = await fetch(`${AGENT_BASE}${path}`, {
@@ -609,7 +609,7 @@ export async function browserChat(
   onSessionId?: (sid: string) => void,
 ) {
   // 优先尝试 Agent Server（同源或本地端口）
-  const agentUrl = isDev ? '/proxy/agent' : ''
+  const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
   const agentAvailable = await checkAgentHealth(agentUrl)
 
   if (agentAvailable) {

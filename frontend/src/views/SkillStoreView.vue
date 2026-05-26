@@ -578,7 +578,7 @@ async function installSkill(skill: TwoXSkill) {
   installError[slug] = ''
   try {
     const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''
+    const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
     const r = await fetch(`${agentUrl}/v1/store/install`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -611,7 +611,7 @@ async function loadInstalled() {
   installedLoading.value = true
   try {
     const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''
+    const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
     const r = await fetch(`${agentUrl}/v1/agent/skills`)
     const data = await r.json()
     installedSkills.value = (data.skills || []).sort((a: any, b: any) => {
@@ -647,7 +647,7 @@ async function checkUpdates() {
 async function updateSkill(sk: InstalledSkill) {
   try {
     const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''
+    const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
     const r = await fetch(`${agentUrl}/v1/agent/install-skill`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -674,7 +674,7 @@ async function confirmUninstall() {
   if (!sk) return
   try {
     const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''
+    const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
     const r = await fetch(`${agentUrl}/v1/agent/uninstall-skill`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

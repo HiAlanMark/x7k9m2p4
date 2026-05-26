@@ -2421,7 +2421,8 @@ func main() {
 		// 拖拽通过 CSS --wails-draggable:drag 声明（前端 TitleBar 设置）
 
 		AssetServer: &assetserver.Options{
-			Assets: distFS,
+			Assets:  distFS,
+			Handler: mux, // 未匹配的静态文件请求转发到 Go HTTP mux（/v1/agent/* 等API）
 		},
 
 		OnStartup:     app.startup,

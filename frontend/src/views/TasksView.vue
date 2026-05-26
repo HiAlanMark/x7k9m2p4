@@ -330,7 +330,7 @@ const skillsSearch = ref('')
 async function fetchAvailableSkills() {
   try {
     const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''
+    const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
     const r = await fetch(`${agentUrl}/v1/agent/skills`)
     const data = await r.json()
     availableSkills.value = (data.skills || []).map((s: any) => ({
