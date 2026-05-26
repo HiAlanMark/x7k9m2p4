@@ -812,13 +812,17 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 	defer cancel()
 
 	cmdPath, cmdArgs := buildHermesCommand(args...)
-	cmd := exec.CommandContext(ctx, cmdPath, cmdArgs...)
-	// 清除 PYTHONPATH，防止 bundled venv 加载系统 hermes 模块
+	cmd := hideWindowCmdContext(ctx, cmdPath, cmdArgs...)
+	// 设置 PYTHONPATH 指向 bundled hermes-agent 源码目录
+	pythonPath := hermesInfo.SourceDir
 	cleanEnv := []string{}
 	for _, e := range os.Environ() {
 		if !strings.HasPrefix(e, "PYTHONPATH=") {
 			cleanEnv = append(cleanEnv, e)
 		}
+	}
+	if pythonPath != "" {
+		cleanEnv = append(cleanEnv, "PYTHONPATH="+pythonPath)
 	}
 	// 通过环境变量覆盖模型配置，不修改 config.yaml（避免并发竞争）
 	cmd.Env = append(cleanEnv,
@@ -918,13 +922,17 @@ func runHermes(args ...string) (string, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, cmdPath, cmdArgs...)
-	// 清除 PYTHONPATH，防止 bundled venv 加载系统 hermes 模块
+	cmd := hideWindowCmdContext(ctx, cmdPath, cmdArgs...)
+	// 设置 PYTHONPATH 指向 bundled hermes-agent 源码目录
+	pythonPath := hermesInfo.SourceDir
 	cleanEnv := []string{}
 	for _, e := range os.Environ() {
 		if !strings.HasPrefix(e, "PYTHONPATH=") {
 			cleanEnv = append(cleanEnv, e)
 		}
+	}
+	if pythonPath != "" {
+		cleanEnv = append(cleanEnv, "PYTHONPATH="+pythonPath)
 	}
 	cmd.Env = append(cleanEnv, "NO_COLOR=1", "TERM=dumb")
 	out, err := cmd.CombinedOutput()
@@ -1830,6 +1838,13 @@ func detectHermes() hermesInfo {
 		if runtime.GOOS != "windows" {
 			pythonExe = filepath.Join(pythonDir, "bin", "python3")
 		}
+		// On Windows, prefer pythonw.exe (no console window) over python.exe
+		if runtime.GOOS == "windows" {
+			pythonwExe := filepath.Join(pythonDir, "pythonw.exe")
+			if _, err := os.Stat(pythonwExe); err == nil {
+				pythonExe = pythonwExe
+			}
+		}
 		if _, err := os.Stat(pythonExe); err == nil {
 			// 用嵌入式 Python 运行 hermes
 			hermesPath = pythonExe
@@ -1889,7 +1904,7 @@ func detectHermes() hermesInfo {
 	info.Path = hermesPath
 
 	// 获取版本
-	if out, err := exec.Command(hermesPath, "--version").Output(); err == nil {
+	if out, err := hideWindowCmd(hermesPath, "--version").Output(); err == nil {
 		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 		if len(lines) > 0 {
 			info.Version = lines[0]

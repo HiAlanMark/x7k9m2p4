@@ -158,10 +158,30 @@ jobs:
           echo 'set SCRIPT_DIR=%~dp0' >> "$HERMES_DIR/run-hermes.bat"
           echo 'set PYTHON_DIR=%SCRIPT_DIR%..\hermes-python' >> "$HERMES_DIR/run-hermes.bat"
           echo 'set PYTHONPATH=%SCRIPT_DIR%' >> "$HERMES_DIR/run-hermes.bat"
-          echo '"%PYTHON_DIR%\python.exe" -m hermes_cli %*' >> "$HERMES_DIR/run-hermes.bat"
+          echo '"%PYTHON_DIR%\pythonw.exe" -m hermes_cli %*' >> "$HERMES_DIR/run-hermes.bat"
 
-          # 清理
+          # 清理测试痕迹和缓存
           find "$HERMES_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+          find "$HERMES_DIR" -name '*.pyc' -delete 2>/dev/null || true
+          find "$HERMES_DIR" -type d -name '.pytest_cache' -exec rm -rf {} + 2>/dev/null || true
+          find "$HERMES_DIR" -type d -name 'tests' -exec rm -rf {} + 2>/dev/null || true
+          find "$HERMES_DIR" -type d -name '.git' -exec rm -rf {} + 2>/dev/null || true
+          find "$HERMES_DIR" -type d -name '.plans' -exec rm -rf {} + 2>/dev/null || true
+          find "$HERMES_DIR" -name 'test_*.py' -delete 2>/dev/null || true
+          find "$HERMES_DIR" -name '*_test.py' -delete 2>/dev/null || true
+          find "$HERMES_DIR" -name 'cron_meta.json' -delete 2>/dev/null || true
+          find "$HERMES_DIR" -name '*.egg-info' -type d -exec rm -rf {} + 2>/dev/null || true
+          # 清理 hermes-python 缓存和开发工具
+          find "$PYTHON_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+          find "$PYTHON_DIR" -name '*.pyc' -delete 2>/dev/null || true
+          find "$PYTHON_DIR" -name '*.dist-info' -type d -exec rm -rf {} + 2>/dev/null || true
+          find "$PYTHON_DIR" -name '*.egg-info' -type d -exec rm -rf {} + 2>/dev/null || true
+          rm -f "$PYTHON_DIR/get-pip.py"
+          # 嵌入式 Python zip 不含 pythonw.exe，复制 python.exe 作为 pythonw.exe
+          # Go 层用 CREATE_NO_WINDOW 阻止控制台弹窗，所以 python.exe 也不会弹窗
+          if [ ! -f "$PYTHON_DIR/pythonw.exe" ]; then
+            cp "$PYTHON_DIR/python.exe" "$PYTHON_DIR/pythonw.exe"
+          fi
           rm -rf /tmp/hermes-src
 
           echo "=== Windows Hermes bundled ==="
@@ -195,7 +215,9 @@ jobs:
             beautifulsoup4 lxml python-dotenv
 
           # 创建 .pth 文件：让 venv 能导入 bundled 源码（替代 PYTHONPATH）
-          echo "$HERMES_DIR" > "$PYTHON_DIR/lib/python$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')/site-packages/hermes_agent_bundled.pth"
+          # 用 venv 自带的 python 获取版本号，避免系统 python 版本不匹配
+          PYVER=$("$PYTHON_DIR/bin/python3" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+          echo "$HERMES_DIR" > "$PYTHON_DIR/lib/python${PYVER}/site-packages/hermes_agent_bundled.pth"
 
           deactivate
 
@@ -207,10 +229,24 @@ jobs:
           echo 'exec "$PYTHON_DIR/bin/python3" -m hermes_cli "$@"' >> "$HERMES_DIR/run-hermes.sh"
           chmod +x "$HERMES_DIR/run-hermes.sh"
 
-          # 清理
+          # 清理测试痕迹和缓存
           find "$HERMES_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
-          rm -rf /tmp/hermes-src
+          find "$HERMES_DIR" -name '*.pyc' -delete 2>/dev/null || true
+          find "$HERMES_DIR" -type d -name '.pytest_cache' -exec rm -rf {} + 2>/dev/null || true
+          find "$HERMES_DIR" -type d -name 'tests' -exec rm -rf {} + 2>/dev/null || true
+          find "$HERMES_DIR" -type d -name '.git' -exec rm -rf {} + 2>/dev/null || true
+          find "$HERMES_DIR" -type d -name '.plans' -exec rm -rf {} + 2>/dev/null || true
+          find "$HERMES_DIR" -name 'test_*.py' -delete 2>/dev/null || true
+          find "$HERMES_DIR" -name '*_test.py' -delete 2>/dev/null || true
+          find "$HERMES_DIR" -name 'cron_meta.json' -delete 2>/dev/null || true
+          find "$HERMES_DIR" -name '*.egg-info' -type d -exec rm -rf {} + 2>/dev/null || true
+          # 清理 hermes-python 缓存和 venv 冗余
           find "$PYTHON_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+          find "$PYTHON_DIR" -name '*.pyc' -delete 2>/dev/null || true
+          find "$PYTHON_DIR" -name '*.dist-info' -type d -exec rm -rf {} + 2>/dev/null || true
+          find "$PYTHON_DIR" -name '*.egg-info' -type d -exec rm -rf {} + 2>/dev/null || true
+          rm -rf "$PYTHON_DIR/share" "$PYTHON_DIR/man" "$PYTHON_DIR/include"
+          rm -rf /tmp/hermes-src
 
           echo "=== ${{ runner.os }} Hermes bundled ==="
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
@@ -273,9 +309,19 @@ jobs:
           cp "$BINARY" "$APPDIR/usr/bin/hixns"
           chmod +x "$APPDIR/usr/bin/hixns"
 
-          # 复制 Hermes
-          cp -r build/bin/hermes-agent "$APPDIR/usr/bin/" 2>/dev/null || true
-          cp -r build/bin/hermes-python "$APPDIR/usr/bin/" 2>/dev/null || true
+          # 复制 Hermes（验证存在，不可静默跳过）
+          if [ -d build/bin/hermes-agent ]; then
+            cp -r build/bin/hermes-agent "$APPDIR/usr/bin/"
+            echo "hermes-agent copied"
+          else
+            echo "::warning::hermes-agent directory not found, AppImage will not include Hermes"
+          fi
+          if [ -d build/bin/hermes-python ]; then
+            cp -r build/bin/hermes-python "$APPDIR/usr/bin/"
+            echo "hermes-python copied"
+          else
+            echo "::warning::hermes-python directory not found, AppImage will not include embedded Python"
+          fi
 
           # .desktop 文件
           echo '[Desktop Entry]' > "$APPDIR/hixns.desktop"
@@ -372,8 +418,18 @@ jobs:
 
           # 复制 Hermes 到 .app 内
           MACOS_DIR="$APP_BUNDLE/Contents/MacOS"
-          cp -r build/bin/hermes-agent "$MACOS_DIR/" 2>/dev/null || true
-          cp -r build/bin/hermes-python "$MACOS_DIR/" 2>/dev/null || true
+          if [ -d build/bin/hermes-agent ]; then
+            cp -r build/bin/hermes-agent "$MACOS_DIR/"
+            echo "hermes-agent copied to macOS bundle"
+          else
+            echo "::warning::hermes-agent directory not found"
+          fi
+          if [ -d build/bin/hermes-python ]; then
+            cp -r build/bin/hermes-python "$MACOS_DIR/"
+            echo "hermes-python copied to macOS bundle"
+          else
+            echo "::warning::hermes-python directory not found"
+          fi
 
           # 安装 create-dmg
           brew install create-dmg 2>/dev/null || true

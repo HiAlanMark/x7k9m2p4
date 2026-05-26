@@ -31,12 +31,17 @@ Section "Start Menu Shortcuts"
   CreateShortCut "$SMPROGRAMS\Hi!XNS\Uninstall.lnk" "$INSTDIR\uninstall.exe"
 SectionEnd
 
+Section "Desktop Shortcut"
+  CreateShortCut "$DESKTOP\Hi!XNS.lnk" "$INSTDIR\hixns-agent.exe"
+SectionEnd
+
 Section "Uninstall"
   RMDir /r "$INSTDIR\hermes-agent"
   RMDir /r "$INSTDIR\hermes-python"
   Delete "$INSTDIR\hixns-agent.exe"
   Delete "$INSTDIR\uninstall.exe"
   RMDir "$INSTDIR"
+  Delete "$DESKTOP\Hi!XNS.lnk"
   Delete "$SMPROGRAMS\Hi!XNS\Hi!XNS.lnk"
   Delete "$SMPROGRAMS\Hi!XNS\Uninstall.lnk"
   RMDir "$SMPROGRAMS\Hi!XNS"
