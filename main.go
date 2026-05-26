@@ -814,7 +814,7 @@ func hermesChat(sse *sseWriter, content, apiBase, apiKey, model string, history 
 	cmdPath, cmdArgs := buildHermesCommand(args...)
 	cmd := hideWindowCmdContext(ctx, cmdPath, cmdArgs...)
 	// 设置 PYTHONPATH 指向 bundled hermes-agent 源码目录
-	pythonPath := hermesInfo.SourceDir
+	pythonPath := hermesState.SourceDir
 	cleanEnv := []string{}
 	for _, e := range os.Environ() {
 		if !strings.HasPrefix(e, "PYTHONPATH=") {
@@ -924,7 +924,7 @@ func runHermes(args ...string) (string, error) {
 	defer cancel()
 	cmd := hideWindowCmdContext(ctx, cmdPath, cmdArgs...)
 	// 设置 PYTHONPATH 指向 bundled hermes-agent 源码目录
-	pythonPath := hermesInfo.SourceDir
+	pythonPath := hermesState.SourceDir
 	cleanEnv := []string{}
 	for _, e := range os.Environ() {
 		if !strings.HasPrefix(e, "PYTHONPATH=") {

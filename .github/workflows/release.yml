@@ -247,6 +247,7 @@ jobs:
           find "$PYTHON_DIR" -name '*.egg-info' -type d -exec rm -rf {} + 2>/dev/null || true
           rm -rf "$PYTHON_DIR/share" "$PYTHON_DIR/man" "$PYTHON_DIR/include"
           rm -rf /tmp/hermes-src
+          rm -rf /tmp/hermes-src
 
           echo "=== ${{ runner.os }} Hermes bundled ==="
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
