@@ -214,33 +214,12 @@ jobs:
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
 
 # ── 4. 构建安装包 ─────────────────────────────────
-      # Windows: NSIS 打包
-      - name: Build Windows Installer
+      # Windows: NSIS 打包 (使用 makensis-action，自带 NSIS)
+      - name: Build Windows Installer (NSIS)
         if: runner.os == 'Windows'
-        shell: cmd
-        run: |
-          echo === Locating makensis ===
-          where /R "C:\Program Files (x86)\NSIS" makensis.exe 2>nul
-          where /R "C:\Program Files\NSIS" makensis.exe 2>nul
-          where makensis 2>nul
-
-          echo === Attempting makensis ===
-          makensis /VERSION 2>nul
-          if %ERRORLEVEL% EQU 0 goto :build
-          echo makensis not found, installing via choco...
-          choco install nsis -y --no-progress --limit-output --timeout 300
-          set "PATH=C:\Program Files (x86)\NSIS;%PATH%"
-          makensis /VERSION
-
-          :build
-          echo === Building Windows Installer ===
-          cd /d "%GITHUB_WORKSPACE%"
-          echo === Files in build/bin ===
-          dir build\bin
-          echo === Running makensis ===
-          makensis /V2 "scripts\installer.nsi"
-          echo === Result ===
-          dir build\bin\HiXNS-Windows-x64-Setup.exe
+        uses: joncloud/makensis-action@v4
+        with:
+          script-file: scripts/installer.nsi
 
       # Linux: 手动构建 AppImage
       - name: Build Linux AppImage
