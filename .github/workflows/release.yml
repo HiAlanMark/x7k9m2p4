@@ -152,15 +152,13 @@ jobs:
             aiohttp pydantic pyyaml rich httpx openai tiktoken \
             beautifulsoup4 lxml python-dotenv
 
-          # 创建启动脚本（清除 PYTHONPATH 防止加载系统 hermes）
-          cat > "$HERMES_DIR/run-hermes.bat" << 'EOF'
-          @echo off
-          setlocal
-          set PYTHONPATH=
-          set SCRIPT_DIR=%~dp0
-          set PYTHON_DIR=%SCRIPT_DIR%..\\hermes-python
-          "%PYTHON_DIR%\\python.exe" -m hermes_cli %*
-          EOF
+          # 创建启动脚本
+          echo '@echo off' > "$HERMES_DIR/run-hermes.bat"
+          echo 'setlocal' >> "$HERMES_DIR/run-hermes.bat"
+          echo 'set SCRIPT_DIR=%~dp0' >> "$HERMES_DIR/run-hermes.bat"
+          echo 'set PYTHON_DIR=%SCRIPT_DIR%..\hermes-python' >> "$HERMES_DIR/run-hermes.bat"
+          echo 'set PYTHONPATH=%SCRIPT_DIR%' >> "$HERMES_DIR/run-hermes.bat"
+          echo '"%PYTHON_DIR%\python.exe" -m hermes_cli %*' >> "$HERMES_DIR/run-hermes.bat"
 
           # 清理
           find "$HERMES_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
@@ -201,15 +199,12 @@ jobs:
 
           deactivate
 
-          # 创建启动脚本（清除 PYTHONPATH 防止加载系统 hermes）
-          cat > "$HERMES_DIR/run-hermes.sh" << 'SCRIPT'
-          #!/bin/bash
-          SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-          PYTHON_DIR="$SCRIPT_DIR/../hermes-python"
-          # 清除 PYTHONPATH，防止 bundled venv 加载系统 hermes 模块
-          unset PYTHONPATH
-          exec "$PYTHON_DIR/bin/python3" -m hermes_cli "$@"
-          SCRIPT
+          # 创建启动脚本
+          echo '#!/bin/bash' > "$HERMES_DIR/run-hermes.sh"
+          echo 'SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"' >> "$HERMES_DIR/run-hermes.sh"
+          echo 'PYTHON_DIR="$SCRIPT_DIR/../hermes-python"' >> "$HERMES_DIR/run-hermes.sh"
+          echo 'export PYTHONPATH="$SCRIPT_DIR"' >> "$HERMES_DIR/run-hermes.sh"
+          echo 'exec "$PYTHON_DIR/bin/python3" -m hermes_cli "$@"' >> "$HERMES_DIR/run-hermes.sh"
           chmod +x "$HERMES_DIR/run-hermes.sh"
 
           # 清理
@@ -257,7 +252,7 @@ jobs:
           Write-Host "=== Result ==="
           Get-ChildItem build\bin\*.exe | Format-Table Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,1)}}
 
-      # Linux: 手动构建 AppImage
+      # Linux: 构建 AppImage（用 appimagetool 代替 linuxdeploy）
       - name: Build Linux AppImage
         if: runner.os == 'Linux'
         shell: bash
@@ -282,62 +277,48 @@ jobs:
           cp -r build/bin/hermes-agent "$APPDIR/usr/bin/" 2>/dev/null || true
           cp -r build/bin/hermes-python "$APPDIR/usr/bin/" 2>/dev/null || true
 
-          # .desktop
-          cat > "$APPDIR/hixns.desktop" << 'EOF'
-          [Desktop Entry]
-          Name=HiXNS
-          Comment=Hi!XNS AI Agent Desktop
-          Exec=hixns
-          Icon=hixns
-          Type=Application
-          Categories=Utility;
-          EOF
-          sed -i 's/^          //' "$APPDIR/hixns.desktop"
+          # .desktop 文件
+          echo '[Desktop Entry]' > "$APPDIR/hixns.desktop"
+          echo 'Name=HiXNS' >> "$APPDIR/hixns.desktop"
+          echo 'Comment=Hi!XNS AI Agent Desktop' >> "$APPDIR/hixns.desktop"
+          echo 'Exec=hixns' >> "$APPDIR/hixns.desktop"
+          echo 'Icon=hixns' >> "$APPDIR/hixns.desktop"
+          echo 'Type=Application' >> "$APPDIR/hixns.desktop"
+          echo 'Categories=Utility;' >> "$APPDIR/hixns.desktop"
 
-          # 图标 — 生成占位 PNG 如果 build/appicon.png 不存在
+          # 图标
           if [ -f build/appicon.png ]; then
             cp build/appicon.png "$APPDIR/hixns.png"
+            cp build/appicon.png "$APPDIR/usr/share/icons/hicolor/256x256/apps/hixns.png"
           else
-            python3 -c "from PIL import Image;Image.new('RGBA',(256,256),(90,200,250,255)).save('$APPDIR/hixns.png')" 2>/dev/null || \
-            printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x01\x00\x00\x00\x01\x00\x08\x06\x00\x00\x00\x5c\xd7\xd8\x7c\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0\x00\x00\x00\x03\x00\x01\x00\x05\xfe\xd4\x00\x00\x00\x00IEND\xaeB`\x82' > "$APPDIR/hixns.png"
+            # 生成占位图标 - 用 base64 解码一个预生成的 256x256 纯色 PNG
+            echo 'iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccFhmAAAACXBIWXMAAAsTAAALEwEAmpwYAAADHUlEQVR4nO3RsQ0AIRADwf1/x7XDugATYuGXcfk9KscCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOB6gG6v7cB6gO0veI/XDnA/QPf3DnA/wPUC3N86wP0A18+f/jkG6B6g+8cZoHuA7h9ngO4Bun+cAboH6P5xBugeoPvHGaB7gO4fZ4DuAbp/nAG6B+j+cQboHqD7xxmge4DuH2eA7gG6f5wBugfo/nEG6B6g+8cZoHuA7h9ngO4Bun+cAboH6P5xBugeoPvHGaB7gO4fZ4DuAbp/nAG6B+j+cQboHqD7xzm6A7p/5BPoDQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPjNHgABAAD//2F7oFU=' | base64 -d > "$APPDIR/hixns.png"
           fi
 
           # AppRun
-          cat > "$APPDIR/AppRun" << 'EOF'
-          #!/bin/bash
-          HERE="$(dirname "$(readlink -f "${0}")")"
-          export PATH="$HERE/usr/bin:$PATH"
-          export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"
-          exec "$HERE/usr/bin/hixns" "$@"
-          EOF
-          sed -i 's/^          //' "$APPDIR/AppRun"
+          echo '#!/bin/bash' > "$APPDIR/AppRun"
+          echo 'HERE="$(dirname "$(readlink -f "${0}")")"' >> "$APPDIR/AppRun"
+          echo 'export PATH="$HERE/usr/bin:$PATH"' >> "$APPDIR/AppRun"
+          echo 'export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"' >> "$APPDIR/AppRun"
+          echo 'exec "$HERE/usr/bin/hixns" "$@"' >> "$APPDIR/AppRun"
           chmod +x "$APPDIR/AppRun"
 
           echo "=== AppDir contents ==="
-          find "$APPDIR" -type f | head -20
+          find "$APPDIR" -maxdepth 3 -type f | head -30
 
-          # 下载 linuxdeploy
-          echo "=== Downloading linuxdeploy ==="
-          curl -fsSL "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -o /tmp/linuxdeploy
-          chmod +x /tmp/linuxdeploy
+          # 下载 appimagetool
+          echo "=== Downloading appimagetool ==="
+          curl -fsSL "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -o /tmp/appimagetool
+          chmod +x /tmp/appimagetool
 
-          # 需要 FUSE 或 extract-and-run
           export APPIMAGE_EXTRACT_AND_RUN=1
           export OUTPUT="$GITHUB_WORKSPACE/build/bin/HiXNS-Linux-x86_64.AppImage"
 
-          echo "=== Running linuxdeploy ==="
-          /tmp/linuxdeploy --appdir "$APPDIR" --output appimage 2>&1
-
-          echo "=== linuxdeploy result ==="
-          ls -lh build/bin/*.AppImage 2>/dev/null || echo "No AppImage found in build/bin"
-
-          # 如果 linuxdeploy 用了不同的文件名，重命名
-          for f in build/bin/*-x86_64.AppImage; do
-            if [ -f "$f" ] && [ "$(basename "$f")" != "HiXNS-Linux-x86_64.AppImage" ]; then
-              mv "$f" "build/bin/HiXNS-Linux-x86_64.AppImage"
-              echo "Renamed $(basename "$f") to HiXNS-Linux-x86_64.AppImage"
-            fi
-          done
+          echo "=== Running appimagetool ==="
+          /tmp/appimagetool "$APPDIR" "$OUTPUT" 2>&1 || {
+            echo "::error::appimagetool failed, trying with --verbose"
+            /tmp/appimagetool --verbose "$APPDIR" "$OUTPUT" 2>&1 || true
+          }
 
           # 验证
           if [ ! -f "build/bin/HiXNS-Linux-x86_64.AppImage" ]; then
