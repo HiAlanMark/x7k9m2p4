@@ -214,12 +214,38 @@ jobs:
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
 
 # ── 4. 构建安装包 ─────────────────────────────────
-      # Windows: NSIS 打包 (使用 makensis-action，自带 NSIS)
+      # Windows: NSIS 打包 (下载便携版，零依赖)
       - name: Build Windows Installer (NSIS)
         if: runner.os == 'Windows'
-        uses: joncloud/makensis-action@v4
-        with:
-          script-file: scripts/installer.nsi
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          # 下载 NSIS 便携版
+          Write-Host "=== Downloading NSIS portable ==="
+          $nsisUrl = "https://sourceforge.net/projects/nsis/files/NSIS%203/3.10/nsis-3.10.zip/download"
+          $zipPath = "$env:TEMP\nsis.zip"
+          Invoke-WebRequest -Uri $nsisUrl -OutFile $zipPath -MaximumRedirection 10
+
+          # 解压
+          Write-Host "=== Extracting NSIS ==="
+          $nsisDir = "$env:TEMP\nsis"
+          Expand-Archive -Path $zipPath -DestinationPath $nsisDir -Force
+
+          # 定位 makensis.exe
+          $makensis = Get-ChildItem -Path $nsisDir -Recurse -Filter "makensis.exe" | Select-Object -First 1
+          if (-not $makensis) { throw "makensis.exe not found" }
+          Write-Host "Using: $($makensis.FullName)"
+
+          # 运行 NSIS
+          Write-Host "=== Building installer ==="
+          Set-Location $env:GITHUB_WORKSPACE
+          & $makensis.FullName "scripts\installer.nsi" 2>&1 | ForEach-Object { Write-Host $_ }
+          if ($LASTEXITCODE -ne 0) { throw "makensis failed: $LASTEXITCODE" }
+
+          # 验证
+          Write-Host "=== Result ==="
+          Get-ChildItem "build\bin\HiXNS-Windows-x64-Setup.exe" | Select-Object Name, Length
 
       # Linux: 手动构建 AppImage
       - name: Build Linux AppImage
