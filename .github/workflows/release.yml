@@ -4,14 +4,7 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - main
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag (e.g. 0.9.30)'
-        required: false
-        default: ''
 
 permissions:
   contents: write
