@@ -358,9 +358,21 @@ async function fetchCustomModels() {
   customModelsLoading.value = true
   try {
     const base = cp.baseUrl.replace(/\/$/, '')
-    const r = await fetch(base + '/models', {
-      headers: { Authorization: 'Bearer ' + cp.apiKey }
-    })
+    const headers: Record<string, string> = {
+      'Authorization': 'Bearer ' + cp.apiKey,
+    }
+    let fetchUrl = base + '/models'
+    // Wails 模式或开发模式下通过 Go 后端代理避免跨域
+    if (base.startsWith('http')) {
+      try {
+        const targetOrigin = new URL(base).origin
+        if (targetOrigin !== window.location.origin) {
+          headers['x-proxy-target'] = base
+          fetchUrl = '/proxy/custom/models'
+        }
+      } catch (_) {}
+    }
+    const r = await fetch(fetchUrl, { headers })
     const data = await r.json()
     const list = data.data || data || []
     customModels.value = (Array.isArray(list) ? list : []).map((m: any) => ({

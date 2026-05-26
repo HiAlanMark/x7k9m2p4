@@ -461,6 +461,10 @@ async function agentFetch(path: string, opts?: RequestInit) {
     ...opts,
     headers: { 'Content-Type': 'application/json', ...(opts?.headers as Record<string, string> || {}) },
   })
+  if (!r.ok) {
+    const errBody = await r.text().catch(() => '')
+    throw new Error(`Agent 请求失败 (${r.status}): ${errBody || r.statusText}`)
+  }
   return r
 }
 

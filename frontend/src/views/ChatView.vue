@@ -152,14 +152,20 @@
             </div>
             <div class="approval-body">
               <div class="approval-cmd">
-                <span class="approval-label">Command</span>
+                <span class="approval-label">命令</span>
                 <code>{{ pendingApproval.command }}</code>
               </div>
               <div class="approval-reason">{{ pendingApproval.reason }}</div>
             </div>
             <div class="approval-actions">
-              <button class="approve-btn" @click="approveCommand">允许执行</button>
-              <button class="deny-btn" @click="denyCommand">拒绝</button>
+              <button class="approve-btn" @click="approveCommand">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>允许执行</span>
+              </button>
+              <button class="deny-btn" @click="denyCommand">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <span>拒绝</span>
+              </button>
             </div>
           </div>
 
@@ -175,7 +181,7 @@
                 <span v-if="tc.status === 'running'" class="tool-spinner-sm"></span>
                 <span v-else :class="['tool-status', tc.status]"></span>
                 <span class="tool-name">{{ tc.tool }}</span>
-                <span class="tool-label">{{ tc.status === 'completed' ? '完成' : tc.status === 'failed' ? '失败' : '执行中...' }}</span>
+                <span class="tool-label">{{ tc.status === 'completed' ? '完成' : tc.status === 'failed' ? '失败' : tc.status === 'denied' ? '已拒绝' : tc.status === 'timeout' ? '审批超时' : '执行中...' }}</span>
               </div>
             </div>
           </div>
@@ -613,14 +619,15 @@ async function sendMessage() {
       (fullText, usage) => {
         agentStatus.value = ''
         agentIteration.value = 0
-        pendingApproval.value = null
+        // 注意：pendingApproval 只在 approveCommand/denyCommand 中清除，
+        // 不在 onDone 时清除——否则用户还没来得及审批就被移除了
         chatStore.finishResponse(usage, config.model, undefined, fullText)
         // 首轮对话自动生成智能标题
         autoGenerateTitle(text, fullText, config)
       },
       (err) => {
         agentStatus.value = ''
-        pendingApproval.value = null
+        // 同上：错误时也保留审批卡片，让用户可以操作
         chatStore.finishResponse()
         chatStore.addSystemMessage(`错误：${err}`)
       },
@@ -739,21 +746,55 @@ async function regenerateMessage(idx: number) {
   sendMessage()
 }
 
-function approveCommand() {
+async function approveCommand() {
+  if (!pendingApproval.value) return
+  const { id } = pendingApproval.value
   pendingApproval.value = null
-  // Currently auto-approved on server side; future: send approval via WebSocket
+  // 发送批准到后端
+  try {
+    const isDev = import.meta.env?.DEV ?? false
+    const agentUrl = isDev ? '/proxy/agent' : ''
+    await fetch(`${agentUrl}/v1/agent/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, approved: true }),
+    })
+  } catch { /* ignore */ }
 }
 
-function denyCommand() {
+async function denyCommand() {
+  if (!pendingApproval.value) return
+  const { id } = pendingApproval.value
   pendingApproval.value = null
+  // 发送拒绝到后端
+  try {
+    const isDev = import.meta.env?.DEV ?? false
+    const agentUrl = isDev ? '/proxy/agent' : ''
+    await fetch(`${agentUrl}/v1/agent/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, approved: false, reason: '用户拒绝了命令执行' }),
+    })
+  } catch { /* ignore */ }
   chatStore.addSystemMessage('用户拒绝了命令执行')
 }
 
 async function cancelExecution() {
   try {
+    // 取消时也拒绝待审批的命令
+    if (pendingApproval.value) {
+      const { id } = pendingApproval.value
+      pendingApproval.value = null
+      const isDev = import.meta.env?.DEV ?? false
+      const agentUrl = isDev ? '/proxy/agent' : ''
+      fetch(`${agentUrl}/v1/agent/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, approved: false, reason: '用户取消了执行' }),
+      }).catch(() => {})
+    }
     await hermesCancel()
     agentStatus.value = ''
-    pendingApproval.value = null
     chatStore.finishResponse()
     chatStore.addSystemMessage('已停止执行')
   } catch { /* ignore */ }
@@ -1643,6 +1684,9 @@ function exportChat() {
 }
 
 .approve-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 16px;
   background: var(--success);
   border: none;
@@ -1650,16 +1694,23 @@ function exportChat() {
   color: #fff;
   font-weight: 600;
   cursor: pointer;
+  transition: opacity 0.15s;
 }
+.approve-btn:hover { opacity: 0.85; }
 
 .deny-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 16px;
   background: transparent;
   border: 1px solid var(--error);
   border-radius: 8px;
   color: var(--error);
   cursor: pointer;
+  transition: opacity 0.15s;
 }
+.deny-btn:hover { opacity: 0.75; }
 
 /* ===== System Messages ===== */
 .sys-line {

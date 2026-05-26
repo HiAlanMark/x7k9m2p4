@@ -606,18 +606,37 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 
 				sse.send(map[string]any{"type": "tool_call", "id": tcID, "tool": ntc.Name, "args": args, "status": "running"})
 
-				// 危险命令检测
-				if ntc.Name == "run_terminal" {
-					if cmd, ok := args["command"].(string); ok && isDangerousCommand(cmd) {
-						sse.send(map[string]any{
-							"type": "approval_request", "id": tcID, "tool": ntc.Name,
-							"command": cmd, "reason": "此命令可能修改系统状态，需要您的确认",
-						})
+			// 危险命令检测
+			if ntc.Name == "run_terminal" {
+				if cmd, ok := args["command"].(string); ok && isDangerousCommand(cmd) {
+					sse.send(map[string]any{
+						"type": "approval_request", "id": tcID, "tool": ntc.Name,
+						"command": cmd, "reason": "此命令可能修改系统状态，需要您的确认",
+					})
+					// 阻塞等待前端用户审批
+					ch := registerApproval(tcID)
+					select {
+					case result := <-ch:
+						if !result.Approved {
+							sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": "用户拒绝了命令执行", "duration": 0, "status": "denied"})
+							toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 用户拒绝执行\n</tool_result>\n", ntc.Name))
+							messages = append(messages, map[string]any{"role": "assistant", "content": text, "tool_calls": apiToolCalls})
+							messages = append(messages, map[string]any{"role": "tool", "tool_call_id": tcID, "content": "用户拒绝执行"})
+							continue
+						}
+					case <-time.After(120 * time.Second):
+						sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": "审批超时，命令未执行", "duration": 0, "status": "timeout"})
+						completeApproval(tcID, approvalResult{}) // cleanup
+						toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 审批超时\n</tool_result>\n", ntc.Name))
+						messages = append(messages, map[string]any{"role": "assistant", "content": text, "tool_calls": apiToolCalls})
+						messages = append(messages, map[string]any{"role": "tool", "tool_call_id": tcID, "content": "审批超时"})
+						continue
 					}
 				}
+			}
 
-				t0 := time.Now()
-				result := executeTool(ntc.Name, args)
+			t0 := time.Now()
+			result := executeTool(ntc.Name, args)
 				duration := time.Since(t0).Seconds()
 
 				sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
@@ -681,19 +700,33 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 
 			sse.send(map[string]any{"type": "tool_call", "id": tcID, "tool": tc.Name, "args": tc.Args, "status": "running"})
 
-			// 检查是否为危险命令（需要审批）
-			if tc.Name == "run_terminal" {
-				if cmd, ok := tc.Args["command"].(string); ok && isDangerousCommand(cmd) {
-					sse.send(map[string]any{
-						"type": "approval_request", "id": tcID, "tool": tc.Name,
-						"command": cmd, "reason": "此命令可能修改系统状态，需要您的确认",
-					})
-					// 注意：当前版本自动批准，未来可通过 WebSocket 等待用户响应
+		// 检查是否为危险命令（需要审批）
+		if tc.Name == "run_terminal" {
+			if cmd, ok := tc.Args["command"].(string); ok && isDangerousCommand(cmd) {
+				sse.send(map[string]any{
+					"type": "approval_request", "id": tcID, "tool": tc.Name,
+					"command": cmd, "reason": "此命令可能修改系统状态，需要您的确认",
+				})
+				// 阻塞等待前端用户审批
+				ch := registerApproval(tcID)
+				select {
+				case result := <-ch:
+					if !result.Approved {
+						sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": "用户拒绝了命令执行", "duration": 0, "status": "denied"})
+						toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 用户拒绝执行\n</tool_result>\n", tc.Name))
+						continue
+					}
+				case <-time.After(120 * time.Second):
+					sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": "审批超时，命令未执行", "duration": 0, "status": "timeout"})
+					completeApproval(tcID, approvalResult{})
+					toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 审批超时\n</tool_result>\n", tc.Name))
+					continue
 				}
 			}
+		}
 
-			t0 := time.Now()
-			result := executeTool(tc.Name, tc.Args)
+		t0 := time.Now()
+		result := executeTool(tc.Name, tc.Args)
 			duration := time.Since(t0).Seconds()
 
 			sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
@@ -2214,6 +2247,63 @@ func unzipFile(zipPath, destDir string) error {
 // 全局 Hermes 信息（启动时检测一次）
 var hermesState hermesInfo
 
+// ============================================================
+// 命令审批机制 — 真正阻塞等待用户响应
+// ============================================================
+
+type approvalResult struct {
+	Approved bool   `json:"approved"`
+	Reason   string `json:"reason,omitempty"`
+}
+
+// 全局审批等待表：approvalID → channel
+var (
+	approvalMu    sync.Mutex
+	approvalWaits = make(map[string]chan approvalResult)
+)
+
+func registerApproval(id string) chan approvalResult {
+	ch := make(chan approvalResult, 1)
+	approvalMu.Lock()
+	approvalWaits[id] = ch
+	approvalMu.Unlock()
+	return ch
+}
+
+func completeApproval(id string, result approvalResult) {
+	approvalMu.Lock()
+	ch, ok := approvalWaits[id]
+	if ok {
+		delete(approvalWaits, id)
+	}
+	approvalMu.Unlock()
+	if ok {
+		ch <- result
+	}
+}
+
+// handleApprove — POST /v1/agent/approve — 前端发送审批响应
+func handleApprove(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method != "POST" {
+		http.Error(w, `{"error":"method not allowed"}`, 405)
+		return
+	}
+	var body struct {
+		ID       string `json:"id"`
+		Approved bool   `json:"approved"`
+		Reason   string `json:"reason,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, `{"error":"invalid body"}`, 400)
+		return
+	}
+	completeApproval(body.ID, approvalResult{Approved: body.Approved, Reason: body.Reason})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"ok": true})
+}
+
 // handleStatus 返回详细的系统状态（包括 Hermes 连接状态）
 func handleStatus(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
@@ -2272,6 +2362,7 @@ func main() {
 	mux.HandleFunc("/v1/agent/install-skill", handleInstallSkill)
 	mux.HandleFunc("/v1/agent/skills", handleListSkills)
 	mux.HandleFunc("/v1/agent/uninstall-skill", handleUninstallSkill)
+	mux.HandleFunc("/v1/agent/approve", handleApprove)
 	mux.HandleFunc("/v1/agent/config", handleConfig)
 	mux.HandleFunc("/v1/agent/config/set", handleConfigSet)
 	mux.HandleFunc("/v1/agent/cron/list", handleCronList)
