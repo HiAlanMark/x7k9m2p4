@@ -231,7 +231,6 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          set -eo pipefail
           BINARY="build/bin/${{ matrix.asset }}"
           APPDIR="$GITHUB_WORKSPACE/AppDir"
           rm -rf "$APPDIR"
@@ -250,13 +249,13 @@ jobs:
             echo 'Name=HiXNS'
             echo 'Comment=Hi!XNS AI Agent Desktop'
             echo 'Exec=hixns-agent'
-            echo 'Icon=HiXNS'
+            echo 'Icon=hixns'
             echo 'Type=Application'
             echo 'Categories=Utility;'
-          } > "$APPDIR/HiXNS.desktop"
+          } > "$APPDIR/hixns.desktop"
 
           # 图标
-          cp build/appicon.png "$APPDIR/HiXNS.png" 2>/dev/null || true
+          cp build/appicon.png "$APPDIR/hixns.png" 2>/dev/null || true
 
           # AppRun
           {
@@ -268,19 +267,10 @@ jobs:
           } > "$APPDIR/AppRun"
           chmod +x "$APPDIR/AppRun"
 
-          # 下载 appimagetool (type2 AppImage 需要 FUSE 或 extract)
-          curl -fsSL "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -o /tmp/appimagetool
-          chmod +x /tmp/appimagetool
-          # 尝试直接 extract，失败则用 --appimage-extract-and-run
-          cd /tmp
-          if ! ./appimagetool --appimage-extract 2>/dev/null; then
-            echo "FUSE failed, trying extract-and-run..."
-            ./appimagetool --appimage-extract-and-run --appimage-extract
-          fi
-          cd "$GITHUB_WORKSPACE"
-
-          # 打包
-          /tmp/squashfs-root/AppRun "$APPDIR" "build/bin/HiXNS-Linux-x86_64.AppImage" 2>&1
+          # 使用 linuxdeploy 构建 AppImage
+          curl -fsSL "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -o /tmp/linuxdeploy
+          chmod +x /tmp/linuxdeploy
+          /tmp/linuxdeploy --appdir "$APPDIR" --output appimage 2>&1
 
           # 验证
           ls -lh "build/bin/HiXNS-Linux-x86_64.AppImage"
