@@ -562,6 +562,10 @@ function deleteFromMenu() {
   transform: translateX(2px);
 }
 
+.nav-item:focus {
+  outline: none;
+}
+
 .nav-item.active {
   background: linear-gradient(
     135deg,
@@ -667,6 +671,10 @@ function deleteFromMenu() {
 
 .session-item:hover {
   background: var(--glass-bg-hover);
+}
+
+.session-item:focus {
+  outline: none;
 }
 
 .session-item.active {
