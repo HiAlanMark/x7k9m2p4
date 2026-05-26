@@ -231,50 +231,66 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
+          set +e
           BINARY="build/bin/${{ matrix.asset }}"
           APPDIR="$GITHUB_WORKSPACE/AppDir"
           rm -rf "$APPDIR"
           mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/icons/hicolor/256x256/apps"
 
-          # 复制二进制
-          cp "$BINARY" "$APPDIR/usr/bin/hixns-agent"
-          chmod +x "$APPDIR/usr/bin/hixns-agent"
+          # 复制二进制 — 命名为 hixns（必须与 .desktop 文件名一致）
+          cp "$BINARY" "$APPDIR/usr/bin/hixns"
+          chmod +x "$APPDIR/usr/bin/hixns"
+          echo "=== Binary copied ==="
+          ls -lh "$APPDIR/usr/bin/hixns"
+
           # 复制 Hermes
           cp -r build/bin/hermes-agent "$APPDIR/usr/bin/" 2>/dev/null || true
           cp -r build/bin/hermes-python "$APPDIR/usr/bin/" 2>/dev/null || true
 
-          # .desktop
-          {
-            echo '[Desktop Entry]'
-            echo 'Name=HiXNS'
-            echo 'Comment=Hi!XNS AI Agent Desktop'
-            echo 'Exec=hixns-agent'
-            echo 'Icon=hixns'
-            echo 'Type=Application'
-            echo 'Categories=Utility;'
-          } > "$APPDIR/hixns.desktop"
+          # .desktop — 文件名必须与 Exec 和二进制名一致
+          echo '[Desktop Entry]' > "$APPDIR/hixns.desktop"
+          echo 'Name=HiXNS' >> "$APPDIR/hixns.desktop"
+          echo 'Comment=Hi!XNS AI Agent Desktop' >> "$APPDIR/hixns.desktop"
+          echo 'Exec=hixns' >> "$APPDIR/hixns.desktop"
+          echo 'Icon=hixns' >> "$APPDIR/hixns.desktop"
+          echo 'Type=Application' >> "$APPDIR/hixns.desktop"
+          echo 'Categories=Utility;' >> "$APPDIR/hixns.desktop"
+          echo "=== Desktop file ==="
+          cat "$APPDIR/hixns.desktop"
 
-          # 图标
+          # 图标 — 文件名必须与 .desktop 中的 Icon 字段一致
           cp build/appicon.png "$APPDIR/hixns.png" 2>/dev/null || true
 
           # AppRun
-          {
-            echo '#!/bin/bash'
-            echo 'HERE="$(dirname "$(readlink -f "${0}")")"'
-            echo 'export PATH="$HERE/usr/bin:$PATH"'
-            echo 'export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"'
-            echo 'exec "$HERE/usr/bin/hixns-agent" "$@"'
-          } > "$APPDIR/AppRun"
+          echo '#!/bin/bash' > "$APPDIR/AppRun"
+          echo 'HERE="$(dirname "$(readlink -f "${0}")")"' >> "$APPDIR/AppRun"
+          echo 'export PATH="$HERE/usr/bin:$PATH"' >> "$APPDIR/AppRun"
+          echo 'export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"' >> "$APPDIR/AppRun"
+          echo 'exec "$HERE/usr/bin/hixns" "$@"' >> "$APPDIR/AppRun"
           chmod +x "$APPDIR/AppRun"
 
-          # 使用 linuxdeploy 构建 AppImage
+          # 构建 AppImage
+          echo "=== Building AppImage ==="
           curl -fsSL "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -o /tmp/linuxdeploy
           chmod +x /tmp/linuxdeploy
+          echo "linuxdeploy downloaded"
+          file /tmp/linuxdeploy
+
+          export OUTPUT="build/bin/HiXNS-Linux-x86_64.AppImage"
           /tmp/linuxdeploy --appdir "$APPDIR" --output appimage 2>&1
+          EXIT_CODE=$?
+          echo "linuxdeploy exit code: $EXIT_CODE"
+
+          # linuxdeploy 输出文件名基于 .desktop 文件名，重命名为统一格式
+          if [ -f "build/bin/hixns-x86_64.AppImage" ]; then
+            mv "build/bin/hixns-x86_64.AppImage" "$OUTPUT"
+            echo "Renamed to $OUTPUT"
+          fi
 
           # 验证
-          ls -lh "build/bin/HiXNS-Linux-x86_64.AppImage"
-          find build/bin -name "*.AppImage" -type f
+          echo "=== Build output ==="
+          ls -lh "build/bin/" 2>/dev/null
+          find build/bin -name "*.AppImage" -type f 2>/dev/null
 
       # macOS: 用 create-dmg
       - name: Build macOS DMG
