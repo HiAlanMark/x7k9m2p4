@@ -949,6 +949,7 @@ import { hermesConfigSet, hermesToolsList, hermesToolsEnable, hermesToolsDisable
 import IconUser from '../components/icons/IconUser.vue'
 import IconSettings from '../components/icons/IconSettings.vue'
 import { HxButton, HxInput, HxTextarea, HxSelect, HxToggle, HxCard, HxBadge, HxModal } from '../components/ui'
+import { providerIconMap } from '../assets/provider-icons'
 import { useToast } from '../composables/useToast'
 
 const toast = useToast()
@@ -1268,40 +1269,6 @@ try {
 } catch { /* ignore */ }
 
 // 提供商图标映射 (本地图片)
-const providerIconMap: Record<string, string> = {
-  'OpenAI': '/src/assets/provider-icons/openai.png',
-  'Anthropic': '/src/assets/provider-icons/anthropic.png',
-  'DeepSeek': '/src/assets/provider-icons/deepseek.png',
-  'Google Gemini': '/src/assets/provider-icons/google.png',
-  'xAI / Grok': '/src/assets/provider-icons/xai.png',
-  'OpenRouter': '/src/assets/provider-icons/openrouter.png',
-  'Qwen (DashScope)': '/src/assets/provider-icons/alibabacloud.png',
-  'Groq': '/src/assets/provider-icons/groq.png',
-  'Hugging Face': '/src/assets/provider-icons/huggingface.png',
-  'MiniMax': '/src/assets/provider-icons/minimax.png',
-  'Kimi / Moonshot': '/src/assets/provider-icons/moonshot.png',
-  'Z.AI / GLM': '/src/assets/provider-icons/zhipu.png',
-  'Ollama (本地)': '/src/assets/provider-icons/ollama.png',
-  'vLLM': '/src/assets/provider-icons/vllm.png',
-  'LM Studio': '/src/assets/provider-icons/lmstudio.png',
-  'Together AI': '/src/assets/provider-icons/together.png',
-  'Anyscale': '/src/assets/provider-icons/anyscale.png',
-  'Perplexity': '/src/assets/provider-icons/perplexity.png',
-  'Mistral AI': '/src/assets/provider-icons/mistral.png',
-  'Cohere': '/src/assets/provider-icons/cohere.png',
-  'Fireworks AI': '/src/assets/provider-icons/fireworks.png',
-  'Replicate': '/src/assets/provider-icons/replicate.png',
-  'NVIDIA NIM': '/src/assets/provider-icons/nvidia.png',
-  'IBM Watsonx': '/src/assets/provider-icons/ibm.png',
-  'Azure OpenAI': '/src/assets/provider-icons/azure.png',
-  'Amazon Bedrock': '/src/assets/provider-icons/bedrock.png',
-  'Cloudflare AI': '/src/assets/provider-icons/cloudflare.png',
-  'Cerebras': '/src/assets/provider-icons/cerebras.png',
-  'FriendliAI': '/src/assets/provider-icons/friendli.png',
-  'Novita AI': '/src/assets/provider-icons/novita.png',
-  'SambaNova': '/src/assets/provider-icons/sambanova.png',
-}
-
 // 预设提供商（对齐 Hermes Agent 支持的上游列表）
 const providerPresets = [
   {
