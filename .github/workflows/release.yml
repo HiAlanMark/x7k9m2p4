@@ -214,7 +214,11 @@ jobs:
           du -sh "$HERMES_DIR" "$PYTHON_DIR"
 
 # ── 4. 构建安装包 ─────────────────────────────────
-      # Windows: NSIS 打包（包含 Hermes）
+      # Windows: 安装 NSIS + 打包
+      - name: Install NSIS (Windows)
+        if: runner.os == 'Windows'
+        run: choco install nsis -y --no-progress --limit-output --timeout 180
+
       - name: Build Windows Installer
         if: runner.os == 'Windows'
         uses: joncloud/makensis-action@v4
@@ -264,13 +268,19 @@ jobs:
           } > "$APPDIR/AppRun"
           chmod +x "$APPDIR/AppRun"
 
-          # 下载 appimagetool
+          # 下载 appimagetool (type2 AppImage 需要 FUSE 或 extract)
           curl -fsSL "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -o /tmp/appimagetool
           chmod +x /tmp/appimagetool
-          cd /tmp && ./appimagetool --appimage-extract && cd "$GITHUB_WORKSPACE"
+          # 尝试直接 extract，失败则用 --appimage-extract-and-run
+          cd /tmp
+          if ! ./appimagetool --appimage-extract 2>/dev/null; then
+            echo "FUSE failed, trying extract-and-run..."
+            ./appimagetool --appimage-extract-and-run --appimage-extract
+          fi
+          cd "$GITHUB_WORKSPACE"
 
           # 打包
-          /tmp/squashfs-root/AppRun "$APPDIR" "build/bin/HiXNS-Linux-x86_64.AppImage"
+          /tmp/squashfs-root/AppRun "$APPDIR" "build/bin/HiXNS-Linux-x86_64.AppImage" 2>&1
 
           # 验证
           ls -lh "build/bin/HiXNS-Linux-x86_64.AppImage"
