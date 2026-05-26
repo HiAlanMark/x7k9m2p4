@@ -1,6 +1,6 @@
 {
   "name": "hixns-desktop",
-  "version": "0.9.11",
+  "version": "0.9.29",
   "private": true,
   "scripts": {
     "dev": "vite",
