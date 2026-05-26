@@ -33,6 +33,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Sync version from tag
+        shell: bash
+        run: |
+          VER="${{ github.ref_name }}"
+          VER="${VER#v}"
+          echo "Syncing version: $VER"
+          jq --arg v "$VER" '.info.productVersion = $v' wails.json > w.json && mv w.json wails.json
+          jq --arg v "$VER" '.version = $v' frontend/package.json > p.json && mv p.json frontend/package.json
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
