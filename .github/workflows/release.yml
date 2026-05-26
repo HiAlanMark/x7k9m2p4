@@ -102,6 +102,13 @@ jobs:
           echo "=== Build output ==="
           find build/bin -type f | sort
 
+          # 复制图标到 build/appicon.png（AppImage / NSIS 需要）
+          if [ -f src-tauri/icons/icon.png ]; then
+            cp src-tauri/icons/icon.png build/appicon.png
+          elif [ -f frontend/public/favicon.ico ]; then
+            cp frontend/public/favicon.ico build/appicon.png
+          fi
+
       # ── 2. 克隆 Hermes 源码 ───────────────────────────
       - name: Clone Hermes source
         shell: bash
