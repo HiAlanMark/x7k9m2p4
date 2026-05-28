@@ -55,6 +55,28 @@ const statusClass = computed(() => {
   align-items: center;
   justify-content: center;
   cursor: grab;
+  overflow: visible;
+}
+
+/* Type color bar — purple stripe on ring */
+.bp-loop-node::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--purple, #af52de);
+  opacity: 0.5;
+  z-index: 2;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.bp-loop-node:hover::before {
+  opacity: 1;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--purple, #af52de) 40%, transparent);
 }
 
 .bp-loop-ring {

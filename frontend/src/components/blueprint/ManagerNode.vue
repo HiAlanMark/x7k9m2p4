@@ -69,6 +69,26 @@ const statusClass = computed(() => {
   cursor: grab;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* Type color bar — purple stripe */
+.bp-manager-node::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--purple, #af52de);
+  opacity: 0.5;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.bp-manager-node:hover::before {
+  opacity: 1;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--purple, #af52de) 40%, transparent);
 }
 
 .bp-manager-node:hover {

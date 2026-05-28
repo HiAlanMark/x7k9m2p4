@@ -1274,13 +1274,104 @@ function formatDate(dateStr: string): string {
   background: var(--glass-bg-hover);
 }
 
+/* ── Node selected state (VueFlow wraps node in .vue-flow__node) ── */
+.bp-canvas-wrap :deep(.vue-flow__node.selected) {
+  z-index: 10;
+}
+
+/* Global selected glow + color bar brightening */
+.bp-canvas-wrap :deep(.vue-flow__node.selected > div) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent),
+              0 0 20px color-mix(in srgb, var(--accent) 12%, transparent) !important;
+}
+
+/* Per-type selected glow colors + color bar full opacity */
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-agent-node) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--info) 40%, transparent),
+              0 0 20px color-mix(in srgb, var(--info) 10%, transparent) !important;
+}
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-agent-node::before) {
+  opacity: 1 !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--info) 50%, transparent) !important;
+}
+
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-condition-node) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 40%, transparent),
+              0 0 20px color-mix(in srgb, var(--warning) 10%, transparent) !important;
+}
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-condition-node::before) {
+  opacity: 1 !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--warning) 50%, transparent) !important;
+}
+
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-loop-node) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--purple, #af52de) 40%, transparent),
+              0 0 20px color-mix(in srgb, var(--purple, #af52de) 10%, transparent) !important;
+}
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-loop-node::before) {
+  opacity: 1 !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--purple, #af52de) 50%, transparent) !important;
+}
+
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-summary-node) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent),
+              0 0 20px color-mix(in srgb, var(--accent) 10%, transparent) !important;
+}
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-summary-node::before) {
+  opacity: 1 !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent) !important;
+}
+
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-note-node) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--yellow, #ffd60a) 40%, transparent),
+              0 0 20px color-mix(in srgb, var(--yellow, #ffd60a) 10%, transparent) !important;
+}
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-note-node::before) {
+  opacity: 1 !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--yellow, #ffd60a) 50%, transparent) !important;
+}
+
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-manager-node) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--purple, #af52de) 40%, transparent),
+              0 0 20px color-mix(in srgb, var(--purple, #af52de) 10%, transparent) !important;
+}
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-manager-node::before) {
+  opacity: 1 !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--purple, #af52de) 50%, transparent) !important;
+}
+
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-manager-slot-node) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--info) 40%, transparent),
+              0 0 20px color-mix(in srgb, var(--info) 10%, transparent) !important;
+}
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-manager-slot-node::before) {
+  opacity: 1 !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--info) 50%, transparent) !important;
+}
+
+.bp-canvas-wrap :deep(.vue-flow__node.selected .bp-group-node) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--yellow, #ffd60a) 40%, transparent),
+              0 0 20px color-mix(in srgb, var(--yellow, #ffd60a) 10%, transparent) !important;
+}
+
+/* ── Edge styles ─────────────────────────────── */
 .bp-canvas-wrap :deep(.vue-flow__edge-path) {
-  stroke: var(--border-base);
+  stroke: var(--border-strong);
   stroke-width: 2;
 }
 
 .bp-canvas-wrap :deep(.vue-flow__edge.selected .vue-flow__edge-path) {
   stroke: var(--accent);
+  stroke-width: 2.5;
+}
+
+.bp-canvas-wrap :deep(.vue-flow__edge.animated .vue-flow__edge-path) {
+  stroke-dasharray: 5;
+  animation: bp-edge-flow 0.6s linear infinite;
+}
+
+@keyframes bp-edge-flow {
+  to { stroke-dashoffset: -10; }
 }
 
 .bp-canvas-wrap :deep(.vue-flow__connection-line) {

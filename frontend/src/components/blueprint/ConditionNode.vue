@@ -51,6 +51,28 @@ const statusClass = computed(() => {
   align-items: center;
   justify-content: center;
   cursor: grab;
+  overflow: visible;
+}
+
+/* Type color bar — warning stripe on diamond */
+.bp-condition-node::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--warning);
+  opacity: 0.5;
+  z-index: 2;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.bp-condition-node:hover::before {
+  opacity: 1;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--warning) 40%, transparent);
 }
 
 .bp-diamond {

@@ -63,6 +63,26 @@ const statusClass = computed(() => {
   justify-content: center;
   cursor: grab;
   transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+/* Type color bar — accent stripe */
+.bp-summary-node::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+  opacity: 0.5;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.bp-summary-node:hover::before {
+  opacity: 1;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .bp-summary-node:hover {

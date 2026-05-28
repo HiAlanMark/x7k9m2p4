@@ -73,12 +73,34 @@ const statusClass = computed(() => {
   cursor: grab;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* Type color bar — left accent stripe */
+.bp-agent-node::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--info);
+  opacity: 0.5;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.bp-agent-node:hover::before {
+  opacity: 1;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--info) 40%, transparent);
 }
 
 .bp-agent-node:hover {
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  box-shadow: var(--shadow-md), 0 0 16px color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--info) 40%, transparent);
+  box-shadow: var(--shadow-md), 0 0 16px color-mix(in srgb, var(--info) 8%, transparent);
 }
+
+/* Selected state handled by BlueprintView.vue :deep(.vue-flow__node.selected > div) */
 
 .bp-node-glow {
   position: absolute;
@@ -86,7 +108,7 @@ const statusClass = computed(() => {
   border-radius: 14px;
   opacity: 0;
   transition: opacity 0.3s ease;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), color-mix(in srgb, var(--info) 10%, transparent));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--info) 15%, transparent), color-mix(in srgb, var(--accent) 8%, transparent));
   z-index: -1;
 }
 

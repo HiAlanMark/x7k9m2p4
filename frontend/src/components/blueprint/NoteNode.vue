@@ -38,6 +38,26 @@ const { t } = useI18n()
   padding: 10px 14px;
   cursor: grab;
   transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+/* Type color bar — yellow stripe */
+.bp-note-node::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--yellow, #ffd60a);
+  opacity: 0.5;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.bp-note-node:hover::before {
+  opacity: 1;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--yellow, #ffd60a) 40%, transparent);
 }
 
 .bp-note-node:hover {
