@@ -616,8 +616,29 @@ function deleteFromMenu() {
   margin-bottom: 2px;
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  transition: all var(--fast);
+  border: 1px solid transparent;
+  position: relative;
+  transition: color var(--fast), border-color var(--fast), box-shadow var(--fast), transform var(--fast);
   cursor: pointer;
+}
+
+.nav-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 20%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 12%, transparent) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--fast);
+  pointer-events: none;
+}
+
+.nav-item.active::before {
+  opacity: 1;
 }
 
 .nav-item:hover {
@@ -631,11 +652,6 @@ function deleteFromMenu() {
 }
 
 .nav-item.active {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 20%, transparent) 0%,
-    color-mix(in srgb, var(--accent) 12%, transparent) 100%
-  );
   color: var(--accent);
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
   border-left-color: color-mix(in srgb, var(--accent) 50%, transparent);
@@ -729,8 +745,28 @@ function deleteFromMenu() {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--fast);
+  border: 1px solid transparent;
+  transition: color var(--fast), border-color var(--fast), box-shadow var(--fast);
   position: relative;
+}
+
+.session-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 25%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 15%, transparent) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--fast);
+  pointer-events: none;
+}
+
+.session-item.active::before {
+  opacity: 1;
 }
 
 .session-item:hover {
@@ -742,11 +778,6 @@ function deleteFromMenu() {
 }
 
 .session-item.active {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 25%, transparent) 0%,
-    color-mix(in srgb, var(--accent) 15%, transparent) 100%
-  );
   border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   border-left-color: color-mix(in srgb, var(--accent) 60%, transparent);
   box-shadow: 
