@@ -259,6 +259,14 @@
       </div>
       </div><!-- /bp-editor-row -->
 
+      <!-- ═══ Multi-select Batch Bar ═══ -->
+      <div v-if="multiSelected" class="bp-batch-bar">
+        <span class="bp-batch-count">{{ multiSelectedCount }} selected</span>
+        <button class="bp-batch-btn" @click="batchEnable">{{ t('blueprint.enableNode') }}</button>
+        <button class="bp-batch-btn" @click="batchDisable">{{ t('blueprint.disableNode') }}</button>
+        <button class="bp-batch-btn bp-batch-danger" @click="batchDelete">{{ t('blueprint.deleteNode') }}</button>
+      </div>
+
       <!-- ═══ Canvas Context Menu: Add Node ═══ -->
       <div
         v-if="canvasContextMenu.show"
@@ -336,7 +344,7 @@ const customNodeTypes = {
   group: markRaw(GroupNode),
 }
 
-const { addNodes, addEdges, onConnect, project, getViewport, setViewport } = useVueFlow()
+const { addNodes, addEdges, onConnect, project, getViewport, setViewport, getSelectedNodes, getSelectedEdges } = useVueFlow()
 
 const nodes = ref<Node[]>([])
 const edges = ref<Edge[]>([])
@@ -349,6 +357,32 @@ const mode = ref<'list' | 'editor'>('list')
 const currentBp = ref<typeof bpStore.blueprints[0] | null>(null)
 const selectedNode = ref<{ id: string; type: string; data: Record<string, any> } | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// ── Multi-select batch operations ────────────
+const multiSelected = computed(() => getSelectedNodes.value.filter(n => n.selected).length > 1)
+const multiSelectedCount = computed(() => getSelectedNodes.value.filter(n => n.selected).length)
+
+function batchDelete() {
+  const sel = getSelectedNodes.value.filter(n => n.selected)
+  const ids = new Set(sel.map(n => n.id))
+  nodes.value = nodes.value.filter(n => !ids.has(n.id))
+  edges.value = edges.value.filter(e => !ids.has(e.source) && !ids.has(e.target))
+  selectedNode.value = null
+}
+
+function batchDisable() {
+  const sel = getSelectedNodes.value.filter(n => n.selected)
+  for (const n of sel) {
+    if (n.data) n.data.disabled = true
+  }
+}
+
+function batchEnable() {
+  const sel = getSelectedNodes.value.filter(n => n.selected)
+  for (const n of sel) {
+    if (n.data) n.data.disabled = false
+  }
+}
 
 const currentRun = computed(() => {
   if (!currentBp.value) return null
@@ -1535,5 +1569,59 @@ function formatDate(dateStr: string): string {
 .bp-toolbar-active {
   background: color-mix(in srgb, var(--accent) 18%, transparent) !important;
   color: var(--accent) !important;
+}
+
+/* ── Multi-select Batch Bar ─────────────────── */
+.bp-batch-bar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(32px) saturate(1.6);
+  backdrop-filter: blur(32px) saturate(1.6);
+  border: 1px solid var(--border-base);
+  border-radius: 12px;
+  z-index: 50;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+}
+
+.bp-batch-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+
+.bp-batch-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--glass-weak);
+  border: 1px solid var(--border-base);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bp-batch-btn:hover {
+  background: var(--glass-base);
+}
+
+.bp-batch-btn:active {
+  transform: scale(0.96);
+}
+
+.bp-batch-danger {
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 40%, transparent);
+}
+
+.bp-batch-danger:hover {
+  background: color-mix(in srgb, var(--error) 12%, transparent);
 }
 </style>

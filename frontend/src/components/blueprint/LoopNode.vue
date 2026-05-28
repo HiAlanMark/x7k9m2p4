@@ -15,7 +15,9 @@
     </div>
     <Handle type="source" :position="Position.Bottom" class="bp-handle bp-handle-bottom" />
     <Handle type="source" :position="Position.Right" id="loop-back" class="bp-handle bp-handle-right-loop" />
+    <Handle type="target" :position="Position.Left" id="loop-back-target" class="bp-handle bp-handle-left-loop" />
     <div class="bp-handle-label-loop">&#8635;</div>
+    <div class="bp-handle-label-loop-in">&#8634;</div>
     <div class="bp-node-status" :class="statusClass">
       <svg v-if="!data.status || data.status === 'idle'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10" stroke-dasharray="4 4" /></svg>
       <svg v-else-if="data.status === 'running'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="bp-status-spin"><circle cx="12" cy="12" r="10" stroke-dasharray="4 4" /></svg>
@@ -147,12 +149,34 @@ const statusClass = computed(() => {
   transform: translateY(-50%);
 }
 
+.bp-handle-left-loop {
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.bp-handle-left-loop:hover {
+  background: var(--accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent);
+  transform: translateY(-50%) scale(1.3);
+}
+
 .bp-handle-label-loop {
   position: absolute;
   right: -22px;
   top: calc(50% + 12px);
   font-size: 11px;
   color: var(--accent);
+}
+
+.bp-handle-label-loop-in {
+  position: absolute;
+  left: -22px;
+  top: calc(50% + 12px);
+  font-size: 11px;
+  color: var(--accent);
+  opacity: 0.7;
 }
 
 .bp-node-status {
