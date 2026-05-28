@@ -60,8 +60,8 @@ onMounted(() => {
 }
 
 .hixns-tooltip {
-  background: var(--color-text-primary);
-  color: var(--color-bg-page);
+  background: var(--text-primary);
+  color: var(--bg-base);
   font-size: 11px;
   font-weight: 500;
   padding: 5px 10px;
@@ -75,7 +75,7 @@ onMounted(() => {
   position: absolute;
   width: 6px;
   height: 6px;
-  background: var(--color-text-primary);
+  background: var(--text-primary);
   transform: rotate(45deg);
 }
 

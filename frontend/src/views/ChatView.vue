@@ -2089,7 +2089,7 @@ function exportChat() {
   padding: 0 45px 20px;
   padding-top: 24px;
   z-index: 10;
-  background: linear-gradient(to top, var(--color-bg-page) 0%, transparent 100%);
+  background: linear-gradient(to top, var(--bg-base) 0%, transparent 100%);
 }
 
 .input-capsule {

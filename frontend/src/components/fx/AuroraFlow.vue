@@ -100,7 +100,7 @@ const hexToRgba = (hex: string, alpha: number): string => {
   background: radial-gradient(
     ellipse at 30% 50%,
     transparent 0%,
-    var(--color-bg-page) 70%
+    var(--bg-base) 70%
   );
   pointer-events: none;
 }

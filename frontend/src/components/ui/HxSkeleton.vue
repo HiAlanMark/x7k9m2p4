@@ -38,7 +38,7 @@ const skeletonStyle = computed(() => ({
 <style scoped>
 .hixns-skeleton {
   position: relative;
-  background: var(--color-bg-input);
+  background: var(--glass-bg);
   overflow: hidden;
 }
 

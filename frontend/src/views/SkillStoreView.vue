@@ -200,93 +200,73 @@
     </template>
 
     <!-- Detail modal -->
-    <div v-if="detailSkill" class="modal-overlay" @click.self="detailSkill = null">
-      <div class="modal-panel">
-        <div class="modal-header">
-          <div class="modal-title-row">
-            <div class="modal-icon" v-html="getCategoryIcon(detailSkill?.category || '')"></div>
-            <div>
-              <h2 class="modal-name">{{ detailSkill.name }}</h2>
-              <div class="modal-subtitle">
-                <span v-if="detailData?.owner">{{ detailData.owner.nickname || detailData.owner.username }}</span>
-              </div>
-            </div>
-          </div>
-          <button class="modal-close" @click="detailSkill = null">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-
-        <div class="modal-stats">
-          <div class="stat-item">
-            <span class="stat-num">{{ formatNum(detailSkill.total_downloads) }}</span>
-            <span class="stat-label">{{ t('skillStore.downloads') }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-num">{{ formatNum(detailSkill.total_favorites) }}</span>
-            <span class="stat-label">{{ t('skillStore.favorites') }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-num">{{ detailSkill.current_version || '-' }}</span>
-            <span class="stat-label">{{ t('skillStore.version') }}</span>
-          </div>
-        </div>
-
-        <div class="modal-body" @click="onModalBodyClick">
-          <div class="modal-section">
-            <h4 class="section-label">{{ t('skillStore.summary') }}</h4>
-            <p class="section-text">{{ detailSkill.summary }}</p>
-          </div>
-          <div v-if="detailData?.long_description" class="modal-section">
-            <h4 class="section-label">{{ t('skillStore.detailedDescription') }}</h4>
-            <div class="section-text markdown-body" v-html="renderMd(detailData.long_description)"></div>
-          </div>
-          <div v-if="detailSkill.tags && detailSkill.tags.length" class="modal-section">
-            <h4 class="section-label">{{ t('skillStore.tags') }}</h4>
-            <div class="modal-tags">
-              <span v-for="tag in detailSkill.tags" :key="tag" class="tag">{{ tag }}</span>
-            </div>
-          </div>
-          <div v-if="detailSkill.capabilities && detailSkill.capabilities.length" class="modal-section">
-            <h4 class="section-label">{{ t('skillStore.capabilities') }}</h4>
-            <div class="modal-tags">
-              <span v-for="cap in detailSkill.capabilities" :key="cap" class="tag cap">{{ cap }}</span>
+    <HxModal v-model="detailVisible" size="md">
+      <template #header>
+        <div class="hixns-modal-title-row">
+          <div class="hixns-modal-icon" v-html="getCategoryIcon(detailSkill?.category || '')"></div>
+          <div>
+            <h2 class="hixns-modal-title">{{ detailSkill?.name }}</h2>
+            <div class="modal-subtitle">
+              <span v-if="detailData?.owner">{{ detailData.owner.nickname || detailData.owner.username }}</span>
             </div>
           </div>
         </div>
+      </template>
 
-        <div class="modal-footer">
-          <HxButton variant="primary" @click="installSkill(detailSkill); detailSkill = null">
-            <IconDownload :size="15" />
-            <span>{{ t('skillStore.installSkill') }}</span>
-          </HxButton>
+      <div class="modal-stats">
+        <div class="stat-item">
+          <span class="stat-num">{{ formatNum(detailSkill?.total_downloads) }}</span>
+          <span class="stat-label">{{ t('skillStore.downloads') }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num">{{ formatNum(detailSkill?.total_favorites) }}</span>
+          <span class="stat-label">{{ t('skillStore.favorites') }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num">{{ detailSkill?.current_version || '-' }}</span>
+          <span class="stat-label">{{ t('skillStore.version') }}</span>
         </div>
       </div>
-    </div>
+
+      <div class="modal-body-content" @click="onModalBodyClick">
+        <div class="modal-section">
+          <h4 class="section-label">{{ t('skillStore.summary') }}</h4>
+          <p class="section-text">{{ detailSkill?.summary }}</p>
+        </div>
+        <div v-if="detailData?.long_description" class="modal-section">
+          <h4 class="section-label">{{ t('skillStore.detailedDescription') }}</h4>
+          <div class="section-text markdown-body" v-html="renderMd(detailData.long_description)"></div>
+        </div>
+        <div v-if="detailSkill?.tags && detailSkill.tags.length" class="modal-section">
+          <h4 class="section-label">{{ t('skillStore.tags') }}</h4>
+          <div class="modal-tags">
+            <span v-for="tag in detailSkill.tags" :key="tag" class="tag">{{ tag }}</span>
+          </div>
+        </div>
+        <div v-if="detailSkill?.capabilities && detailSkill.capabilities.length" class="modal-section">
+          <h4 class="section-label">{{ t('skillStore.capabilities') }}</h4>
+          <div class="modal-tags">
+            <span v-for="cap in detailSkill.capabilities" :key="cap" class="tag cap">{{ cap }}</span>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <HxButton variant="primary" @click="installSkill(detailSkill!); detailSkill = null">
+          <IconDownload :size="15" />
+          <span>{{ t('skillStore.installSkill') }}</span>
+        </HxButton>
+      </template>
+    </HxModal>
 
     <!-- Uninstall confirm modal -->
-    <div v-if="uninstallTarget" class="modal-overlay" @click.self="uninstallTarget = null">
-      <div class="modal-panel" style="max-width: 440px;">
-        <div class="modal-header">
-          <div class="modal-title-row">
-            <div class="modal-icon" style="color: var(--error); background: rgba(255,69,58,0.1);">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </div>
-            <h2 class="modal-name">{{ t('skillStore.uninstallSkill') }}</h2>
-          </div>
-          <button class="modal-close" @click="uninstallTarget = null">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <p class="section-text">{{ t('skillStore.uninstallConfirm', { name: uninstallTarget.name || uninstallTarget.slug }) }}</p>
-        </div>
-        <div class="modal-footer">
-          <HxButton variant="ghost" @click="uninstallTarget = null">{{ t('common.cancel') }}</HxButton>
-          <HxButton variant="danger" @click="confirmUninstall" style="background: rgba(255,69,58,0.85); border-color: rgba(255,69,58,0.9); color: #fff;">{{ t('skillStore.confirmUninstall') }}</HxButton>
-        </div>
-      </div>
-    </div>
+    <HxModal v-model="uninstallVisible" :icon="'trash'" icon-color="var(--error)" icon-bg="rgba(255,69,58,0.1)" :title="t('skillStore.uninstallSkill')" width="440px">
+      <p class="section-text">{{ t('skillStore.uninstallConfirm', { name: uninstallTarget?.name || uninstallTarget?.slug }) }}</p>
+      <template #footer>
+        <HxButton variant="ghost" @click="uninstallTarget = null">{{ t('common.cancel') }}</HxButton>
+        <HxButton variant="danger" @click="confirmUninstall">{{ t('skillStore.confirmUninstall') }}</HxButton>
+      </template>
+    </HxModal>
 
     <!-- Install result toast -->
     <div v-if="toastMsg" class="toast" :class="toastType">{{ toastMsg }}</div>
@@ -385,6 +365,10 @@ const pageSize = 30
 const hasMore = ref(false)
 
 const detailSkill = ref<TwoXSkill | null>(null)
+const detailVisible = computed({
+  get: () => detailSkill.value !== null,
+  set: (v: boolean) => { if (!v) detailSkill.value = null }
+})
 const detailData = ref<TwoXSkillDetail | null>(null)
 const detailLoading = ref(false)
 
@@ -670,6 +654,10 @@ async function updateSkill(sk: InstalledSkill) {
 }
 
 const uninstallTarget = ref<InstalledSkill | null>(null)
+const uninstallVisible = computed({
+  get: () => uninstallTarget.value !== null,
+  set: (v: boolean) => { if (!v) uninstallTarget.value = null }
+})
 
 async function confirmUninstall() {
   const sk = uninstallTarget.value
@@ -763,7 +751,7 @@ onBeforeUnmount(() => {
 .store-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.3px;
 }
@@ -771,7 +759,7 @@ onBeforeUnmount(() => {
 .store-count {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
 }
 
 /* Search */
@@ -820,7 +808,7 @@ onBeforeUnmount(() => {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   display: flex;
 }
 
@@ -834,18 +822,18 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   font-size: 13px;
   font-family: var(--font-family);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .search-input:focus {
-  border-color: var(--color-border);
+  border-color: var(--border-base);
   box-shadow: none;
 }
 
 .search-input::placeholder {
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
 }
 
 .search-hint {
@@ -855,9 +843,9 @@ onBeforeUnmount(() => {
   transform: translateY(-50%);
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--color-text-tertiary);
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border);
+  color: var(--text-tertiary);
+  background: var(--glass-bg);
+  border: 1px solid var(--border-base);
   border-radius: 3px;
   padding: 1px 5px;
   pointer-events: none;
@@ -874,25 +862,25 @@ onBeforeUnmount(() => {
 
 .filter-chip {
   padding: 5px 12px;
-  background: var(--color-bg-input);
+  background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: 8px;
   font-size: 12px;
   font-family: var(--font-family);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.12s;
 }
 
 .filter-chip:hover {
-  border-color: var(--color-text-tertiary);
-  color: var(--color-text-primary);
+  border-color: var(--text-tertiary);
+  color: var(--text-primary);
 }
 
 .filter-chip.active {
-  background: var(--color-text-primary);
-  border-color: var(--color-text-primary);
-  color: var(--color-bg-page);
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--bg-base);
 }
 
 .filter-spacer {
@@ -901,12 +889,12 @@ onBeforeUnmount(() => {
 
 .sort-select {
   padding: 5px 24px 5px 8px;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
+  background: var(--glass-strong);
+  border: 1px solid var(--border-base);
   border-radius: 4px;
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
@@ -922,11 +910,11 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-warning);
+  background: var(--glass-bg);
+  border: 1px solid var(--warning);
   border-radius: 6px;
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin-bottom: 16px;
 }
 
@@ -936,7 +924,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-warning);
+  background: var(--warning);
   color: var(--text-inverse);
   border-radius: 50%;
   font-size: 12px;
@@ -947,7 +935,7 @@ onBeforeUnmount(() => {
 .link-btn {
   background: none;
   border: none;
-  color: var(--color-primary);
+  color: var(--accent);
   cursor: pointer;
   font-size: 13px;
   font-family: var(--font-family);
@@ -964,7 +952,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   gap: 10px;
   padding: 60px 20px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   font-size: 13px;
   font-family: var(--font-mono);
 }
@@ -972,8 +960,8 @@ onBeforeUnmount(() => {
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid var(--color-border);
-  border-top-color: var(--color-primary);
+  border: 2px solid var(--border-base);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -1308,18 +1296,18 @@ onBeforeUnmount(() => {
 .load-more-btn {
   padding: 7px 24px;
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-base);
   border-radius: 4px;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.12s;
 }
 
 .load-more-btn:hover:not(:disabled) {
-  border-color: var(--color-text-tertiary);
-  color: var(--color-text-primary);
+  border-color: var(--text-tertiary);
+  color: var(--text-primary);
 }
 
 .load-more-btn:disabled {
@@ -1327,83 +1315,7 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--bg-overlay);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: 40px;
-  animation: modalOverlayIn var(--duration-250) ease;
-}
-
-@keyframes modalOverlayIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal-panel {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-xl);
-  width: 100%;
-  max-width: 640px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  animation: modalPanelIn var(--duration-350) var(--ease-back);
-}
-
-@keyframes modalPanelIn {
-  from { opacity: 0; transform: scale(0.92) translateY(16px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.modal-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-base);
-}
-
-.modal-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.modal-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-md);
-  color: var(--primary-text);
-  flex-shrink: 0;
-}
-
-.modal-icon :deep(svg) {
-  display: block;
-  width: 22px;
-  height: 22px;
-}
-
-.modal-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 4px;
-}
-
+/* Modal — shared styles (overlay/panel/header/close handled by HxModal) */
 .modal-subtitle {
   display: flex;
   align-items: center;
@@ -1419,28 +1331,6 @@ onBeforeUnmount(() => {
   background: var(--bg-elevated);
   padding: 1px 5px;
   border-radius: var(--radius-xs);
-}
-
-.modal-close {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--duration-150) var(--ease-expo);
-  flex-shrink: 0;
-  align-self: center;
-}
-
-.modal-close:hover {
-  background: var(--bg-surface);
-  border-color: var(--border-light);
-  color: var(--text-primary);
 }
 
 .modal-stats {
@@ -1475,7 +1365,7 @@ onBeforeUnmount(() => {
   margin-top: 2px;
 }
 
-.modal-body {
+.modal-body-content {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-6) var(--space-6);
@@ -1629,7 +1519,7 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
-.modal-footer {
+:deep(.hixns-modal-footer) {
   padding: var(--space-4) var(--space-6);
   border-top: 1px solid var(--border-base);
   display: flex;
@@ -1637,7 +1527,7 @@ onBeforeUnmount(() => {
 }
 
 /* Modal install button — match session-item.active */
-.modal-footer .hixns-btn {
+:deep(.hixns-modal-footer) .hixns-btn {
   padding: var(--space-2) var(--space-5) !important;
   font-size: var(--text-base) !important;
   font-weight: var(--font-semibold) !important;
@@ -1654,29 +1544,29 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.modal-footer .hixns-btn .btn-content {
+:deep(.hixns-modal-footer) .hixns-btn .btn-content {
   display: inline-flex !important;
   align-items: center !important;
   gap: var(--space-2) !important;
 }
 
-.modal-footer .hixns-btn svg {
+:deep(.hixns-modal-footer) .hixns-btn svg {
   flex-shrink: 0 !important;
 }
 
-.modal-footer .hixns-btn::before,
-.modal-footer .hixns-btn::after {
+:deep(.hixns-modal-footer) .hixns-btn::before,
+:deep(.hixns-modal-footer) .hixns-btn::after {
   display: none !important;
 }
 
-.modal-footer .hixns-btn:hover:not(:disabled) {
+:deep(.hixns-modal-footer) .hixns-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 35%, transparent) 0%, color-mix(in srgb, var(--accent) 20%, transparent) 100%) !important;
   border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent), 0 0 20px color-mix(in srgb, var(--accent) 30%, transparent) !important;
   transform: none !important;
 }
 
-.modal-footer .hixns-btn:active:not(:disabled) {
+:deep(.hixns-modal-footer) .hixns-btn:active:not(:disabled) {
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent) 0%, color-mix(in srgb, var(--accent) 8%, transparent) 100%) !important;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent), 0 0 8px color-mix(in srgb, var(--accent) 8%, transparent) !important;
   transform: scale(0.97) !important;
@@ -1740,7 +1630,7 @@ onBeforeUnmount(() => {
 .main-tabs {
   display: flex;
   gap: 0;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border-base);
   margin-bottom: 16px;
 }
 
@@ -1755,31 +1645,31 @@ onBeforeUnmount(() => {
   font-size: 13px;
   font-weight: 500;
   font-family: var(--font-family);
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   cursor: pointer;
   transition: all 0.12s;
 }
 
-.main-tab:hover { color: var(--color-text-primary); }
+.main-tab:hover { color: var(--text-primary); }
 
 .main-tab.active {
-  color: var(--color-text-primary);
-  border-bottom-color: var(--color-text-primary);
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
   font-weight: 600;
 }
 
 .tab-count {
   font-family: var(--font-mono);
   font-size: 10px;
-  background: var(--color-bg-input);
-  color: var(--color-text-tertiary);
+  background: var(--glass-bg);
+  color: var(--text-tertiary);
   padding: 1px 5px;
   border-radius: 3px;
 }
 
 .main-tab.active .tab-count {
-  background: var(--color-text-primary);
-  color: var(--color-bg-page);
+  background: var(--text-primary);
+  color: var(--bg-base);
 }
 
 /* Installed list */
@@ -1955,9 +1845,9 @@ onBeforeUnmount(() => {
 .skill-store::-webkit-scrollbar-track { background: transparent; }
 .skill-store::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
 
-.modal-body::-webkit-scrollbar { width: 4px; }
-.modal-body::-webkit-scrollbar-track { background: transparent; }
-.modal-body::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+.modal-body-content::-webkit-scrollbar { width: 4px; }
+.modal-body-content::-webkit-scrollbar-track { background: transparent; }
+.modal-body-content::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
 
 /* 安装按钮状态 */
 .install-btn.installing {

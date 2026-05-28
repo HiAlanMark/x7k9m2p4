@@ -17,7 +17,7 @@
           :class="['settings-nav-item', { active: activeSection === item.key }]"
           @click="activeSection = item.key; searchQuery = ''"
         >
-          <span class="nav-icon-dot" :style="{ background: activeSection === item.key ? 'var(--color-primary)' : 'var(--color-text-tertiary)' }"></span>
+          <span class="nav-icon-dot" :style="{ background: activeSection === item.key ? 'var(--accent)' : 'var(--text-tertiary)' }"></span>
           <span v-html="highlightMatch(item.label)"></span>
         </a>
       </aside>
@@ -303,7 +303,7 @@
             <div class="form-row">
               <label class="form-label">{{ t('settings.baseUrl') }}</label>
               <HxInput v-model="customBaseUrl" placeholder="https://api.openai.com/v1" :disabled="customUpstream !== '__manual__' && !hasPlaceholder(customBaseUrl)" />
-              <p v-if="hasPlaceholder(customBaseUrl)" class="form-hint" style="color: var(--color-warning); margin-top: 4px;">
+              <p v-if="hasPlaceholder(customBaseUrl)" class="form-hint" style="color: var(--warning); margin-top: 4px;">
                 {{ t('settings.customUpstreamHint', { resource: '{resource-name}' }) }}
               </p>
             </div>
@@ -326,7 +326,7 @@
 
             <!-- 测试通过后才显示模型和上下文设置 -->
             <template v-if="apiVerified">
-              <div class="form-row" style="margin-top: 16px; border-top: 1px solid var(--color-border); padding-top: 16px;">
+              <div class="form-row" style="margin-top: 16px; border-top: 1px solid var(--border-base); padding-top: 16px;">
                 <label class="form-label">
                   {{ t('settings.model') }}
                   <HxButton variant="ghost" size="sm" :loading="upstreamModelsSyncing" @click="fetchUpstreamModels" style="margin-left:8px;">
@@ -340,9 +340,9 @@
                   @change="onModelChange" 
                 />
                 <HxInput v-else v-model="customModel" :placeholder="t('settings.inputModelName')" />
-                <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
-                <p v-else-if="upstreamModels.length > 0" class="form-hint" style="color: var(--color-success); margin-top: 4px;">{{ t('settings.modelsFetched', { n: upstreamModels.length }) }}</p>
-                <p v-else-if="apiVerified" class="form-hint" style="color: var(--color-primary); margin-top: 4px;">{{ t('settings.apiVerified') }}</p>
+                <p v-if="upstreamModelsError" class="form-hint" style="color: var(--error);">{{ upstreamModelsError }}</p>
+                <p v-else-if="upstreamModels.length > 0" class="form-hint" style="color: var(--success); margin-top: 4px;">{{ t('settings.modelsFetched', { n: upstreamModels.length }) }}</p>
+                <p v-else-if="apiVerified" class="form-hint" style="color: var(--accent); margin-top: 4px;">{{ t('settings.apiVerified') }}</p>
               </div>
               <div class="form-row">
                 <label class="form-label">{{ t('settings.contextLength') }}</label>
@@ -607,59 +607,49 @@
           </div>
 
           <!-- 添加模型弹窗 -->
-          <div v-if="showAddProfile" class="modal-overlay" @click.self="showAddProfile = false" @contextmenu.prevent>
-            <div class="modal-panel">
-              <div class="modal-header">
-                <h3 class="modal-title">{{ $t('settings.addModel') }}</h3>
-                <button class="modal-close" @click="showAddProfile = false">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          <HxModal v-model="showAddProfile" :icon="'plus'" :title="$t('settings.addModel')" @contextmenu.prevent>
+            <div class="form-row">
+              <label class="form-label">{{ $t('settings.modelName') }}</label>
+              <HxInput v-model="newProfile.name" placeholder="GPT-4o / Claude 3.5 / ..." />
+            </div>
+            <div class="form-row">
+              <label class="form-label">{{ $t('settings.modelProvider') }}</label>
+              <div class="provider-tabs">
+                <button :class="['provider-tab', { active: newProfile.provider === 'gfw' }]" @click="newProfile.provider = 'gfw'">
+                  <span>GFW.NET</span>
+                </button>
+                <button :class="['provider-tab', { active: newProfile.provider === 'custom' }]" @click="newProfile.provider = 'custom'">
+                  <span>{{ $t('settings.customProvider') }}</span>
                 </button>
               </div>
-              <div class="modal-body">
-                <div class="form-row">
-                  <label class="form-label">{{ $t('settings.modelName') }}</label>
-                  <HxInput v-model="newProfile.name" placeholder="GPT-4o / Claude 3.5 / ..." />
-                </div>
-                <div class="form-row">
-                  <label class="form-label">{{ $t('settings.modelProvider') }}</label>
-                  <div class="provider-tabs">
-                    <button :class="['provider-tab', { active: newProfile.provider === 'gfw' }]" @click="newProfile.provider = 'gfw'">
-                      <span>GFW.NET</span>
-                    </button>
-                    <button :class="['provider-tab', { active: newProfile.provider === 'custom' }]" @click="newProfile.provider = 'custom'">
-                      <span>{{ $t('settings.customProvider') }}</span>
-                    </button>
-                  </div>
-                </div>
-                <div v-if="newProfile.provider === 'gfw'" class="form-row">
-                  <label class="form-label">API Key</label>
-                  <HxInput v-model="newProfile.apiKey" type="password" placeholder="gfw-..." />
-                </div>
-                <div v-if="newProfile.provider === 'custom'" class="form-row">
-                  <label class="form-label">{{ $t('settings.modelBaseUrl') }}</label>
-                  <HxInput v-model="newProfile.baseUrl" placeholder="https://api.openai.com/v1" />
-                </div>
-                <div v-if="newProfile.provider === 'custom'" class="form-row">
-                  <label class="form-label">{{ $t('settings.modelApiKey') }}</label>
-                  <HxInput v-model="newProfile.apiKey" type="password" placeholder="sk-..." />
-                </div>
-                <div class="form-row">
-                  <label class="form-label">{{ $t('settings.model') }}</label>
-                  <HxInput v-model="newProfile.model" placeholder="gpt-4o / claude-3-5-sonnet / ..." />
-                </div>
-                <div class="form-row">
-                  <label class="form-label">{{ $t('settings.modelDefault') }}</label>
-                  <HxToggle :modelValue="newProfile.isDefault" @update:modelValue="newProfile.isDefault = $event" />
-                </div>
-              </div>
-              <div class="modal-footer">
-                <HxButton variant="ghost" @click="showAddProfile = false">{{ $t('common.cancel') }}</HxButton>
-                <HxButton variant="primary" :disabled="!newProfile.name || !newProfile.model" @click="addModelProfile">
-                  {{ $t('common.create') }}
-                </HxButton>
-              </div>
             </div>
-          </div>
+            <div v-if="newProfile.provider === 'gfw'" class="form-row">
+              <label class="form-label">API Key</label>
+              <HxInput v-model="newProfile.apiKey" type="password" placeholder="gfw-..." />
+            </div>
+            <div v-if="newProfile.provider === 'custom'" class="form-row">
+              <label class="form-label">{{ $t('settings.modelBaseUrl') }}</label>
+              <HxInput v-model="newProfile.baseUrl" placeholder="https://api.openai.com/v1" />
+            </div>
+            <div v-if="newProfile.provider === 'custom'" class="form-row">
+              <label class="form-label">{{ $t('settings.modelApiKey') }}</label>
+              <HxInput v-model="newProfile.apiKey" type="password" placeholder="sk-..." />
+            </div>
+            <div class="form-row">
+              <label class="form-label">{{ $t('settings.model') }}</label>
+              <HxInput v-model="newProfile.model" placeholder="gpt-4o / claude-3-5-sonnet / ..." />
+            </div>
+            <div class="form-row">
+              <label class="form-label">{{ $t('settings.modelDefault') }}</label>
+              <HxToggle :modelValue="newProfile.isDefault" @update:modelValue="newProfile.isDefault = $event" />
+            </div>
+            <template #footer>
+              <HxButton variant="ghost" @click="showAddProfile = false">{{ $t('common.cancel') }}</HxButton>
+              <HxButton variant="primary" :disabled="!newProfile.name || !newProfile.model" @click="addModelProfile">
+                {{ $t('common.create') }}
+              </HxButton>
+            </template>
+          </HxModal>
         </div>
 
         <!-- ===== Agent 设置 ===== -->
@@ -1024,49 +1014,31 @@
         </div>
       </div>
       <!-- GFW Create Key Modal -->
-      <div v-if="showGfwCreateKey" class="modal-overlay" @click.self="showGfwCreateKey = false">
-        <div class="modal-panel" style="max-width: 480px;">
-          <div class="modal-header">
-            <div class="modal-title-row">
-              <div class="modal-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              </div>
-              <div>
-                <h2 class="modal-name">{{ t('settings.createApiKey') }}</h2>
-                <div class="modal-subtitle"></div>
-              </div>
-            </div>
-            <button class="modal-close" @click="showGfwCreateKey = false">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="modal-section">
-              <h4 class="section-label">{{ t('settings.keyName') }}</h4>
-              <HxInput v-model="newKeyName" :placeholder="t('settings.keyNamePlaceholder')" />
-            </div>
-            <div class="modal-section">
-              <h4 class="section-label">{{ t('settings.usageQuota') }}</h4>
-              <div class="gfw-quota-toggle">
-                <button :class="['gfw-quota-btn', { active: newKeyUnlimited }]" @click="newKeyUnlimited = true">{{ t('settings.unlimited') }}</button>
-                <button :class="['gfw-quota-btn', { active: !newKeyUnlimited }]" @click="newKeyUnlimited = false">{{ t('settings.limited') }}</button>
-              </div>
-              <div v-if="!newKeyUnlimited" class="gfw-quota-input">
-                <HxInput v-model.number="newKeyLimit" type="number" :placeholder="t('settings.inputGcoinAmount')" :min="1" :max="1000" :step="1" />
-                <span class="gfw-quota-unit">G</span>
-              </div>
-              <p class="section-text">{{ t('settings.quotaHint') }}</p>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <HxButton variant="ghost" @click="showGfwCreateKey = false">{{ t('common.cancel') }}</HxButton>
-            <HxButton variant="primary" :loading="gfwCreatingKey" @click="createGfwKey">
-              <svg width="15" height="15" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 85.333333a42.666667 42.666667 0 0 0-42.666667 42.666667v512a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V128a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M128 597.333333a42.666667 42.666667 0 0 0-42.666667 42.666667v170.666667c0 70.186667 57.813333 128 128 128h597.333334c70.186667 0 128-57.813333 128-128v-170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667 42.666667 42.666667 0 0 0-42.666667 42.666667v170.666667c0 24.064-18.602667 42.666667-42.666666 42.666666H213.333333c-24.064 0-42.666667-18.602667-42.666666-42.666666v-170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M298.666667 384a42.666667 42.666667 0 0 0-30.165334 12.501333 42.666667 42.666667 0 0 0 0 60.330667l213.333334 213.333333a42.666667 42.666667 0 0 0 60.330666 0l213.333334-213.333333a42.666667 42.666667 0 0 0 0-60.330667 42.666667 42.666667 0 0 0-60.330667 0L512 579.669333 328.832 396.501333A42.666667 42.666667 0 0 0 298.666667 384z"/></svg>
-              <span>{{ t('common.create') }}</span>
-            </HxButton>
-          </div>
+      <HxModal v-model="showGfwCreateKey" :icon="'key'" :title="t('settings.createApiKey')" width="480px">
+        <div class="modal-section">
+          <h4 class="section-label">{{ t('settings.keyName') }}</h4>
+          <HxInput v-model="newKeyName" :placeholder="t('settings.keyNamePlaceholder')" />
         </div>
-      </div>
+        <div class="modal-section">
+          <h4 class="section-label">{{ t('settings.usageQuota') }}</h4>
+          <div class="gfw-quota-toggle">
+            <button :class="['gfw-quota-btn', { active: newKeyUnlimited }]" @click="newKeyUnlimited = true">{{ t('settings.unlimited') }}</button>
+            <button :class="['gfw-quota-btn', { active: !newKeyUnlimited }]" @click="newKeyUnlimited = false">{{ t('settings.limited') }}</button>
+          </div>
+          <div v-if="!newKeyUnlimited" class="gfw-quota-input">
+            <HxInput v-model.number="newKeyLimit" type="number" :placeholder="t('settings.inputGcoinAmount')" :min="1" :max="1000" :step="1" />
+            <span class="gfw-quota-unit">G</span>
+          </div>
+          <p class="section-text">{{ t('settings.quotaHint') }}</p>
+        </div>
+        <template #footer>
+          <HxButton variant="ghost" @click="showGfwCreateKey = false">{{ t('common.cancel') }}</HxButton>
+          <HxButton variant="primary" :loading="gfwCreatingKey" @click="createGfwKey">
+            <svg width="15" height="15" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 85.333333a42.666667 42.666667 0 0 0-42.666667 42.666667v512a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V128a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M128 597.333333a42.666667 42.666667 0 0 0-42.666667 42.666667v170.666667c0 70.186667 57.813333 128 128 128h597.333334c70.186667 0 128-57.813333 128-128v-170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667 42.666667 42.666667 0 0 0-42.666667 42.666667v170.666667c0 24.064-18.602667 42.666667-42.666666 42.666666H213.333333c-24.064 0-42.666667-18.602667-42.666666-42.666666v-170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M298.666667 384a42.666667 42.666667 0 0 0-30.165334 12.501333 42.666667 42.666667 0 0 0 0 60.330667l213.333334 213.333333a42.666667 42.666667 0 0 0 60.330666 0l213.333334-213.333333a42.666667 42.666667 0 0 0 0-60.330667 42.666667 42.666667 0 0 0-60.330667 0L512 579.669333 328.832 396.501333A42.666667 42.666667 0 0 0 298.666667 384z"/></svg>
+            <span>{{ t('common.create') }}</span>
+          </HxButton>
+        </template>
+      </HxModal>
       <!-- Context menu (inside root to avoid fragment breaking transition) -->
       <div v-if="settingsCtx.show" class="ctx-menu" :style="{ top: settingsCtx.y + 'px', left: settingsCtx.x + 'px' }" @click.stop @contextmenu.prevent>
         <button v-if="settingsCtx.hasSelection" @click="settingsCtxCopy" class="ctx-item">{{ t('common.copy') }}</button>
@@ -2684,7 +2656,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 /* ===== Buttons ===== */
 .btn-primary {
   padding: 6px 16px;
-  background: var(--color-primary);
+  background: var(--accent);
   border: none;
   border-radius: 8px;
   color: var(--text-inverse);
@@ -2708,9 +2680,9 @@ const pageNumbers = computed<(number | string)[]>(() => {
 .btn-secondary {
   padding: 6px 16px;
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-base);
   border-radius: 4px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
   font-family: var(--font-mono);
   cursor: pointer;
@@ -2718,16 +2690,16 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .btn-secondary:hover {
-  border-color: var(--color-text-tertiary);
-  color: var(--color-text-primary);
+  border-color: var(--text-tertiary);
+  color: var(--text-primary);
 }
 
 .btn-danger-outline {
   padding: 4px 12px;
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-base);
   border-radius: 4px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   font-size: 11px;
   font-family: var(--font-mono);
   cursor: pointer;
@@ -2735,8 +2707,8 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .btn-danger-outline:hover {
-  border-color: var(--color-error);
-  color: var(--color-error);
+  border-color: var(--error);
+  color: var(--error);
 }
 
 /* ===== User Profile ===== */
@@ -2819,28 +2791,28 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: var(--color-bg-input);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--glass-bg);
+  border-bottom: 1px solid var(--border-base);
 }
 
 .data-table td {
   padding: 8px 14px;
   font-size: 12px;
   font-family: var(--font-mono);
-  color: var(--color-text-primary);
-  border-bottom: 1px solid var(--color-border-subtle, var(--color-border));
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-base, var(--border-base));
 }
 
 .data-table tbody tr:last-child td { border-bottom: none; }
-.data-table tbody tr:hover { background: var(--color-bg-input); }
+.data-table tbody tr:hover { background: var(--glass-bg); }
 
 .cell-name { font-weight: 600; }
-.cell-mono { color: var(--color-text-tertiary); }
-.cell-cost { color: var(--color-primary); font-weight: 600; }
-.empty-cell { text-align: center !important; color: var(--color-text-tertiary); padding: 24px 14px !important; }
+.cell-mono { color: var(--text-tertiary); }
+.cell-cost { color: var(--accent); font-weight: 600; }
+.empty-cell { text-align: center !important; color: var(--text-tertiary); padding: 24px 14px !important; }
 
 /* Status tag */
 .status-tag {
@@ -2851,8 +2823,8 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-weight: 600;
 }
 
-.status-tag.active { background: var(--color-bg-input); color: var(--color-success); }
-.status-tag.inactive { background: var(--color-bg-input); color: var(--color-error); }
+.status-tag.active { background: var(--glass-bg); color: var(--success); }
+.status-tag.inactive { background: var(--glass-bg); color: var(--error); }
 
 /* ===== Usage Stats ===== */
 .usage-summary {
@@ -3094,15 +3066,15 @@ const pageNumbers = computed<(number | string)[]>(() => {
   transition: border-color 0.12s;
 }
 
-.package-card:hover { border-color: var(--color-text-tertiary); }
-.package-card.recommended { border-color: var(--color-text-primary); border-width: 2px; }
+.package-card:hover { border-color: var(--text-tertiary); }
+.package-card.recommended { border-color: var(--text-primary); border-width: 2px; }
 
 .package-badge {
   position: absolute;
   top: -1px;
   right: 12px;
-  background: var(--color-text-primary);
-  color: var(--color-bg-page);
+  background: var(--text-primary);
+  color: var(--bg-base);
   padding: 2px 8px;
   border-radius: 0 0 4px 4px;
   font-family: var(--font-mono);
@@ -3110,11 +3082,11 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-weight: 600;
 }
 
-.package-name { font-size: 14px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 4px; }
-.package-desc { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 12px; line-height: 1.4; }
-.package-price { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
-.package-amount { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-secondary); margin-bottom: 2px; }
-.package-bonus { font-family: var(--font-mono); font-size: 11px; color: var(--color-warning); margin-bottom: 12px; }
+.package-name { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.package-desc { font-size: 11px; color: var(--text-tertiary); margin-bottom: 12px; line-height: 1.4; }
+.package-price { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+.package-amount { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; }
+.package-bonus { font-family: var(--font-mono); font-size: 11px; color: var(--warning); margin-bottom: 12px; }
 .package-btn { width: 100%; margin-top: 8px; }
 
 /* ===== Provider Tabs ===== */
@@ -3427,10 +3399,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border-base);
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .card-header-tag {
@@ -3441,12 +3413,12 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-weight: 600;
 }
 
-.card-header-tag.default { background: var(--color-bg-input); color: var(--color-primary); }
-.card-header-tag.custom { background: var(--color-bg-input); color: var(--color-accent); }
+.card-header-tag.default { background: var(--glass-bg); color: var(--accent); }
+.card-header-tag.custom { background: var(--glass-bg); color: var(--accent); }
 
 .hint-text {
   font-size: 12px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   margin-bottom: 14px;
   line-height: 1.5;
 }
@@ -3459,22 +3431,22 @@ const pageNumbers = computed<(number | string)[]>(() => {
   flex-wrap: wrap;
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--border-base);
 }
 
 .presets-label {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   margin-right: 4px;
 }
 
 .preset-btn {
   padding: 3px 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-base);
   border-radius: 3px;
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
   cursor: pointer;
@@ -3482,17 +3454,17 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .preset-btn:hover {
-  border-color: var(--color-text-tertiary);
-  color: var(--color-text-primary);
+  border-color: var(--text-tertiary);
+  color: var(--text-primary);
 }
 
 /* Model detail */
 .model-detail {
   margin-top: 10px;
   padding: 8px 12px;
-  background: var(--color-bg-input);
+  background: var(--glass-bg);
   border-radius: 4px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-base);
 }
 
 .detail-row {
@@ -3502,23 +3474,23 @@ const pageNumbers = computed<(number | string)[]>(() => {
   padding: 3px 0;
 }
 
-.detail-label { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-tertiary); }
-.detail-value { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-primary); }
+.detail-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
+.detail-value { font-family: var(--font-mono); font-size: 11px; color: var(--text-primary); }
 
 .sync-btn {
   margin-left: 8px;
   padding: 2px 8px;
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-base);
   border-radius: 3px;
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   cursor: pointer;
   transition: all 0.12s;
 }
 
-.sync-btn:hover:not(:disabled) { border-color: var(--color-text-secondary); color: var(--color-text-primary); }
+.sync-btn:hover:not(:disabled) { border-color: var(--text-secondary); color: var(--text-primary); }
 .sync-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* Test connection */
@@ -3529,13 +3501,13 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .test-result { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
-.test-result.success { color: var(--color-success); }
-.test-result.error { color: var(--color-error); }
+.test-result.success { color: var(--success); }
+.test-result.error { color: var(--error); }
 
 .save-feedback {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--color-success);
+  color: var(--success);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -3572,7 +3544,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 .save-dirty { color: var(--info); }
 .save-saving { color: var(--success); }
 .save-saved svg {
-  stroke: var(--color-success);
+  stroke: var(--success);
   animation: popIn 0.3s ease;
 }
 @keyframes popIn {
@@ -3589,16 +3561,16 @@ const pageNumbers = computed<(number | string)[]>(() => {
 /* Toggle */
 .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .toggle input { display: none; }
-.toggle-slider { position: relative; width: 32px; height: 18px; background: var(--color-border); border-radius: 9px; transition: background 0.15s; }
-.toggle-slider::after { content: ''; position: absolute; width: 14px; height: 14px; background: var(--color-bg-page); border-radius: 50%; top: 2px; left: 2px; transition: transform 0.15s; }
-.toggle input:checked + .toggle-slider { background: var(--color-text-primary); }
+.toggle-slider { position: relative; width: 32px; height: 18px; background: var(--border-base); border-radius: 9px; transition: background 0.15s; }
+.toggle-slider::after { content: ''; position: absolute; width: 14px; height: 14px; background: var(--bg-base); border-radius: 50%; top: 2px; left: 2px; transition: transform 0.15s; }
+.toggle input:checked + .toggle-slider { background: var(--text-primary); }
 .toggle input:checked + .toggle-slider::after { transform: translateX(14px); }
-.toggle-text { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-tertiary); }
+.toggle-text { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
 
 /* Scrollbar */
 .settings-content::-webkit-scrollbar { width: 4px; }
 .settings-content::-webkit-scrollbar-track { background: transparent; }
-.settings-content::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+.settings-content::-webkit-scrollbar-thumb { background: var(--border-base); border-radius: 2px; }
 
 /* Provider chips */
 .provider-chips {
@@ -3614,8 +3586,8 @@ const pageNumbers = computed<(number | string)[]>(() => {
   padding: 4px 10px;
   border: 1px solid var(--glass-border);
   border-radius: 8px;
-  background: var(--color-bg-input);
-  color: var(--color-text-secondary);
+  background: var(--glass-bg);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
   cursor: pointer;
@@ -3623,8 +3595,8 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .chip:hover {
-  border-color: var(--color-text-tertiary);
-  color: var(--color-text-primary);
+  border-color: var(--text-tertiary);
+  color: var(--text-primary);
 }
 
 .chip.active {
@@ -3637,7 +3609,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 
 .chip-count {
   font-size: 9px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   font-weight: 400;
 }
 
@@ -3657,8 +3629,8 @@ const pageNumbers = computed<(number | string)[]>(() => {
   border-radius: 8px;
   font-size: 13px;
   font-family: var(--font-mono);
-  color: var(--color-text-primary);
-  background: var(--color-bg-input);
+  color: var(--text-primary);
+  background: var(--glass-bg);
   outline: none;
   resize: vertical;
   min-height: 60px;
@@ -3666,12 +3638,12 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .form-textarea:focus {
-  border-color: var(--color-border);
+  border-color: var(--border-base);
   box-shadow: none;
 }
 
 .form-textarea::placeholder {
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -3689,7 +3661,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .hermes-status-card.loading {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .hermes-status-icon {
@@ -3701,7 +3673,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   align-items: center;
   justify-content: center;
   background: color-mix(in srgb, var(--info) 8%, transparent);
-  color: var(--color-primary);
+  color: var(--accent);
 }
 
 .hermes-status-card.disconnected .hermes-status-icon {
@@ -3722,7 +3694,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 .hermes-status-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3730,7 +3702,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 
 .hermes-status-desc {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
@@ -3749,13 +3721,13 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .hermes-label {
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   flex-shrink: 0;
   min-width: 48px;
 }
 
 .hermes-value {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3822,108 +3794,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   background: var(--bg-elevated);
 }
 
-/* ===== Modal (copied from SkillStoreView for scoped scope) ===== */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--bg-overlay);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: 40px;
-  animation: modalOverlayIn var(--duration-250) ease;
-}
-@keyframes modalOverlayIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.modal-panel {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-xl);
-  width: 100%;
-  max-width: 640px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: modalPanelIn var(--duration-350) var(--ease-back);
-}
-@keyframes modalPanelIn {
-  from { opacity: 0; transform: scale(0.92) translateY(16px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-.modal-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-base);
-}
-.modal-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-.modal-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--glass-base);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-lg);
-  color: var(--accent);
-  flex-shrink: 0;
-}
-.modal-icon svg {
-  display: block;
-  width: 22px;
-  height: 22px;
-}
-.modal-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 4px;
-}
-.modal-subtitle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-.modal-close {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--duration-150) var(--ease-expo);
-  flex-shrink: 0;
-  align-self: center;
-}
-.modal-close:hover {
-  background: var(--bg-surface);
-  border-color: var(--border-light);
-  color: var(--text-primary);
-}
-.modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-6) var(--space-6);
-}
+/* Modal — shared overlay/panel/header/close handled by HxModal component */
 .modal-section {
   margin-bottom: var(--space-6);
 }
@@ -3943,14 +3814,6 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: var(--text-base);
   color: var(--text-secondary);
   line-height: var(--leading-relaxed);
-}
-.modal-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: 16px 24px;
-  border-top: 1px solid var(--border-base);
 }
 
 /* GFW Quota Toggle — Glass IDE segmented control */
@@ -4217,64 +4080,5 @@ const pageNumbers = computed<(number | string)[]>(() => {
 .profile-add-text {
   font-size: 13px;
   color: var(--text-secondary, #8b949e);
-}
-/* Model profile modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--bg-overlay);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.modal-panel {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-light, rgba(255,255,255,0.1));
-  border-radius: 16px;
-  width: 440px;
-  max-width: 90vw;
-  max-height: 85vh;
-  overflow-y: auto;
-  backdrop-filter: blur(48px) saturate(2);
-}
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-base, rgba(255,255,255,0.06));
-}
-.modal-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary, #e6edf3);
-  margin: 0;
-}
-.modal-close {
-  background: none;
-  border: none;
-  color: var(--text-secondary, #8b949e);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-}
-.modal-close:hover {
-  background: var(--glass-weak);
-  color: var(--text-primary, #e6edf3);
-}
-.modal-body {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 14px 20px;
-  border-top: 1px solid var(--border-base, rgba(255,255,255,0.06));
 }
 </style>

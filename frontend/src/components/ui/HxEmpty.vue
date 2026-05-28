@@ -23,7 +23,7 @@
   justify-content: center;
   gap: 12px;
   padding: 48px 24px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
 }
 
 .empty-icon {
@@ -33,11 +33,11 @@
 
 .empty-text {
   font-size: 14px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .empty-hint {
   font-size: 12px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
 }
 </style>

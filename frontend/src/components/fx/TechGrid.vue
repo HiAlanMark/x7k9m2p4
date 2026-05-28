@@ -165,7 +165,7 @@ onUnmounted(() => {
   background: radial-gradient(
     ellipse at center,
     transparent 0%,
-    var(--color-bg-page) 100%
+    var(--bg-base) 100%
   );
   pointer-events: none;
 }

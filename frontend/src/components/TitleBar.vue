@@ -74,7 +74,7 @@ function closeWindow() {
   height: 32px;
   border: none;
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }

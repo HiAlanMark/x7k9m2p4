@@ -124,8 +124,8 @@ defineExpose({ show, remove, success, error, warning, info })
   align-items: flex-start;
   gap: 10px;
   padding: 12px 14px;
-  background: var(--color-bg-card-solid);
-  border: 1px solid var(--color-border);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-base);
   border-radius: 12px;
   box-shadow: var(--shadow-float);
   min-width: 280px;
@@ -135,19 +135,19 @@ defineExpose({ show, remove, success, error, warning, info })
   -webkit-backdrop-filter: blur(20px);
 }
 
-.hixns-toast--success { border-left: 3px solid var(--color-success); }
-.hixns-toast--error { border-left: 3px solid var(--color-error); }
-.hixns-toast--warning { border-left: 3px solid var(--color-warning); }
-.hixns-toast--info { border-left: 3px solid var(--color-primary); }
+.hixns-toast--success { border-left: 3px solid var(--success); }
+.hixns-toast--error { border-left: 3px solid var(--error); }
+.hixns-toast--warning { border-left: 3px solid var(--warning); }
+.hixns-toast--info { border-left: 3px solid var(--accent); }
 
 .hixns-toast-icon {
   flex-shrink: 0;
   margin-top: 1px;
 }
-.hixns-toast--success .hixns-toast-icon { color: var(--color-success); }
-.hixns-toast--error .hixns-toast-icon { color: var(--color-error); }
-.hixns-toast--warning .hixns-toast-icon { color: var(--color-warning); }
-.hixns-toast--info .hixns-toast-icon { color: var(--color-primary); }
+.hixns-toast--success .hixns-toast-icon { color: var(--success); }
+.hixns-toast--error .hixns-toast-icon { color: var(--error); }
+.hixns-toast--warning .hixns-toast-icon { color: var(--warning); }
+.hixns-toast--info .hixns-toast-icon { color: var(--accent); }
 
 .hixns-toast-body {
   flex: 1;
@@ -157,12 +157,12 @@ defineExpose({ show, remove, success, error, warning, info })
 .hixns-toast-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .hixns-toast-message {
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin-top: 2px;
   line-height: 1.4;
 }
@@ -176,15 +176,15 @@ defineExpose({ show, remove, success, error, warning, info })
   height: 20px;
   border: none;
   background: transparent;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   border-radius: 4px;
   cursor: pointer;
   padding: 0;
   transition: all 0.15s;
 }
 .hixns-toast-close:hover {
-  background: var(--color-bg-input);
-  color: var(--color-text-primary);
+  background: var(--glass-bg);
+  color: var(--text-primary);
 }
 
 /* Transitions */

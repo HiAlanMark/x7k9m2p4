@@ -9,132 +9,87 @@
     </div>
 
     <!-- Create modal -->
-    <div v-if="showCreate" class="modal-overlay" @click.self="showCreate = false">
-      <div class="modal-panel" style="max-width: 520px;">
-        <div class="modal-header">
-          <div class="modal-title-row">
-            <div class="modal-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </div>
-            <h2 class="modal-name">{{ t('tasks.createCron') }}</h2>
-          </div>
-          <button class="modal-close" @click="showCreate = false">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <HxModal v-model="showCreate" :icon="'plus'" :title="t('tasks.createCron')" width="520px">
+      <div class="form-row">
+        <label class="form-label">{{ t('tasks.taskName') }}</label>
+        <HxInput v-model="newTask.name" :placeholder="t('tasks.taskNamePlaceholder')" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">{{ t('tasks.executionPlan') }}</label>
+        <HxInput v-model="newTask.schedule" :placeholder="t('tasks.schedulePlaceholder')" />
+        <p class="form-hint">{{ t('tasks.scheduleHint') }}</p>
+      </div>
+      <div class="form-row">
+        <label class="form-label">{{ t('tasks.prompt') }}</label>
+        <HxTextarea v-model="newTask.prompt" :placeholder="t('tasks.prompt')" :rows="3" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">{{ t('tasks.skillsOptional') }}</label>
+        <HxInput v-model="skillsSearch" :placeholder="t('tasks.skillsSearchPlaceholder')" @focus="fetchAvailableSkills()" />
+        <div v-if="filteredSkills.length > 0" class="skills-suggest">
+          <button
+            v-for="sk in filteredSkills"
+            :key="sk.slug"
+            :class="['skill-chip', { selected: isSkillSelected(sk.slug) }]"
+            @click="toggleSkill(sk.slug)"
+          >
+            {{ sk.name }}
+            <span class="chip-cat">{{ sk.category }}</span>
           </button>
         </div>
-        <div class="modal-body">
-          <div class="form-row">
-            <label class="form-label">{{ t('tasks.taskName') }}</label>
-            <HxInput v-model="newTask.name" :placeholder="t('tasks.taskNamePlaceholder')" />
-          </div>
-          <div class="form-row">
-            <label class="form-label">{{ t('tasks.executionPlan') }}</label>
-            <HxInput v-model="newTask.schedule" :placeholder="t('tasks.schedulePlaceholder')" />
-            <p class="form-hint">{{ t('tasks.scheduleHint') }}</p>
-          </div>
-          <div class="form-row">
-            <label class="form-label">{{ t('tasks.prompt') }}</label>
-            <HxTextarea v-model="newTask.prompt" :placeholder="t('tasks.prompt')" :rows="3" />
-          </div>
-          <div class="form-row">
-            <label class="form-label">{{ t('tasks.skillsOptional') }}</label>
-            <HxInput v-model="skillsSearch" :placeholder="t('tasks.skillsSearchPlaceholder')" @focus="fetchAvailableSkills()" />
-            <div v-if="filteredSkills.length > 0" class="skills-suggest">
-              <button
-                v-for="sk in filteredSkills"
-                :key="sk.slug"
-                :class="['skill-chip', { selected: isSkillSelected(sk.slug) }]"
-                @click="toggleSkill(sk.slug)"
-              >
-                {{ sk.name }}
-                <span class="chip-cat">{{ sk.category }}</span>
-              </button>
-            </div>
-            <p v-if="newTask.skills" class="form-hint">{{ t('tasks.selected') }}: {{ newTask.skills }}</p>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <HxButton variant="ghost" @click="showCreate = false">{{ t('common.cancel') }}</HxButton>
-          <HxButton variant="primary" @click="createTask">{{ t('common.create') }}</HxButton>
-        </div>
+        <p v-if="newTask.skills" class="form-hint">{{ t('tasks.selected') }}: {{ newTask.skills }}</p>
       </div>
-    </div>
+      <template #footer>
+        <HxButton variant="ghost" @click="showCreate = false">{{ t('common.cancel') }}</HxButton>
+        <HxButton variant="primary" @click="createTask">{{ t('common.create') }}</HxButton>
+      </template>
+    </HxModal>
 
     <!-- Edit modal -->
-    <div v-if="editingTask" class="modal-overlay" @click.self="editingTask = null">
-      <div class="modal-panel" style="max-width: 520px;">
-        <div class="modal-header">
-          <div class="modal-title-row">
-            <div class="modal-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </div>
-            <h2 class="modal-name">{{ t('tasks.editTask') }}</h2>
-          </div>
-          <button class="modal-close" @click="editingTask = null">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <HxModal v-model="editVisible" :icon="'edit'" :title="t('tasks.editTask')" width="520px">
+      <div class="form-row">
+        <label class="form-label">{{ t('tasks.taskName') }}</label>
+        <HxInput v-model="editForm.name" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">{{ t('tasks.executionPlan') }}</label>
+        <HxInput v-model="editForm.schedule" />
+        <p class="form-hint">{{ t('tasks.scheduleHint') }}</p>
+      </div>
+      <div class="form-row">
+        <label class="form-label">{{ t('tasks.prompt') }}</label>
+        <HxTextarea v-model="editForm.prompt" :rows="3" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">{{ t('tasks.skillsOptional') }}</label>
+        <HxInput v-model="editSkillsSearch" :placeholder="t('tasks.skillsSearchPlaceholder')" @focus="fetchAvailableSkills()" />
+        <div v-if="filteredEditSkills.length > 0" class="skills-suggest">
+          <button
+            v-for="sk in filteredEditSkills"
+            :key="sk.slug"
+            :class="['skill-chip', { selected: isEditSkillSelected(sk.slug) }]"
+            @click="toggleEditSkill(sk.slug)"
+          >
+            {{ sk.name }}
+            <span class="chip-cat">{{ sk.category }}</span>
           </button>
         </div>
-        <div class="modal-body">
-          <div class="form-row">
-            <label class="form-label">{{ t('tasks.taskName') }}</label>
-            <HxInput v-model="editForm.name" />
-          </div>
-          <div class="form-row">
-            <label class="form-label">{{ t('tasks.executionPlan') }}</label>
-            <HxInput v-model="editForm.schedule" />
-            <p class="form-hint">{{ t('tasks.scheduleHint') }}</p>
-          </div>
-          <div class="form-row">
-            <label class="form-label">{{ t('tasks.prompt') }}</label>
-            <HxTextarea v-model="editForm.prompt" :rows="3" />
-          </div>
-          <div class="form-row">
-            <label class="form-label">{{ t('tasks.skillsOptional') }}</label>
-            <HxInput v-model="editSkillsSearch" :placeholder="t('tasks.skillsSearchPlaceholder')" @focus="fetchAvailableSkills()" />
-            <div v-if="filteredEditSkills.length > 0" class="skills-suggest">
-              <button
-                v-for="sk in filteredEditSkills"
-                :key="sk.slug"
-                :class="['skill-chip', { selected: isEditSkillSelected(sk.slug) }]"
-                @click="toggleEditSkill(sk.slug)"
-              >
-                {{ sk.name }}
-                <span class="chip-cat">{{ sk.category }}</span>
-              </button>
-            </div>
-            <p v-if="editSkills" class="form-hint">{{ t('tasks.selected') }}: {{ editSkills }}</p>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <HxButton variant="ghost" @click="editingTask = null">{{ t('common.cancel') }}</HxButton>
-          <HxButton variant="primary" @click="saveEdit">{{ t('tasks.saveChanges') }}</HxButton>
-        </div>
+        <p v-if="editSkills" class="form-hint">{{ t('tasks.selected') }}: {{ editSkills }}</p>
       </div>
-    </div>
+      <template #footer>
+        <HxButton variant="ghost" @click="editingTask = null">{{ t('common.cancel') }}</HxButton>
+        <HxButton variant="primary" @click="saveEdit">{{ t('tasks.saveChanges') }}</HxButton>
+      </template>
+    </HxModal>
 
     <!-- Delete confirm modal -->
-    <div v-if="deleteTarget" class="modal-overlay" @click.self="deleteTarget = null">
-      <div class="modal-panel" style="max-width: 440px;">
-        <div class="modal-header">
-          <div class="modal-title-row">
-            <div class="modal-icon" style="color: var(--error); background: rgba(255,69,58,0.1);">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </div>
-            <h2 class="modal-name">{{ t('tasks.deleteTask') }}</h2>
-          </div>
-          <button class="modal-close" @click="deleteTarget = null">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <p class="section-text">{{ t('tasks.deleteConfirmPrefix') }} <strong>{{ deleteTarget.name }}</strong> {{ t('tasks.deleteConfirmSuffix') }}</p>
-        </div>
-        <div class="modal-footer">
-          <HxButton variant="ghost" @click="deleteTarget = null">{{ t('common.cancel') }}</HxButton>
-          <HxButton variant="danger" @click="confirmDeleteTask" style="background: rgba(255,69,58,0.85); border-color: rgba(255,69,58,0.9); color: #fff;">{{ t('common.confirm') }}</HxButton>
-        </div>
-      </div>
-    </div>
+    <HxModal v-model="deleteVisible" :icon="'trash'" icon-color="var(--error)" icon-bg="rgba(255,69,58,0.1)" :title="t('tasks.deleteTask')" width="440px">
+      <p class="section-text">{{ t('tasks.deleteConfirmPrefix') }} <strong>{{ deleteTarget?.name }}</strong> {{ t('tasks.deleteConfirmSuffix') }}</p>
+      <template #footer>
+        <HxButton variant="ghost" @click="deleteTarget = null">{{ t('common.cancel') }}</HxButton>
+        <HxButton variant="danger" @click="confirmDeleteTask">{{ t('common.confirm') }}</HxButton>
+      </template>
+    </HxModal>
 
     <!-- Tabs -->
     <div class="tabs-row">
@@ -274,7 +229,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { hermesCronList, hermesCronCreate, hermesCronPause, hermesCronResume, hermesCronRemove, hermesCronRun, hermesCronUpdate } from '../api'
-import { HxButton, HxInput, HxTextarea, HxCard, HxBadge, HxSpinner, HxEmpty } from '../components/ui'
+import { HxButton, HxInput, HxTextarea, HxCard, HxBadge, HxSpinner, HxEmpty, HxModal } from '../components/ui'
 import { useToast } from '../composables/useToast'
 
 const { t } = useI18n()
@@ -324,6 +279,10 @@ const newTask = ref({ name: '', schedule: '', prompt: '', skills: '' })
 const editingTask = ref<CronTask | null>(null)
 const editForm = ref({ name: '', schedule: '', prompt: '' })
 const editSkills = ref('')
+const editVisible = computed({
+  get: () => editingTask.value !== null,
+  set: (v: boolean) => { if (!v) editingTask.value = null }
+})
 
 // 可选的技能列表
 const availableSkills = ref<{slug: string; name: string; category: string}[]>([])
@@ -495,6 +454,10 @@ async function runTask(task: CronTask) {
 }
 
 const deleteTarget = ref<CronTask | null>(null)
+const deleteVisible = computed({
+  get: () => deleteTarget.value !== null,
+  set: (v: boolean) => { if (!v) deleteTarget.value = null }
+})
 
 async function deleteTask(task: CronTask) {
   deleteTarget.value = task
@@ -593,14 +556,14 @@ function formatElapsed(iso?: string): string {
 .tasks-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   letter-spacing: -0.3px;
 }
 
 .store-count {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
 }
 
 .btn-create {
@@ -608,7 +571,7 @@ function formatElapsed(iso?: string): string {
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: var(--color-primary);
+  background: var(--accent);
   border: none;
   border-radius: 8px;
   color: var(--text-inverse);
@@ -640,13 +603,13 @@ function formatElapsed(iso?: string): string {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 20px;
   border-bottom: 1px solid var(--glass-border);
-  font-size: 13px; font-weight: 600; color: var(--color-text-primary);
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
 }
 
 .card-header-tag {
   font-family: var(--font-mono); padding: 2px 6px; border-radius: 3px;
   font-size: 10px; font-weight: 600;
-  background: var(--color-primary); color: var(--text-inverse);
+  background: var(--accent); color: var(--text-inverse);
 }
 
 .card-body { padding: 16px 20px; }
@@ -655,37 +618,37 @@ function formatElapsed(iso?: string): string {
 .form-row:last-child { margin-bottom: 0; }
 .form-label {
   display: block; font-family: var(--font-mono); font-size: 12px;
-  font-weight: 600; color: var(--color-text-secondary); margin-bottom: 5px;
+  font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;
 }
 .form-input {
   width: 100%; padding: 7px 10px;
   border: 1px solid var(--glass-border); border-radius: 8px;
   font-size: 13px; font-family: var(--font-mono);
-  color: var(--color-text-primary); background: var(--color-bg-input);
+  color: var(--text-primary); background: var(--glass-bg);
   outline: none;
 }
-.form-input:focus { border-color: var(--color-border); box-shadow: none; }
+.form-input:focus { border-color: var(--border-base); box-shadow: none; }
 .form-textarea {
   width: 100%; padding: 8px 10px;
   border: 1px solid var(--glass-border); border-radius: 8px;
   font-size: 13px; font-family: var(--font-mono);
-  color: var(--color-text-primary); background: var(--color-bg-input);
+  color: var(--text-primary); background: var(--glass-bg);
   outline: none; resize: vertical; min-height: 60px;
 }
-.form-textarea:focus { border-color: var(--color-border); }
-.form-hint { font-size: 11px; color: var(--color-text-tertiary); margin: 3px 0 0; }
+.form-textarea:focus { border-color: var(--border-base); }
+.form-hint { font-size: 11px; color: var(--text-tertiary); margin: 3px 0 0; }
 .form-actions { display: flex; gap: 8px; margin-top: 14px; }
 
 .btn-primary {
-  padding: 6px 16px; background: var(--color-primary); border: none; border-radius: var(--radius-btn);
+  padding: 6px 16px; background: var(--accent); border: none; border-radius: var(--radius-btn);
   color: var(--text-inverse); font-size: 12px; font-weight: 600; font-family: var(--font-mono);
   cursor: pointer; transition: all 0.2s var(--spring-bounce);
 }
 .btn-primary:hover { filter: brightness(1.1); transform: scale(1.03); }
 .btn-primary:active { transform: scale(0.96); }
 .btn-secondary {
-  padding: 6px 16px; background: transparent; border: 1px solid var(--color-border);
-  border-radius: 8px; color: var(--color-text-secondary); font-size: 12px;
+  padding: 6px 16px; background: transparent; border: 1px solid var(--border-base);
+  border-radius: 8px; color: var(--text-secondary); font-size: 12px;
   font-family: var(--font-mono); cursor: pointer;
 }
 
@@ -700,7 +663,7 @@ function formatElapsed(iso?: string): string {
 .main-tabs {
   display: flex;
   gap: 0;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border-base);
 }
 
 .main-tab {
@@ -714,34 +677,34 @@ function formatElapsed(iso?: string): string {
   font-size: 13px;
   font-weight: 500;
   font-family: var(--font-family);
-  color: var(--color-text-tertiary);
+  color: var(--text-tertiary);
   cursor: pointer;
   transition: all 0.12s;
 }
 
-.main-tab:hover { color: var(--color-text-primary); }
+.main-tab:hover { color: var(--text-primary); }
 
 .main-tab.active {
-  color: var(--color-text-primary);
-  border-bottom-color: var(--color-text-primary);
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
   font-weight: 600;
 }
 
 .tab-count {
   font-family: var(--font-mono);
   font-size: 10px;
-  background: var(--color-bg-input);
-  color: var(--color-text-tertiary);
+  background: var(--glass-bg);
+  color: var(--text-tertiary);
   padding: 1px 5px;
   border-radius: 3px;
 }
 
 .main-tab.active .tab-count {
-  background: var(--color-text-primary);
-  color: var(--color-bg-page);
+  background: var(--text-primary);
+  color: var(--bg-base);
 }
 
-.tab-count.live { background: var(--color-primary); color: var(--text-inverse); animation: pulse 2s ease infinite; }
+.tab-count.live { background: var(--accent); color: var(--text-inverse); animation: pulse 2s ease infinite; }
 
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
 
@@ -749,9 +712,9 @@ function formatElapsed(iso?: string): string {
 .empty-state {
   text-align: center; padding: 60px 20px;
 }
-.empty-icon { margin-bottom: 12px; color: var(--color-text-tertiary); }
-.empty-text { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 6px; }
-.empty-hint { font-size: 12px; color: var(--color-text-tertiary); }
+.empty-icon { margin-bottom: 12px; color: var(--text-tertiary); }
+.empty-text { font-size: 14px; color: var(--text-secondary); margin-bottom: 6px; }
+.empty-hint { font-size: 12px; color: var(--text-tertiary); }
 
 /* Task List — VueBits */
 .task-list { display: flex; flex-direction: column; gap: var(--space-3); }
@@ -879,19 +842,19 @@ function formatElapsed(iso?: string): string {
   font-family: var(--font-mono); font-size: 10px; font-weight: 600;
   padding: 2px 6px; border-radius: 4px;
 }
-.task-status-tag.active { background: var(--color-bg-input); color: var(--color-success); }
-.task-status-tag.paused { background: var(--color-bg-input); color: var(--color-text-tertiary); }
+.task-status-tag.active { background: var(--glass-bg); color: var(--success); }
+.task-status-tag.paused { background: var(--glass-bg); color: var(--text-tertiary); }
 
 .result-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.result-dot.success { background: var(--color-success); }
-.result-dot.failed { background: var(--color-error); }
+.result-dot.success { background: var(--success); }
+.result-dot.failed { background: var(--error); }
 
 .result-tag {
   font-family: var(--font-mono); font-size: 10px; font-weight: 600;
   padding: 2px 6px; border-radius: 4px;
 }
-.result-tag.success { background: var(--color-bg-input); color: var(--color-success); }
-.result-tag.failed { background: var(--color-bg-input); color: var(--color-error); }
+.result-tag.success { background: var(--glass-bg); color: var(--success); }
+.result-tag.failed { background: var(--glass-bg); color: var(--error); }
 
 .task-prompt {
   font-size: 12px; color: var(--text-secondary); line-height: 1.5;
@@ -937,138 +900,16 @@ function formatElapsed(iso?: string): string {
 
 .act-btn {
   width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
-  background: transparent; border: 1px solid var(--color-border); border-radius: 6px;
-  font-size: 11px; cursor: pointer; color: var(--color-text-secondary);
+  background: transparent; border: 1px solid var(--border-base); border-radius: 6px;
+  font-size: 11px; cursor: pointer; color: var(--text-secondary);
   transition: all 0.12s;
 }
-.act-btn:hover { border-color: var(--color-text-tertiary); color: var(--color-text-primary); background: var(--color-bg-input); }
-.act-btn.danger:hover { border-color: var(--color-error); color: var(--color-error); }
+.act-btn:hover { border-color: var(--text-tertiary); color: var(--text-primary); background: var(--glass-bg); }
+.act-btn.danger:hover { border-color: var(--error); color: var(--error); }
 
 /* Scrollbar */
 .tasks-view::-webkit-scrollbar { width: 4px; }
 .tasks-view::-webkit-scrollbar-track { background: transparent; }
-
-/* ── Modal (mirrors SkillStoreView) ── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--bg-overlay);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 24px;
-}
-
-.modal-panel {
-  width: 100%;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-}
-
-.modal-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-base);
-}
-
-.modal-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.modal-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-md);
-  color: var(--primary-text);
-  flex-shrink: 0;
-}
-
-.modal-icon :deep(svg) {
-  display: block;
-  width: 22px;
-  height: 22px;
-}
-
-.modal-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.modal-close {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  cursor: pointer;
-  flex-shrink: 0;
-  align-self: center;
-}
-
-.modal-close:hover {
-  background: var(--bg-surface);
-  border-color: var(--border-light);
-  color: var(--text-primary);
-}
-
-.modal-body {
-  padding: 24px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  padding: 16px 24px;
-  border-top: 1px solid var(--border-base);
-}
-
-/* Form */
-.form-row {
-  margin-bottom: 16px;
-}
-
-.form-row:last-child {
-  margin-bottom: 0;
-}
-
-.form-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
-}
-
-.form-hint {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-top: 4px;
-}
 
 .skills-suggest {
   margin-top: 8px;
@@ -1110,5 +951,5 @@ function formatElapsed(iso?: string): string {
   color: var(--text-tertiary);
   font-family: var(--font-mono);
 }
-.tasks-view::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+.tasks-view::-webkit-scrollbar-thumb { background: var(--border-base); border-radius: 2px; }
 </style>

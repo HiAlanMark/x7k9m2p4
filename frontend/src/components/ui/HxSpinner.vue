@@ -34,7 +34,7 @@ const sizeClass = computed(() => `size-${props.size}`)
   width: 32px;
   height: 32px;
   border: 3px solid var(--border-base);
-  border-top-color: var(--color-primary);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -53,7 +53,7 @@ const sizeClass = computed(() => `size-${props.size}`)
 
 .spinner-label {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 @keyframes spin {

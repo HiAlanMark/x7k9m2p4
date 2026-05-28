@@ -60,8 +60,8 @@ function onChange(e: Event) {
   position: relative;
   width: 44px;
   height: 26px;
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border);
+  background: var(--glass-bg);
+  border: 1px solid var(--border-base);
   border-radius: 13px;
   transition: all 0.3s var(--ease-out-expo);
   flex-shrink: 0;
@@ -105,8 +105,8 @@ function onChange(e: Event) {
 }
 
 .hixns-toggle-input:checked + .hixns-toggle-track {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  background: var(--accent);
+  border-color: var(--accent);
   box-shadow: 
     0 0 12px color-mix(in srgb, var(--accent) 50%, transparent),
     0 0 24px color-mix(in srgb, var(--accent) 30%, transparent),
@@ -159,7 +159,7 @@ function onChange(e: Event) {
 .hixns-toggle-label {
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   letter-spacing: 0.2px;
 }
 </style>
