@@ -204,16 +204,18 @@
           </div>
         </div>
 
-        <!-- Theme Toggle -->
-        <button class="theme-btn" @click="appStore.toggleTheme" :title="appStore.isDark ? $t('settings.light') : $t('settings.dark')">
-          <IconSun v-if="appStore.isDark" :size="14" />
-          <IconMoon v-else :size="14" />
-          <span>{{ appStore.isDark ? $t('settings.light') : $t('settings.dark') }}</span>
-        </button>
-        <button class="theme-btn" @click="toggleLang" :title="locale === 'zh-CN' ? 'English' : '中文'">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-          <span>{{ locale === 'zh-CN' ? 'EN' : '中' }}</span>
-        </button>
+        <!-- Theme & Lang -->
+        <div class="theme-row">
+          <button class="theme-btn" @click="appStore.toggleTheme" :title="appStore.isDark ? $t('settings.light') : $t('settings.dark')">
+            <IconSun v-if="appStore.isDark" :size="14" />
+            <IconMoon v-else :size="14" />
+            <span>{{ appStore.isDark ? $t('settings.light') : $t('settings.dark') }}</span>
+          </button>
+          <button class="theme-btn" @click="toggleLang" :title="locale === 'zh-CN' ? 'English' : '中文'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+            <span>{{ locale === 'zh-CN' ? 'EN' : '中' }}</span>
+          </button>
+        </div>
       </div>
     </aside>
     
@@ -1056,13 +1058,18 @@ function deleteFromMenu() {
   font-size: var(--text-sm);
 }
 
-/* Theme Toggle */
+/* Theme & Lang Row */
+.theme-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
 .theme-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  width: 100%;
+  flex: 1;
   padding: var(--space-2);
   background: var(--glass-base);
   border: 1px solid var(--border-base);
