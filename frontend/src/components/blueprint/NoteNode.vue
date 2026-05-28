@@ -37,7 +37,7 @@ const { t } = useI18n()
   border-radius: 10px;
   padding: 10px 14px;
   cursor: grab;
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
   overflow: hidden;
 }
 

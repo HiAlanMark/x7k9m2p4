@@ -619,7 +619,7 @@ defineExpose({ inboxPendingCount })
   background: var(--glass-bg);
   border: 1px solid var(--border-base);
   color: var(--text-tertiary);
-  transition: all var(--fast);
+  transition: background var(--fast), color var(--fast);
 }
 
 .poll-indicator.active {
@@ -649,7 +649,7 @@ defineExpose({ inboxPendingCount })
   font-family: var(--font-family);
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: background 0.12s, color 0.12s;
   user-select: none;
 }
 
@@ -761,7 +761,7 @@ defineExpose({ inboxPendingCount })
   animation: card-enter 0.4s var(--ease-back);
 }
 .inbox-item-leave-active {
-  transition: all var(--duration-250) var(--ease-expo);
+  transition: opacity var(--duration-250) var(--ease-expo), transform var(--duration-250) var(--ease-expo);
 }
 .inbox-item-leave-to {
   opacity: 0;

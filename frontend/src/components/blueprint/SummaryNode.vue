@@ -62,7 +62,7 @@ const statusClass = computed(() => {
   align-items: center;
   justify-content: center;
   cursor: grab;
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
   overflow: hidden;
 }
 

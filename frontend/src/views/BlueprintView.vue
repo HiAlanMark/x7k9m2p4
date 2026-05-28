@@ -800,7 +800,7 @@ function formatDate(dateStr: string): string {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .bp-action-btn:hover {
@@ -859,7 +859,7 @@ function formatDate(dateStr: string): string {
   border-radius: 16px;
   padding: 16px 18px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 
@@ -959,7 +959,7 @@ function formatDate(dateStr: string): string {
   background: var(--glass-bg);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .bp-card-btn:hover {
@@ -1081,7 +1081,7 @@ function formatDate(dateStr: string): string {
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .bp-toolbar-labeled {
@@ -1183,7 +1183,7 @@ function formatDate(dateStr: string): string {
   border: 1px solid var(--border-base);
   background: var(--glass-bg);
   cursor: grab;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   margin-bottom: 4px;
   color: var(--text-secondary);
   font-size: 11px;
@@ -1512,12 +1512,12 @@ function formatDate(dateStr: string): string {
   background: var(--glass-weak);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .bp-drawer-action-btn:hover {
   background: var(--accent);
-  color: #fff;
+  color: white;
   border-color: var(--accent);
 }
 
@@ -1606,7 +1606,7 @@ function formatDate(dateStr: string): string {
   font-family: inherit;
   cursor: pointer;
   text-align: left;
-  transition: all 0.12s;
+  transition: background 0.12s, color 0.12s;
 }
 
 .bp-drawer-item:hover {
@@ -1696,7 +1696,7 @@ function formatDate(dateStr: string): string {
   border: 1px solid var(--border-base);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .bp-batch-btn:hover {

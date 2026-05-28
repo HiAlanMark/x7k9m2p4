@@ -562,7 +562,7 @@ function deleteFromMenu() {
   display: flex;
   flex-direction: column;
   z-index: var(--z-surface);
-  transition: all var(--normal);
+  transition: width var(--normal), min-width var(--normal), opacity var(--normal);
 }
 
 @media (max-width: 768px) {
@@ -723,7 +723,7 @@ function deleteFromMenu() {
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), border-color var(--fast), color var(--fast);
 }
 
 .new-session-btn:hover {
@@ -840,7 +840,7 @@ function deleteFromMenu() {
   color: white;
   cursor: pointer;
   opacity: 0;
-  transition: all var(--fast);
+  transition: opacity var(--fast), background var(--fast);
 }
 
 .session-item-actions:hover .session-delete-btn {
@@ -864,7 +864,7 @@ function deleteFromMenu() {
   border-radius: var(--radius-sm);
   border: none;
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), color var(--fast);
 }
 
 .confirm-yes {
@@ -880,7 +880,7 @@ function deleteFromMenu() {
 /* Session Animations */
 .session-anim-enter-active,
 .session-anim-leave-active {
-  transition: all var(--normal);
+  transition: opacity var(--normal), transform var(--normal);
 }
 
 .session-anim-enter-from {
@@ -978,7 +978,7 @@ function deleteFromMenu() {
   font-size: var(--text-sm);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), border-color var(--fast), color var(--fast);
 }
 
 .model-dropdown-trigger:hover {
@@ -1030,7 +1030,7 @@ function deleteFromMenu() {
   font-size: var(--text-sm);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), color var(--fast);
 }
 
 .model-dropdown-item:hover {
@@ -1070,7 +1070,7 @@ function deleteFromMenu() {
   color: var(--text-secondary);
   font-size: var(--text-sm);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), border-color var(--fast), color var(--fast);
 }
 
 .theme-btn:hover {
@@ -1092,7 +1092,7 @@ function deleteFromMenu() {
 /* Page Transitions */
 .page-fade-enter-active,
 .page-fade-leave-active {
-  transition: all var(--normal);
+  transition: opacity var(--normal), transform var(--normal);
 }
 
 .page-fade-enter-from {
@@ -1138,7 +1138,7 @@ function deleteFromMenu() {
   font-size: var(--text-sm);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), color var(--fast);
 }
 
 .context-menu-item:hover {
@@ -1200,7 +1200,7 @@ function deleteFromMenu() {
   font-size: var(--text-sm);
   font-family: var(--font-sans);
   outline: none;
-  transition: all var(--fast);
+  transition: border-color var(--fast), box-shadow var(--fast);
   box-sizing: border-box;
 }
 
@@ -1227,7 +1227,7 @@ function deleteFromMenu() {
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), color var(--fast);
   border: none;
 }
 
@@ -1332,7 +1332,7 @@ function deleteFromMenu() {
   font-size: 12px;
   font-family: var(--font-family);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), border-color var(--fast);
 }
 
 .banner-retry:hover {
@@ -1386,7 +1386,7 @@ function deleteFromMenu() {
 
 .banner-slide-enter-active,
 .banner-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .banner-slide-enter-from {

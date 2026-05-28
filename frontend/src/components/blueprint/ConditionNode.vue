@@ -87,7 +87,7 @@ const statusClass = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--shadow-sm);
 }
 
@@ -131,7 +131,7 @@ const statusClass = computed(() => {
   background: color-mix(in srgb, var(--accent) 60%, transparent);
   border: 2px solid var(--border-strong);
   border-radius: 50%;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .bp-handle:hover {

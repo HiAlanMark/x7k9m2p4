@@ -405,7 +405,7 @@ function updateField(field: string, value: any) {
   border-radius: 8px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .bp-panel-close:hover {
@@ -583,7 +583,7 @@ function updateField(field: string, value: any) {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .bp-btn-danger {
@@ -614,7 +614,7 @@ function updateField(field: string, value: any) {
   background: var(--glass-bg);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   border: 1px solid transparent;
 }
 

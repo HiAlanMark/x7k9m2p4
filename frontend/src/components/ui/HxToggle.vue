@@ -63,7 +63,7 @@ function onChange(e: Event) {
   background: var(--glass-bg);
   border: 1px solid var(--border-base);
   border-radius: 13px;
-  transition: all 0.3s var(--ease-out-expo);
+  transition: background 0.3s var(--ease-out-expo), border-color 0.3s var(--ease-out-expo);
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -100,7 +100,7 @@ function onChange(e: Event) {
     var(--shadow-sm),
     0 1px 2px rgba(0, 0, 0, 0.1),
     inset 0 1px 2px rgba(255, 255, 255, 0.8);
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 1;
 }
 

@@ -869,7 +869,7 @@ onBeforeUnmount(() => {
   font-family: var(--font-family);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: background 0.12s, color 0.12s;
 }
 
 .filter-chip:hover {
@@ -988,7 +988,7 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-2xl);
   padding: var(--space-4);
   cursor: pointer;
-  transition: all var(--duration-200) var(--ease-expo);
+  transition: background var(--duration-200) var(--ease-expo), border-color var(--duration-200) var(--ease-expo), box-shadow var(--duration-200) var(--ease-expo);
   position: relative;
 }
 
@@ -1180,7 +1180,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--border-base) !important;
   color: var(--text-secondary) !important;
   box-shadow: none !important;
-  transition: all var(--duration-150) var(--ease-expo) !important;
+  transition: background var(--duration-150) var(--ease-expo), color var(--duration-150) var(--ease-expo) !important;
   position: relative;
   overflow: hidden;
 }
@@ -1236,7 +1236,7 @@ onBeforeUnmount(() => {
   font-family: var(--font-sans);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--duration-150) var(--ease-expo);
+  transition: background var(--duration-150) var(--ease-expo), color var(--duration-150) var(--ease-expo);
 }
 
 .action-btn:hover {
@@ -1302,7 +1302,7 @@ onBeforeUnmount(() => {
   font-size: 12px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: background 0.12s, color 0.12s;
 }
 
 .load-more-btn:hover:not(:disabled) {
@@ -1539,7 +1539,7 @@ onBeforeUnmount(() => {
   border-left-color: color-mix(in srgb, var(--accent) 60%, transparent) !important;
   color: var(--accent) !important;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent), 0 0 16px color-mix(in srgb, var(--accent) 20%, transparent) !important;
-  transition: all var(--duration-150) var(--ease-expo) !important;
+  transition: background var(--duration-150) var(--ease-expo), color var(--duration-150) var(--ease-expo) !important;
   position: relative;
   overflow: hidden;
 }
@@ -1647,7 +1647,7 @@ onBeforeUnmount(() => {
   font-family: var(--font-family);
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: background 0.12s, color 0.12s;
 }
 
 .main-tab:hover { color: var(--text-primary); }
@@ -1785,7 +1785,7 @@ onBeforeUnmount(() => {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: all var(--duration-150) var(--ease-expo);
+  transition: background var(--duration-150) var(--ease-expo), color var(--duration-150) var(--ease-expo);
   flex-shrink: 0;
 }
 

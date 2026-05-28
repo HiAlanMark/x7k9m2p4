@@ -170,7 +170,7 @@ const iconSvg = computed(() => iconMap[props.icon || ''] || props.icon || '')
   cursor: pointer;
   flex-shrink: 0;
   align-self: center;
-  transition: all 0.15s;
+  transition: opacity 0.15s, transform 0.15s;
 }
 .hixns-modal-close:hover {
   background: var(--bg-surface);

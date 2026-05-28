@@ -180,7 +180,7 @@ defineExpose({ show, remove, success, error, warning, info })
   border-radius: 4px;
   cursor: pointer;
   padding: 0;
-  transition: all 0.15s;
+  transition: opacity 0.15s, transform 0.15s;
 }
 .hixns-toast-close:hover {
   background: var(--glass-bg);
@@ -189,10 +189,10 @@ defineExpose({ show, remove, success, error, warning, info })
 
 /* Transitions */
 .toast-enter-active {
-  transition: all 0.3s var(--spring-bounce);
+  transition: opacity 0.3s var(--spring-bounce), transform 0.3s var(--spring-bounce);
 }
 .toast-leave-active {
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 .toast-enter-from {
   opacity: 0;

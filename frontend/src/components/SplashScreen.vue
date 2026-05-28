@@ -97,7 +97,7 @@ onMounted(() => {
 .splash-logo {
   opacity: 0;
   transform: scale(0.6);
-  transition: all 0.8s cubic-bezier(.34,1.56,.64,1);
+  transition: opacity 0.8s cubic-bezier(.34,1.56,.64,1), transform 0.8s cubic-bezier(.34,1.56,.64,1);
 }
 .splash-logo.logo-enter {
   opacity: 1;
@@ -122,7 +122,7 @@ onMounted(() => {
   gap: 4px;
   opacity: 0;
   transform: translateY(12px);
-  transition: all 0.6s cubic-bezier(.16,1,.3,1);
+  transition: opacity 0.6s cubic-bezier(.16,1,.3,1), transform 0.6s cubic-bezier(.16,1,.3,1);
 }
 .splash-brand.brand-enter {
   opacity: 1;
@@ -152,7 +152,7 @@ onMounted(() => {
   gap: 10px;
   opacity: 0;
   transform: translateY(8px);
-  transition: all 0.5s cubic-bezier(.16,1,.3,1);
+  transition: opacity 0.5s cubic-bezier(.16,1,.3,1), transform 0.5s cubic-bezier(.16,1,.3,1);
 }
 .splash-loader.loader-enter {
   opacity: 1;

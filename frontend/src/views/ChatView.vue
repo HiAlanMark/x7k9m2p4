@@ -1180,7 +1180,7 @@ function exportChat() {
   cursor: pointer;
   border-radius: 12px;
   border: 1px solid transparent;
-  transition: all 0.2s var(--ease-expo);
+  transition: background 0.2s var(--ease-expo), color 0.2s var(--ease-expo);
 }
 
 .quick-item:hover {
@@ -1210,7 +1210,7 @@ function exportChat() {
 .msg-wrapper {
   display: flex;
   margin-bottom: 24px;
-  transition: all 0.3s var(--ease-expo);
+  transition: opacity 0.3s var(--ease-expo), transform 0.3s var(--ease-expo);
 }
 
 .msg-wrapper.user {
@@ -1423,7 +1423,7 @@ function exportChat() {
   border-radius: 8px;
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
 }
 
 .action-icon:hover:not(:disabled) {
@@ -1455,7 +1455,7 @@ function exportChat() {
   cursor: pointer;
   font-size: 12px;
   color: var(--text-secondary);
-  transition: all 0.15s;
+  transition: background 0.15s;
 }
 
 .tool-header:hover {
@@ -1587,7 +1587,7 @@ function exportChat() {
   border-radius: 6px;
   padding: 3px 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .markdown-body :deep(.code-copy-btn:hover) {
@@ -2000,7 +2000,7 @@ function exportChat() {
   color: var(--warning);
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 .reply-btn:hover {
   background: color-mix(in srgb, var(--warning) 20%, transparent);
@@ -2064,7 +2064,7 @@ function exportChat() {
   align-items: center;
   justify-content: center;
   box-shadow: var(--glass-inset), var(--shadow-md);
-  transition: all 0.3s var(--ease-expo);
+  transition: opacity 0.3s var(--ease-expo), transform 0.3s var(--ease-expo);
 }
 
 .scroll-fab:hover {
@@ -2103,7 +2103,7 @@ function exportChat() {
   padding: 10px 12px 10px 16px;
   gap: 10px;
   box-shadow: var(--glass-inset), var(--shadow-lg);
-  transition: all 0.3s var(--ease-expo);
+  transition: border-color 0.3s var(--ease-expo), box-shadow 0.3s var(--ease-expo);
   min-height: 52px;
 }
 
@@ -2144,7 +2144,7 @@ function exportChat() {
   border-radius: 10px;
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.2s var(--ease-expo);
+  transition: background 0.2s var(--ease-expo), color 0.2s var(--ease-expo);
   flex-shrink: 0;
 }
 
@@ -2186,7 +2186,7 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
   border-radius: 50%;
   color: var(--primary-text);
   cursor: pointer;
-  transition: all 0.2s var(--ease-expo);
+  transition: background 0.2s var(--ease-expo), transform 0.2s var(--ease-expo), opacity 0.2s var(--ease-expo);
   flex-shrink: 0;
 }
 
@@ -2233,7 +2233,7 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
   overflow: hidden;
   text-overflow: ellipsis;
   flex-shrink: 0;
-  transition: all 0.2s var(--ease-expo);
+  transition: background 0.2s var(--ease-expo);
 }
 
 .file-chip:hover {
@@ -2322,7 +2322,7 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
   border: 1px solid var(--glass-border);
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.2s var(--ease-expo);
+  transition: background 0.2s var(--ease-expo), color 0.2s var(--ease-expo);
   font-family: 'Noto Sans SC', var(--font-sans), sans-serif;
 }
 

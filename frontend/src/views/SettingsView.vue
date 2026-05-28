@@ -2408,7 +2408,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: var(--text-sm);
   font-family: var(--font-mono);
   outline: none;
-  transition: all var(--fast);
+  transition: border-color var(--fast), box-shadow var(--fast);
 }
 
 .settings-search-input:focus {
@@ -2436,7 +2436,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: var(--text-sm);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), color var(--fast);
   text-decoration: none;
   border-left: 2px solid transparent;
   margin: 0 var(--space-2);
@@ -2495,7 +2495,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   border-radius: var(--radius-2xl);
   box-shadow: var(--glass-inset), var(--shadow-md);
   overflow: hidden;
-  transition: all var(--normal);
+  transition: background var(--normal), border-color var(--normal), box-shadow var(--normal), transform var(--normal);
 }
 
 .card:hover {
@@ -2603,7 +2603,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-family: var(--font-mono);
   color: var(--text-primary);
   background: var(--glass-base);
-  transition: all var(--fast);
+  transition: border-color var(--fast), box-shadow var(--fast);
   outline: none;
 }
 
@@ -2632,7 +2632,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   background-position: right var(--space-2) center;
   cursor: pointer;
   outline: none;
-  transition: all var(--fast);
+  transition: border-color var(--fast), box-shadow var(--fast);
 }
 
 .form-select:focus {
@@ -2664,7 +2664,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-weight: 600;
   font-family: var(--font-mono);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background var(--fast), transform var(--fast);
 }
 
 .btn-primary:hover {
@@ -2686,7 +2686,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: 12px;
   font-family: var(--font-mono);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: background var(--fast), color var(--fast);
 }
 
 .btn-secondary:hover {
@@ -2703,7 +2703,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: 11px;
   font-family: var(--font-mono);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .btn-danger-outline:hover {
@@ -3025,7 +3025,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: var(--text-sm);
   font-family: var(--font-mono);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 .page-btn:hover:not(:disabled):not(.active) {
   background: var(--glass-bg-hover, rgba(255,255,255,0.08));
@@ -3109,7 +3109,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-weight: var(--font-medium);
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), color var(--fast);
 }
 
 .provider-tab:hover {
@@ -3151,7 +3151,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-weight: var(--font-medium);
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), color var(--fast);
 }
 .gfw-auth-mode:hover {
   background: var(--glass-bg-hover);
@@ -3232,7 +3232,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   background: var(--glass-base);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast);
   position: relative;
   overflow: hidden;
 }
@@ -3314,7 +3314,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   color: var(--text-tertiary);
   font-size: var(--text-sm);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), color var(--fast);
   white-space: nowrap;
 }
 .gfw-create-key-btn:hover {
@@ -3347,7 +3347,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: var(--text-sm);
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background var(--fast), color var(--fast), border-color var(--fast);
 }
 
 .provider-chips .chip:hover {
@@ -3450,7 +3450,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-family: var(--font-mono);
   font-size: 11px;
   cursor: pointer;
-  transition: all 0.12s;
+  transition: background 0.12s, color 0.12s;
 }
 
 .preset-btn:hover {
@@ -3487,7 +3487,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: 10px;
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: background 0.12s, color 0.12s;
 }
 
 .sync-btn:hover:not(:disabled) { border-color: var(--text-secondary); color: var(--text-primary); }
@@ -3591,7 +3591,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-family: var(--font-mono);
   font-size: 11px;
   cursor: pointer;
-  transition: all 0.1s;
+  transition: background 0.1s, color 0.1s;
 }
 
 .chip:hover {
@@ -3837,7 +3837,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 1;
 }
 .gfw-quota-btn:hover:not(.active) {
@@ -4025,7 +4025,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   color: var(--text-secondary, #8b949e);
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 .profile-action-btn:hover {
   color: var(--text-primary, #e6edf3);

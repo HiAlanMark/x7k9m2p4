@@ -753,7 +753,7 @@ defineExpose({ runningCount })
 .io-content {
   font-size: 11px;
   font-family: var(--font-mono, monospace);
-  color: #E6EDF3;
+  color: var(--text-primary);
   background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
   border: 1px solid var(--border-base);
   border-radius: 6px;

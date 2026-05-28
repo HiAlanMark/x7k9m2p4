@@ -579,7 +579,7 @@ function formatElapsed(iso?: string): string {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .btn-create:hover { filter: brightness(1.1); box-shadow: 0 2px 8px color-mix(in srgb, var(--info) 25%, transparent); transform: scale(1.04); }
@@ -595,7 +595,7 @@ function formatElapsed(iso?: string): string {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-card);
   box-shadow: var(--glass-shadow-inset), var(--shadow-card);
-  transition: all 0.3s var(--spring-smooth);
+  transition: background 0.3s var(--spring-smooth), border-color 0.3s var(--spring-smooth), box-shadow 0.3s var(--spring-smooth), transform 0.3s var(--spring-smooth);
   overflow: hidden;
 }
 
@@ -642,7 +642,7 @@ function formatElapsed(iso?: string): string {
 .btn-primary {
   padding: 6px 16px; background: var(--accent); border: none; border-radius: var(--radius-btn);
   color: var(--text-inverse); font-size: 12px; font-weight: 600; font-family: var(--font-mono);
-  cursor: pointer; transition: all 0.2s var(--spring-bounce);
+  cursor: pointer; transition: background 0.2s var(--spring-bounce), transform 0.2s var(--spring-bounce);
 }
 .btn-primary:hover { filter: brightness(1.1); transform: scale(1.03); }
 .btn-primary:active { transform: scale(0.96); }
@@ -679,7 +679,7 @@ function formatElapsed(iso?: string): string {
   font-family: var(--font-family);
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: background 0.12s, color 0.12s;
 }
 
 .main-tab:hover { color: var(--text-primary); }
@@ -724,7 +724,7 @@ function formatElapsed(iso?: string): string {
   border: 1px solid var(--border-base);
   border-radius: var(--radius-2xl);
   padding: var(--space-4);
-  transition: all var(--fast);
+  transition: background var(--fast), border-color var(--fast), box-shadow var(--fast);
 }
 
 .task-card:hover {
@@ -902,7 +902,7 @@ function formatElapsed(iso?: string): string {
   width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
   background: transparent; border: 1px solid var(--border-base); border-radius: 6px;
   font-size: 11px; cursor: pointer; color: var(--text-secondary);
-  transition: all 0.12s;
+  transition: background 0.12s, color 0.12s;
 }
 .act-btn:hover { border-color: var(--text-tertiary); color: var(--text-primary); background: var(--glass-bg); }
 .act-btn.danger:hover { border-color: var(--error); color: var(--error); }
@@ -932,7 +932,7 @@ function formatElapsed(iso?: string): string {
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--fast);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
 .skill-chip:hover {
