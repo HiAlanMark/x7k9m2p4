@@ -3,7 +3,7 @@
    高级科技感毛玻璃设计系统
    ════════════════════════════════════════════════════════════ */
 
-:root {
+:root, [data-theme="dark"] {
   /* ───── Typography ───── */
   --font-sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'Noto Sans SC', 'SF Mono', Consolas, monospace;
@@ -66,6 +66,10 @@
   --success-glow: rgba(48, 209, 88, 0.3);
   --warning-glow: rgba(255, 159, 10, 0.3);
   --error-glow:   rgba(255, 69, 58, 0.3);
+  
+  /* Extended palette */
+  --purple:  #8A2BE2;
+  --yellow:  #FFD60A;
   
   /* Text hierarchy */
   --text-primary:   rgba(255, 255, 255, 0.95);
@@ -177,46 +181,95 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   Light Theme
+   Light Theme — Bright Glass IDE
+   明亮毛玻璃设计系统
    ════════════════════════════════════════════════════════════ */
 [data-theme="light"] {
-  --bg-base:     #f5f5f7;
-  --bg-surface:  #ffffff;
-  --bg-elevated: #ffffff;
-  --bg-overlay:  rgba(0, 0, 0, 0.25);
+  /* ───── Colors — Light Theme (Bright Glass) ───── */
+  --bg-base:         #f5f5f7;
+  --bg-surface:      #ffffff;
+  --bg-elevated:     #ffffff;
+  --bg-overlay:      rgba(0, 0, 0, 0.25);
   
+  /* Glass surfaces */
   --glass-weak:   rgba(255, 255, 255, 0.5);
   --glass-base:   rgba(255, 255, 255, 0.65);
   --glass-strong: rgba(255, 255, 255, 0.8);
   --glass-solid:  rgba(255, 255, 255, 0.95);
   
-  --primary:       #0066CC;
-  --primary-light: rgba(0, 102, 204, 0.06);
-  --primary-glow:  rgba(0, 102, 204, 0.25);
-  --primary-glow-sm: rgba(0, 102, 204, 0.15);
+  /* Primary — Glass Light Blue (light variant) */
+  --primary:        rgba(50, 160, 220, 0.15);
+  --primary-light:  rgba(50, 160, 220, 0.08);
+  --primary-dark:   rgba(50, 160, 220, 0.25);
+  --primary-glow:   rgba(50, 160, 220, 0.25);
+  --primary-glow-sm: rgba(50, 160, 220, 0.15);
+  --primary-text:   rgba(50, 160, 220, 0.95);
+  --primary-border: rgba(50, 160, 220, 0.45);
   
+  /* Secondary — Nebula Purple (light adjusted) */
+  --secondary:       #A855F7;
+  --secondary-light: rgba(168, 85, 247, 0.08);
+  --secondary-dark:  #7C3AED;
+  --secondary-glow:  rgba(168, 85, 247, 0.2);
+  
+  /* Accent — Cyber Cyan (light variant) */
+  --accent:       #32A0DC;
+  --accent-light: rgba(50, 160, 220, 0.08);
+  --accent-glow:  rgba(50, 160, 220, 0.2);
+  
+  /* Semantic (darker for light bg readability) */
+  --success: #28A745;
+  --warning: #E68600;
+  --error:   #DC3545;
+  --info:    #32A0DC;
+  
+  --success-glow: rgba(40, 167, 69, 0.2);
+  --warning-glow: rgba(230, 134, 0, 0.2);
+  --error-glow:   rgba(220, 53, 69, 0.2);
+  
+  /* Extended palette (light-adjusted) */
+  --purple:  #7C3AED;
+  --yellow:  #D4A017;
+  
+  /* Text hierarchy */
   --text-primary:   rgba(0, 0, 0, 0.92);
   --text-secondary: rgba(0, 0, 0, 0.6);
   --text-tertiary:  rgba(0, 0, 0, 0.38);
   --text-disabled:  rgba(0, 0, 0, 0.22);
   --text-inverse:   rgba(255, 255, 255, 0.95);
   
-  --border-base:   rgba(0, 0, 0, 0.06);
-  --border-light:  rgba(0, 0, 0, 0.1);
-  --border-strong: rgba(0, 0, 0, 0.15);
-  --border-glow:   rgba(0, 102, 204, 0.4);
-  --border-focus:  rgba(0, 102, 204, 0.5);
+  /* Borders */
+  --border-base:     rgba(0, 0, 0, 0.06);
+  --border-light:    rgba(0, 0, 0, 0.1);
+  --border-strong:   rgba(0, 0, 0, 0.15);
+  --border-glow:     rgba(50, 160, 220, 0.4);
+  --border-focus:    rgba(50, 160, 220, 0.5);
   
-  --glass-bg:     rgba(255, 255, 255, 0.65);
-  --glass-border: rgba(0, 0, 0, 0.06);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  --glass-inset:  inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  /* ───── Glassmorphism ───── */
+  --saturate: 1.2;
   
-  --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-sm:  0 2px 4px rgba(0, 0, 0, 0.06);
-  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.1);
-  --shadow-xl:  0 16px 48px rgba(0, 0, 0, 0.12);
+  --glass-bg:        rgba(255, 255, 255, 0.65);
+  --glass-bg-hover:  rgba(255, 255, 255, 0.8);
+  --glass-border:    rgba(0, 0, 0, 0.06);
+  --glass-shadow:    0 8px 32px rgba(0, 0, 0, 0.08);
+  --glass-inset:     inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  
+  /* ───── Shadows ───── */
+  --shadow-xs:   0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm:   0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md:   0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg:   0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-xl:   0 16px 48px rgba(0, 0, 0, 0.12);
+  --shadow-2xl:  0 24px 64px rgba(0, 0, 0, 0.15);
+  
+  /* Glow effects (light-appropriate) */
+  --glow-sm:  0 0 8px var(--primary-glow-sm);
+  --glow-md:  0 0 12px var(--primary-glow), 0 0 24px rgba(50, 160, 220, 0.1);
+  --glow-lg:  0 0 16px var(--primary-glow), 0 0 32px rgba(50, 160, 220, 0.15), 0 0 48px rgba(50, 160, 220, 0.08);
+  --glow-xl:  0 0 24px var(--primary-glow), 0 0 48px rgba(50, 160, 220, 0.2), 0 0 96px rgba(50, 160, 220, 0.1);
+  
+  /* Inner glow for inputs */
+  --glow-inner: inset 0 0 8px rgba(50, 160, 220, 0.04);
 }
 
 /* ════════════════════════════════════════════════════════════

@@ -41,7 +41,7 @@ const isDark = computed(() => appStore.isDark)
   height: 60vw;
   top: -20%;
   left: -10%;
-  background: radial-gradient(circle, rgba(10, 132, 255, 0.35) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 35%, transparent) 0%, transparent 70%);
   animation: float1 25s ease-in-out infinite;
 }
 
@@ -50,7 +50,7 @@ const isDark = computed(() => appStore.isDark)
   height: 50vw;
   top: 30%;
   right: -15%;
-  background: radial-gradient(circle, rgba(191, 90, 242, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--secondary) 25%, transparent) 0%, transparent 70%);
   animation: float2 30s ease-in-out infinite;
 }
 
@@ -59,7 +59,7 @@ const isDark = computed(() => appStore.isDark)
   height: 45vw;
   bottom: -10%;
   left: 20%;
-  background: radial-gradient(circle, rgba(48, 209, 88, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--success) 20%, transparent) 0%, transparent 70%);
   animation: float3 28s ease-in-out infinite;
 }
 
@@ -69,7 +69,7 @@ const isDark = computed(() => appStore.isDark)
   height: 60vw;
   top: -20%;
   left: -10%;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--info) 18%, transparent) 0%, transparent 70%);
   animation: float1 25s ease-in-out infinite;
 }
 
@@ -78,7 +78,7 @@ const isDark = computed(() => appStore.isDark)
   height: 50vw;
   top: 30%;
   right: -15%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--purple) 12%, transparent) 0%, transparent 70%);
   animation: float2 30s ease-in-out infinite;
 }
 
@@ -87,7 +87,7 @@ const isDark = computed(() => appStore.isDark)
   height: 45vw;
   bottom: -10%;
   left: 20%;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--success) 10%, transparent) 0%, transparent 70%);
   animation: float3 28s ease-in-out infinite;
 }
 

@@ -33,7 +33,7 @@ const sizeClass = computed(() => `size-${props.size}`)
 .spinner-ring {
   width: 32px;
   height: 32px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
+  border: 3px solid var(--border-base);
   border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;

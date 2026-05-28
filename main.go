@@ -406,12 +406,22 @@ func toolSystemInfo() string {
 type sseWriter struct {
 	w       http.ResponseWriter
 	flusher http.Flusher
+	noFlush bool // Wails AssetServer Handler 不实现 http.Flusher，回退到缓冲模式
 }
 
 func (s *sseWriter) send(data map[string]any) {
 	b, _ := json.Marshal(data)
 	fmt.Fprintf(s.w, "data: %s\n\n", b)
-	s.flusher.Flush()
+	if s.flusher != nil {
+		s.flusher.Flush()
+	}
+}
+
+// flushAll 用于 noFlush 模式：在 agentLoop 结束后一次性 flush 所有缓冲数据
+func (s *sseWriter) flushAll() {
+	if s.flusher != nil {
+		s.flusher.Flush()
+	}
 }
 
 // isPromptBasedModel 判断是否需要 prompt-based tool calling
@@ -780,12 +790,13 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Content   string           `json:"content"`
-		Messages  []map[string]any `json:"messages"`
-		APIBase   string           `json:"api_base"`
-		APIKey    string           `json:"api_key"`
-		Model     string           `json:"model"`
-		SessionID string           `json:"session_id"` // hermes session_id，用于会话续接
+		Content        string           `json:"content"`
+		Messages       []map[string]any `json:"messages"`
+		APIBase        string           `json:"api_base"`
+		APIKey         string           `json:"api_key"`
+		Model          string           `json:"model"`
+		SessionID      string           `json:"session_id"` // hermes session_id，用于会话续接
+		BlueprintRunID string           `json:"blueprint_run_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, `{"error":"无效的 JSON"}`, 400)
@@ -802,12 +813,14 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 
 	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "不支持 SSE", 500)
-		return
+	sse := &sseWriter{w: w, flusher: nil, noFlush: !ok}
+	if ok {
+		sse.flusher = flusher
+	} else {
+		// Wails AssetServer Handler 不实现 http.Flusher，使用缓冲模式
+		// 数据写入 ResponseWriter 但不逐条 flush，HTTP 连接关闭时一次性发送
+		log.Printf("[handleChat] ResponseWriter 不支持 Flusher，使用缓冲 SSE 模式")
 	}
-
-	sse := &sseWriter{w: w, flusher: flusher}
 
 	// === 使用内置 Agent Loop（流式输出，即时响应） ===
 	// hermes chat -Q 不支持流式输出（全部缓冲后一次性返回），导致用户等待 10-30 秒无反馈
@@ -820,11 +833,39 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 		if body.Content != "" {
 			messages = append(messages, map[string]any{"role": "user", "content": body.Content})
 		}
+		// If a blueprint run context is specified, inject its results as context
+		if body.BlueprintRunID != "" {
+			if run, err := getRun(body.BlueprintRunID); err == nil {
+				var ctxParts []string
+				ctxParts = append(ctxParts, fmt.Sprintf("[Blueprint Run Context: %s (Status: %s)]", run.ID, run.Status))
+				if run.FinalResult != nil {
+					if s, ok := run.FinalResult.(string); ok && s != "" {
+						ctxParts = append(ctxParts, "Final Result: "+s)
+					}
+				}
+				for i, nr := range run.NodeRuns {
+					if nr.Status == "succeeded" && nr.Output != nil {
+						outStr := fmt.Sprintf("%v", nr.Output)
+						if len(outStr) > 500 {
+							outStr = outStr[:500] + "..."
+						}
+						label := nr.NodeLabel
+						if label == "" {
+							label = nr.NodeID
+						}
+						ctxParts = append(ctxParts, fmt.Sprintf("Node %d (%s): %s", i+1, label, outStr))
+					}
+				}
+				if len(ctxParts) > 1 {
+					messages = append([]map[string]any{{"role": "system", "content": strings.Join(ctxParts, "\n")}}, messages...)
+				}
+			}
+		}
 		agentLoop(sse, messages, body.APIBase, body.APIKey, body.Model)
 	}
 
 	fmt.Fprint(w, "data: [DONE]\n\n")
-	flusher.Flush()
+	sse.flushAll()
 }
 
 // hermesChat 委托给 Hermes Agent 子进程处理对话
@@ -1317,6 +1358,141 @@ func handleSessionsRename(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonResponse(w, map[string]any{"ok": true, "message": strings.TrimSpace(out)})
+}
+
+// ── Chat Session API (server-side persistence) ──
+
+func handleChatSessionsList(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	if r.Method == "GET" {
+		metas, err := listChatSessions()
+		if err != nil {
+			jsonError(w, err.Error(), 500)
+			return
+		}
+		jsonResponse(w, map[string]any{"sessions": metas})
+		return
+	}
+
+	if r.Method == "POST" {
+		var body struct {
+			Title string `json:"title"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			jsonError(w, "无效的 JSON", 400)
+			return
+		}
+		if body.Title == "" {
+			body.Title = "新会话"
+		}
+		meta, err := createChatSession(body.Title)
+		if err != nil {
+			jsonError(w, err.Error(), 500)
+			return
+		}
+		jsonResponse(w, map[string]any{"session": meta})
+		return
+	}
+
+	http.Error(w, `{"error":"method not allowed"}`, 405)
+}
+
+func handleChatSessionMessages(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	if r.Method == "GET" {
+		sessionID := r.URL.Query().Get("session_id")
+		if sessionID == "" {
+			jsonError(w, "missing session_id", 400)
+			return
+		}
+		messages, err := getChatSessionMessages(sessionID)
+		if err != nil {
+			jsonError(w, err.Error(), 500)
+			return
+		}
+		jsonResponse(w, map[string]any{"messages": messages})
+		return
+	}
+
+	if r.Method == "POST" {
+		var body struct {
+			SessionID string           `json:"session_id"`
+			Messages  []map[string]any `json:"messages"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			jsonError(w, "无效的 JSON", 400)
+			return
+		}
+		if body.SessionID == "" || len(body.Messages) == 0 {
+			jsonError(w, "missing session_id or messages", 400)
+			return
+		}
+		if err := appendChatMessages(body.SessionID, body.Messages); err != nil {
+			jsonError(w, err.Error(), 500)
+			return
+		}
+		jsonResponse(w, map[string]any{"ok": true, "count": len(body.Messages)})
+		return
+	}
+
+	http.Error(w, `{"error":"method not allowed"}`, 405)
+}
+
+func handleChatSessionRename(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method != "POST" {
+		http.Error(w, `{"error":"method not allowed"}`, 405)
+		return
+	}
+
+	var body struct {
+		ID    string `json:"id"`
+		Title string `json:"title"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "无效的 JSON", 400)
+		return
+	}
+	if body.ID == "" || body.Title == "" {
+		jsonError(w, "missing id or title", 400)
+		return
+	}
+	if err := renameChatSession(body.ID, body.Title); err != nil {
+		jsonError(w, err.Error(), 500)
+		return
+	}
+	jsonResponse(w, map[string]any{"ok": true})
+}
+
+func handleChatSessionDelete(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method != "POST" {
+		http.Error(w, `{"error":"method not allowed"}`, 405)
+		return
+	}
+
+	var body struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "无效的 JSON", 400)
+		return
+	}
+	if body.ID == "" {
+		jsonError(w, "missing id", 400)
+		return
+	}
+	if err := deleteChatSession(body.ID); err != nil {
+		jsonError(w, err.Error(), 500)
+		return
+	}
+	jsonResponse(w, map[string]any{"ok": true})
 }
 
 // ============================================================
@@ -2375,11 +2551,25 @@ func main() {
 	mux.HandleFunc("/v1/agent/sessions/list", handleSessionsList)
 	mux.HandleFunc("/v1/agent/sessions/delete", handleSessionsDelete)
 	mux.HandleFunc("/v1/agent/sessions/rename", handleSessionsRename)
+	mux.HandleFunc("/v1/agent/chat-sessions", handleChatSessionsList)       // GET list, POST create
+	mux.HandleFunc("/v1/agent/chat-sessions/messages", handleChatSessionMessages) // GET messages, POST append
+	mux.HandleFunc("/v1/agent/chat-sessions/rename", handleChatSessionRename)    // POST rename
+	mux.HandleFunc("/v1/agent/chat-sessions/delete", handleChatSessionDelete)    // POST delete
 	mux.HandleFunc("/v1/agent/memory", handleMemory)
 	mux.HandleFunc("/v1/agent/memory/edit", handleMemoryEdit)
 	mux.HandleFunc("/v1/agent/tools/list", handleToolsList)
 	mux.HandleFunc("/v1/agent/tools/enable", handleToolsEnable)
 	mux.HandleFunc("/v1/agent/tools/disable", handleToolsDisable)
+
+	// ── 蓝图工作流 ──
+	mux.HandleFunc("/v1/agent/blueprints", handleBlueprintsList)       // GET list, POST create
+	mux.HandleFunc("/v1/agent/blueprints/", handleBlueprintsRouter)    // /{id} GET/PUT/DELETE, /{id}/export, /{id}/runs
+	mux.HandleFunc("/v1/agent/blueprints/import", handleBlueprintsImport) // POST import
+	mux.HandleFunc("/v1/agent/runs/", handleRunsRouter)                // /{id} GET, /{id}/cancel POST
+	mux.HandleFunc("/v1/agent/runs", handleRunsList)                   // GET list all runs
+	mux.HandleFunc("/v1/agent/inbox", handleInboxList)                 // GET
+	mux.HandleFunc("/v1/agent/inbox/create", handleInboxCreate)         // POST create proposal/notification items
+	mux.HandleFunc("/v1/agent/inbox/", handleInboxRouter)              // /{id}/approve, /{id}/reject, /{id}/reply, /{id}/read
 
 	// ── 2x 技能商店代理 ──
 	mux.HandleFunc("/v1/store/skills", handleStoreSkills)
@@ -2470,6 +2660,11 @@ func main() {
 	} else {
 		log.Printf("[Hi!XNS] Hermes Agent 未检测到，使用内置工具")
 	}
+
+	// 初始化蓝图存储
+	initBlueprintStore()
+	// 初始化聊天会话存储
+	initChatStore()
 	log.Printf("[Hi!XNS] 技能目录: %s", hermesState.SkillsDir)
 
 	tools := make([]string, len(toolDefs))

@@ -67,7 +67,7 @@ onMounted(() => {
   padding: 5px 10px;
   border-radius: 6px;
   white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-sm);
   pointer-events: none;
 }
 

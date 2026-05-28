@@ -60,12 +60,12 @@ const skeletonStyle = computed(() => ({
 .hixns-skeleton--animate .hixns-skeleton-shimmer {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  background: linear-gradient(90deg, transparent, var(--glass-weak), transparent);
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
 [data-theme="light"] .hixns-skeleton--animate .hixns-skeleton-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background: linear-gradient(90deg, transparent, var(--glass-strong), transparent);
 }
 
 @keyframes shimmer {

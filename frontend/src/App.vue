@@ -21,7 +21,7 @@
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
         </svg>
-        <span>重命名</span>
+        <span>{{ t('app.rename') }}</span>
       </div>
       <div class="context-menu-item danger" @click="deleteFromMenu">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -29,7 +29,7 @@
           <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
           <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
         </svg>
-        <span>删除</span>
+        <span>{{ t('common.delete') }}</span>
       </div>
     </div>
     <div v-if="contextMenu.visible" class="context-menu-overlay" @click="closeContextMenu"></div>
@@ -37,13 +37,13 @@
     <!-- Rename Modal (moved outside sidebar) -->
     <div v-if="renameModal.visible" class="rename-modal-overlay" @click="closeRenameModal" @contextmenu.prevent>
       <div class="rename-modal" @click.stop>
-        <h3 class="rename-title">重命名会话</h3>
+        <h3 class="rename-title">{{ t('app.renameSession') }}</h3>
         <input
           ref="renameInputRef"
           v-model="renameValue"
           type="text"
           class="rename-input"
-          placeholder="输入会话名称"
+          :placeholder="t('app.renamePlaceholder')"
           @keydown.enter="confirmRename"
           @keydown.escape="closeRenameModal"
           @contextmenu.prevent="showRenameCtxMenu"
@@ -72,23 +72,44 @@
       <nav class="sidebar-nav">
         <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
           <span class="nav-icon"><IconChat :size="18" /></span>
-          <span class="nav-label">对话</span>
+          <span class="nav-label">{{ $t('nav.chat') }}</span>
           <kbd class="nav-shortcut">1</kbd>
+        </router-link>
+        <router-link to="/blueprints" class="nav-item" :class="{ active: $route.path === '/blueprints' }">
+          <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
+          <span class="nav-label">{{ $t('nav.blueprints') }}</span>
+          <kbd class="nav-shortcut">2</kbd>
+        </router-link>
+        <router-link to="/inbox" class="nav-item" :class="{ active: $route.path === '/inbox' }">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+            <span v-if="inboxBadge > 0" class="nav-badge">{{ inboxBadge > 99 ? '99+' : inboxBadge }}</span>
+          </span>
+          <span class="nav-label">{{ $t('nav.inbox') }}</span>
+          <kbd class="nav-shortcut">3</kbd>
+        </router-link>
+        <router-link to="/history" class="nav-item" :class="{ active: $route.path === '/history' }">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span v-if="historyRunsCount > 0" class="nav-badge nav-badge--running">{{ historyRunsCount > 99 ? '99+' : historyRunsCount }}</span>
+          </span>
+          <span class="nav-label">{{ $t('nav.history') }}</span>
+          <kbd class="nav-shortcut">4</kbd>
         </router-link>
         <router-link to="/skills" class="nav-item" :class="{ active: $route.path === '/skills' }">
           <span class="nav-icon"><IconStore :size="18" /></span>
-          <span class="nav-label">技能商店</span>
-          <kbd class="nav-shortcut">2</kbd>
+          <span class="nav-label">{{ $t('nav.skills') }}</span>
+          <kbd class="nav-shortcut">5</kbd>
         </router-link>
         <router-link to="/tasks" class="nav-item" :class="{ active: $route.path === '/tasks' }">
           <span class="nav-icon"><IconStar :size="18" /></span>
-          <span class="nav-label">任务</span>
-          <kbd class="nav-shortcut">3</kbd>
+          <span class="nav-label">{{ $t('nav.tasks') }}</span>
+          <kbd class="nav-shortcut">6</kbd>
         </router-link>
         <router-link to="/settings" class="nav-item" :class="{ active: $route.path === '/settings' }">
           <span class="nav-icon"><IconSettings :size="18" /></span>
-          <span class="nav-label">设置</span>
-          <kbd class="nav-shortcut">4</kbd>
+          <span class="nav-label">{{ $t('nav.settings') }}</span>
+          <kbd class="nav-shortcut">7</kbd>
         </router-link>
       </nav>
 
@@ -184,10 +205,14 @@
         </div>
 
         <!-- Theme Toggle -->
-        <button class="theme-btn" @click="appStore.toggleTheme" :title="appStore.isDark ? '切换亮色' : '切换暗色'">
+        <button class="theme-btn" @click="appStore.toggleTheme" :title="appStore.isDark ? $t('settings.light') : $t('settings.dark')">
           <IconSun v-if="appStore.isDark" :size="14" />
           <IconMoon v-else :size="14" />
-          <span>{{ appStore.isDark ? '亮色' : '暗色' }}</span>
+          <span>{{ appStore.isDark ? $t('settings.light') : $t('settings.dark') }}</span>
+        </button>
+        <button class="theme-btn" @click="toggleLang" :title="locale === 'zh-CN' ? 'English' : '中文'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          <span>{{ locale === 'zh-CN' ? 'EN' : '中' }}</span>
         </button>
       </div>
     </aside>
@@ -235,9 +260,13 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, reactive, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { setLocale } from './i18n'
+
 import { useGfwStore } from './stores/gfw'
 import { useChatStore } from './stores/chat'
 import { useAppStore } from './stores/app'
+import { useBlueprintStore } from './stores/blueprint'
 import { storeToRefs } from 'pinia'
 import IconChat from './components/icons/IconChat.vue'
 import IconStore from './components/icons/IconStore.vue'
@@ -250,14 +279,61 @@ import SplashScreen from './components/SplashScreen.vue'
 import TitleBar from './components/TitleBar.vue'
 import VueBitsBg from './components/fx/VueBitsBg.vue'
 import { HxToast } from './components/ui'
+import HistoryView from './views/HistoryView.vue'
 
 const router = useRouter()
 const gfwStore = useGfwStore()
 const chatStore = useChatStore()
 const appStore = useAppStore()
+const blueprintStore = useBlueprintStore()
+const { t, locale } = useI18n()
 const { balance } = storeToRefs(gfwStore)
 
+// Inbox pending badge for sidebar
+const inboxBadge = computed(() =>
+  blueprintStore.inbox.filter(i => i.status === 'pending').length
+)
+
+// Running tasks badge for history sidebar
+const historyRunsCount = ref(0)
+const historyPollTimer = ref<ReturnType<typeof setInterval> | null>(null)
+
+async function fetchHistoryBadge() {
+  try {
+    const { agentJson } = await import('./api')
+    const data = await agentJson('/v1/agent/runs')
+    const allRuns: any[] = Array.isArray(data) ? data : (data?.runs || data?.data || [])
+    historyRunsCount.value = allRuns.filter((r: any) => r.status === 'running' || r.status === 'queued').length
+  } catch (e) {
+    console.warn('[App] Failed to fetch history runs:', e)
+    historyRunsCount.value = 0
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('click', closeContextMenu)
+  gfwStore.fetchBalance()
+  gfwStore.fetchModels()
+  appStore.checkConnection()
+  fetchHistoryBadge()
+  historyPollTimer.value = setInterval(fetchHistoryBadge, 5000)
+  chatStore.fetchServerSessions()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('click', closeContextMenu)
+  document.removeEventListener('click', renameCtxDismiss)
+  if (historyPollTimer.value) clearInterval(historyPollTimer.value)
+})
+
 const appVersion = __APP_VERSION__
+
+function toggleLang() {
+  const newLang = locale.value === 'zh-CN' ? 'en' : 'zh-CN'
+  setLocale(newLang as 'zh-CN' | 'en')
+}
 const showSplash = ref(true)
 const confirmDeleteId = ref('')
 const modelDropdownOpen = ref(false)
@@ -270,6 +346,7 @@ const renameInputRef = ref<HTMLInputElement | null>(null)
 
 // Rename input context menu
 const renameCtx = reactive({ show: false, x: 0, y: 0, hasSelection: false })
+const renameCtxDismiss = () => { renameCtx.show = false }
 
 function showRenameCtxMenu(e: MouseEvent) {
   const inp = renameInputRef.value
@@ -278,7 +355,7 @@ function showRenameCtxMenu(e: MouseEvent) {
   renameCtx.y = e.clientY
   renameCtx.show = true
   nextTick(() => {
-    document.addEventListener('click', () => { renameCtx.show = false }, { once: true })
+    document.addEventListener('click', renameCtxDismiss, { once: true })
   })
 }
 
@@ -370,7 +447,7 @@ async function fetchCustomModels() {
           headers['x-proxy-target'] = base
           fetchUrl = '/proxy/custom/models'
         }
-      } catch (_) {}
+      } catch (e) { console.warn('[App] URL parse failed for custom provider:', e) }
     }
     const r = await fetch(fetchUrl, { headers })
     const data = await r.json()
@@ -379,7 +456,7 @@ async function fetchCustomModels() {
       model_code: m.id || m.model || '',
       model_name: m.id || m.model || '',
     })).filter(m => m.model_code)
-  } catch { customModels.value = [] }
+  } catch (e) { console.warn('[App] Failed to fetch custom models:', e); customModels.value = [] }
   customModelsLoading.value = false
 }
 
@@ -407,19 +484,6 @@ function handleKeydown(e: KeyboardEvent) {
     case '4': router.push('/settings'); break
   }
 }
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
-  window.addEventListener('click', closeContextMenu)
-  gfwStore.fetchBalance()
-  gfwStore.fetchModels()
-  appStore.checkConnection()
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown)
-  window.removeEventListener('click', closeContextMenu)
-})
 
 // Context Menu functions
 function openContextMenu(e: MouseEvent, session: { id: string, title: string }) {
@@ -569,25 +633,25 @@ function deleteFromMenu() {
 .nav-item.active {
   background: linear-gradient(
     135deg,
-    rgba(90, 200, 250, 0.2) 0%,
-    rgba(90, 200, 250, 0.12) 100%
+    color-mix(in srgb, var(--accent) 20%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 12%, transparent) 100%
   );
-  color: rgba(90, 200, 250, 1);
-  border: 1px solid rgba(90, 200, 250, 0.3);
-  border-left-color: rgba(90, 200, 250, 0.5);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-left-color: color-mix(in srgb, var(--accent) 50%, transparent);
   box-shadow: 
-    inset 0 0 0 1px rgba(90, 200, 250, 0.1),
-    0 0 12px rgba(90, 200, 250, 0.15);
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent),
+    0 0 12px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .nav-item.active .nav-icon {
-  color: rgba(90, 200, 250, 1);
+  color: var(--accent);
 }
 
 .nav-item.active .nav-shortcut {
-  background: rgba(90, 200, 250, 0.2);
-  color: rgba(90, 200, 250, 1);
-  border-color: rgba(90, 200, 250, 0.3);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .nav-icon {
@@ -680,25 +744,25 @@ function deleteFromMenu() {
 .session-item.active {
   background: linear-gradient(
     135deg,
-    rgba(90, 200, 250, 0.25) 0%,
-    rgba(90, 200, 250, 0.15) 100%
+    color-mix(in srgb, var(--accent) 25%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 15%, transparent) 100%
   );
-  border: 1px solid rgba(90, 200, 250, 0.35);
-  border-left-color: rgba(90, 200, 250, 0.6);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-left-color: color-mix(in srgb, var(--accent) 60%, transparent);
   box-shadow: 
-    inset 0 0 0 1px rgba(90, 200, 250, 0.15),
-    0 0 16px rgba(90, 200, 250, 0.2);
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent),
+    0 0 16px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .session-item.active .session-item-title {
-  color: rgba(90, 200, 250, 1);
+  color: var(--accent);
   font-weight: var(--font-semibold);
 }
 
 .session-item.active .session-item-count {
-  background: rgba(90, 200, 250, 0.25);
-  color: rgba(90, 200, 250, 1);
-  border-color: rgba(90, 200, 250, 0.4);
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .session-item-title {
@@ -753,7 +817,7 @@ function deleteFromMenu() {
 }
 
 .session-delete-btn:hover {
-  background: #ff3b30;
+  background: var(--error);
 }
 
 .confirm-delete {
@@ -824,7 +888,7 @@ function deleteFromMenu() {
 
 .session-dot.dot-green { background: var(--success); }
 .session-dot.dot-blue { background: var(--info); }
-.session-dot.dot-yellow { background: var(--warning); box-shadow: 0 0 4px rgba(255, 159, 10, 0.5); }
+.session-dot.dot-yellow { background: var(--warning); box-shadow: 0 0 4px color-mix(in srgb, var(--warning) 50%, transparent); }
 .session-dot.dot-dim { background: var(--text-tertiary); }
 
 .session-label {
@@ -1055,7 +1119,7 @@ function deleteFromMenu() {
 }
 
 .context-menu-item.danger:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: color-mix(in srgb, var(--error) 10%, transparent);
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -1067,7 +1131,7 @@ function deleteFromMenu() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--shadow-lg);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -1209,8 +1273,8 @@ function deleteFromMenu() {
 
 .connection-banner.disconnected .banner-content {
   color: var(--error);
-  border-color: rgba(255, 69, 58, 0.15);
-  box-shadow: 0 0 8px rgba(255, 69, 58, 0.08);
+  border-color: color-mix(in srgb, var(--error) 15%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--error) 8%, transparent);
 }
 
 .connection-banner.connecting {
@@ -1220,8 +1284,8 @@ function deleteFromMenu() {
 
 .connection-banner.connecting .banner-content {
   color: var(--warning);
-  border-color: rgba(255, 159, 10, 0.15);
-  box-shadow: 0 0 8px rgba(255, 159, 10, 0.06);
+  border-color: color-mix(in srgb, var(--warning) 15%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--warning) 6%, transparent);
 }
 
 .banner-retry {

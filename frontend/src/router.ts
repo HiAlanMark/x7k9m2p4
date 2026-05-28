@@ -1,16 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import ChatView from './views/ChatView.vue'
-import SkillStoreView from './views/SkillStoreView.vue'
-import SettingsView from './views/SettingsView.vue'
-import TasksView from './views/TasksView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', component: ChatView },
-    { path: '/skills', component: SkillStoreView },
-    { path: '/tasks', component: TasksView },
-    { path: '/settings', component: SettingsView },
+    { path: '/', component: () => import('./views/ChatView.vue') },
+    { path: '/blueprints', component: () => import('./views/BlueprintView.vue') },
+    { path: '/inbox', component: () => import('./views/InboxView.vue') },
+    { path: '/history', component: () => import('./views/HistoryView.vue') },
+    { path: '/skills', component: () => import('./views/SkillStoreView.vue') },
+    { path: '/tasks', component: () => import('./views/TasksView.vue') },
+    { path: '/settings', component: () => import('./views/SettingsView.vue') },
   ],
 })
 

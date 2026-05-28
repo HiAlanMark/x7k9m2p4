@@ -106,12 +106,12 @@ onMounted(() => {
 .splash-logo-img {
   width: 80px;
   height: 80px;
-  filter: drop-shadow(0 0 30px rgba(10,132,255,0.3));
+  filter: drop-shadow(0 0 30px color-mix(in srgb, var(--accent) 30%, transparent));
   animation: logoPulse 2s ease-in-out infinite;
 }
 @keyframes logoPulse {
-  0%, 100% { filter: drop-shadow(0 0 20px rgba(10,132,255,0.2)); transform: scale(1); }
-  50% { filter: drop-shadow(0 0 40px rgba(10,132,255,0.4)); transform: scale(1.03); }
+  0%, 100% { filter: drop-shadow(0 0 20px color-mix(in srgb, var(--accent) 20%, transparent)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 40px color-mix(in srgb, var(--accent) 40%, transparent)); transform: scale(1.03); }
 }
 
 /* Brand text */
@@ -131,14 +131,14 @@ onMounted(() => {
 .splash-title {
   font-size: 28px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-inverse);
   letter-spacing: 2px;
   font-family: var(--font-family, -apple-system, sans-serif);
 }
 .splash-subtitle {
   font-size: 13px;
   font-weight: 400;
-  color: rgba(255,255,255,0.4);
+  color: var(--text-tertiary);
   letter-spacing: 4px;
   text-transform: uppercase;
   font-family: var(--font-mono, monospace);
@@ -161,14 +161,14 @@ onMounted(() => {
 .splash-loader-track {
   width: 180px;
   height: 2px;
-  background: rgba(255,255,255,0.08);
+  background: var(--glass-weak);
   border-radius: 2px;
   overflow: hidden;
 }
 .splash-loader-bar {
   height: 100%;
   width: 40%;
-  background: linear-gradient(90deg, transparent, #0A84FF, transparent);
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
   border-radius: 2px;
   animation: loaderSlide 1.5s ease-in-out infinite;
 }
@@ -178,7 +178,7 @@ onMounted(() => {
 }
 .splash-status {
   font-size: 11px;
-  color: rgba(255,255,255,0.3);
+  color: var(--text-disabled);
   font-family: var(--font-mono, monospace);
   transition: color 0.3s;
 }
@@ -188,7 +188,7 @@ onMounted(() => {
   position: absolute;
   bottom: 24px;
   font-size: 10px;
-  color: rgba(255,255,255,0.15);
+  color: var(--text-tertiary);
   font-family: var(--font-mono, monospace);
 }
 

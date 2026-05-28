@@ -80,12 +80,12 @@ function closeWindow() {
 }
 
 .tb-btn:hover {
-  background: rgba(128,128,128,0.15);
+  background: var(--glass-weak);
 }
 
 .tb-close:hover {
-  background: #E81123;
-  color: #fff;
+  background: var(--error);
+  color: var(--text-inverse);
 }
 
 .tb-btn:active {

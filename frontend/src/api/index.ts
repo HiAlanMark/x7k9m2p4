@@ -456,7 +456,7 @@ export async function configGetAll() {
 
 const AGENT_BASE = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
 
-async function agentFetch(path: string, opts?: RequestInit) {
+export async function agentFetch(path: string, opts?: RequestInit) {
   const r = await fetch(`${AGENT_BASE}${path}`, {
     ...opts,
     headers: { 'Content-Type': 'application/json', ...(opts?.headers as Record<string, string> || {}) },
@@ -468,12 +468,12 @@ async function agentFetch(path: string, opts?: RequestInit) {
   return r
 }
 
-async function agentJson(path: string, opts?: RequestInit) {
+export async function agentJson(path: string, opts?: RequestInit) {
   const r = await agentFetch(path, opts)
   return r.json()
 }
 
-async function agentPost(path: string, body: Record<string, unknown>) {
+export async function agentPost(path: string, body: Record<string, unknown>) {
   return agentJson(path, { method: 'POST', body: JSON.stringify(body) })
 }
 
@@ -584,7 +584,8 @@ export async function generateTitle(
     const data = await r.json()
     const title = data.choices?.[0]?.message?.content?.trim() || ''
     return title.replace(/["""''「」『』]/g, '').substring(0, 30)
-  } catch {
+  } catch (e) {
+    console.warn('[API] generateTitle failed:', e)
     return ''
   }
 }
@@ -603,7 +604,7 @@ export async function browserChat(
   onChunk: (text: string) => void,
   onDone: (fullText: string, usage: Record<string, number>) => void,
   onError: (err: string) => void,
-  customConfig?: { baseUrl: string; apiKey: string; model: string },
+  customConfig?: { baseUrl: string; apiKey: string; model: string; blueprint_run_id?: string },
   onToolCall?: (tool: string, args: Record<string, unknown>) => void,
   onToolResult?: (tool: string, result: string, duration: number) => void,
   history?: Array<{ role: string; content: string }>,
@@ -628,7 +629,8 @@ async function checkAgentHealth(agentUrl: string): Promise<boolean> {
   try {
     const r = await fetch(`${agentUrl}/v1/agent/health`, { signal: AbortSignal.timeout(1500) })
     return r.ok
-  } catch {
+  } catch (e) {
+    console.warn('[API] Agent health check failed:', e)
     return false
   }
 }
@@ -656,7 +658,8 @@ export async function getAgentStatus(agentUrl: string): Promise<AgentStatus | nu
     const r = await fetch(`${agentUrl}/v1/agent/status`, { signal: AbortSignal.timeout(3000) })
     if (!r.ok) return null
     return await r.json()
-  } catch {
+  } catch (e) {
+    console.warn('[API] getAgentStatus failed:', e)
     return null
   }
 }
@@ -667,7 +670,7 @@ async function agentChat(
   onChunk: (text: string) => void,
   onDone: (fullText: string, usage: Record<string, number>) => void,
   onError: (err: string) => void,
-  customConfig?: { baseUrl: string; apiKey: string; model: string },
+  customConfig?: { baseUrl: string; apiKey: string; model: string; blueprint_run_id?: string },
   onToolCall?: (tool: string, args: Record<string, unknown>) => void,
   onToolResult?: (tool: string, result: string, duration: number) => void,
   agentUrl?: string,
@@ -705,6 +708,7 @@ async function agentChat(
         model: activeModel,
         messages: history || [],
         session_id: sessionId || '',
+        blueprint_run_id: customConfig?.blueprint_run_id || undefined,
       }),
     })
 

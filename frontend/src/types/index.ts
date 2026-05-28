@@ -245,6 +245,8 @@ export interface ChatMessage {
   token_usage?: Record<string, number>
   model?: string
   duration_ms?: number
+  ttft_ms?: number           // time to first token
+  tool_time_ms?: number     // total time in tool calls
 }
 
 export interface ToolCallInfo {
@@ -261,4 +263,5 @@ export interface ChatSession {
   createdAt: string
   updatedAt: string
   hermesSessionId?: string  // hermes agent 会话 ID，用于上下文续接
+  serverId?: string         // server-side session ID for persistence
 }

@@ -70,8 +70,8 @@ function onChange(e: Event) {
 
 /* 亮色主题 - 轨道默认蓝色 */
 [data-theme="light"] .hixns-toggle-track {
-  background: rgba(10, 132, 255, 0.1);
-  border-color: rgba(10, 132, 255, 0.3);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .hixns-toggle-track::before {
@@ -80,9 +80,9 @@ function onChange(e: Event) {
   inset: 0;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.1) 0%,
+    var(--glass-bg-hover) 0%,
     transparent 50%,
-    rgba(0, 0, 0, 0.05) 100%
+    var(--shadow-sm) 100%
   );
   border-radius: 13px;
   pointer-events: none;
@@ -94,10 +94,10 @@ function onChange(e: Event) {
   left: 3px;
   width: 18px;
   height: 18px;
-  background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+  background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface) 100%);
   border-radius: 50%;
   box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.15),
+    var(--shadow-sm),
     0 1px 2px rgba(0, 0, 0, 0.1),
     inset 0 1px 2px rgba(255, 255, 255, 0.8);
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -108,41 +108,41 @@ function onChange(e: Event) {
   background: var(--color-primary);
   border-color: var(--color-primary);
   box-shadow: 
-    0 0 12px rgba(10, 132, 255, 0.5),
-    0 0 24px rgba(10, 132, 255, 0.3),
-    inset 0 0 8px rgba(255, 255, 255, 0.1);
+    0 0 12px color-mix(in srgb, var(--accent) 50%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 30%, transparent),
+    inset 0 0 8px var(--glass-bg-hover);
 }
 
 /* 亮色主题 - 选中状态蓝色 */
 [data-theme="light"] .hixns-toggle-input:checked + .hixns-toggle-track {
-  background: rgba(10, 132, 255, 0.9);
-  border-color: rgba(10, 132, 255, 1);
+  background: color-mix(in srgb, var(--accent) 90%, transparent);
+  border-color: var(--accent);
   box-shadow: 
-    0 0 12px rgba(10, 132, 255, 0.4),
-    0 0 24px rgba(10, 132, 255, 0.2),
+    0 0 12px color-mix(in srgb, var(--accent) 40%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 20%, transparent),
     inset 0 0 8px rgba(255, 255, 255, 0.3);
 }
 
 .hixns-toggle-input:checked + .hixns-toggle-track .hixns-toggle-thumb {
   left: 21px;
-  background: linear-gradient(135deg, #ffffff 0%, #e8f4ff 100%);
+  background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface) 100%);
   box-shadow: 
-    0 2px 6px rgba(10, 132, 255, 0.4),
-    0 1px 3px rgba(10, 132, 255, 0.2),
+    0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent),
+    0 1px 3px color-mix(in srgb, var(--accent) 20%, transparent),
     inset 0 1px 2px rgba(255, 255, 255, 0.9);
 }
 
 /* 亮色主题 - 选中时滑块带蓝色 */
 [data-theme="light"] .hixns-toggle-input:checked + .hixns-toggle-track .hixns-toggle-thumb {
-  background: linear-gradient(135deg, rgba(10, 132, 255, 1) 0%, rgba(90, 200, 250, 1) 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, var(--bg-surface)) 100%);
   box-shadow: 
-    0 2px 6px rgba(10, 132, 255, 0.5),
-    0 1px 3px rgba(10, 132, 255, 0.3),
+    0 2px 6px color-mix(in srgb, var(--accent) 50%, transparent),
+    0 1px 3px color-mix(in srgb, var(--accent) 30%, transparent),
     inset 0 1px 2px rgba(255, 255, 255, 0.4);
 }
 
 .hixns-toggle:hover .hixns-toggle-track {
-  border-color: rgba(10, 132, 255, 0.4);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .hixns-toggle:hover .hixns-toggle-thumb {
@@ -151,9 +151,9 @@ function onChange(e: Event) {
 
 .hixns-toggle-input:checked + .hixns-toggle-track:hover {
   box-shadow: 
-    0 0 16px rgba(10, 132, 255, 0.6),
-    0 0 28px rgba(10, 132, 255, 0.4),
-    inset 0 0 10px rgba(255, 255, 255, 0.15);
+    0 0 16px color-mix(in srgb, var(--accent) 60%, transparent),
+    0 0 28px color-mix(in srgb, var(--accent) 40%, transparent),
+    inset 0 0 10px var(--glass-bg-hover);
 }
 
 .hixns-toggle-label {

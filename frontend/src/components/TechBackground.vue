@@ -98,9 +98,9 @@ onUnmounted(() => {
 .grid-grid {
   position: absolute;
   inset: -50%;
-  background-image: 
-    linear-gradient(rgba(10, 132, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(10, 132, 255, 0.03) 1px, transparent 1px);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--accent) 3%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 3%, transparent) 1px, transparent 1px);
   background-size: 60px 60px;
   background-position: 0 0;
   animation: gridMove 20s linear infinite;
@@ -111,9 +111,9 @@ onUnmounted(() => {
 .grid-grid-2 {
   animation: gridMove 25s linear infinite reverse;
   opacity: 0.5;
-  background-image: 
-    linear-gradient(rgba(138, 43, 226, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(138, 43, 226, 0.02) 1px, transparent 1px);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--purple) 2%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--purple) 2%, transparent) 1px, transparent 1px);
 }
 
 @keyframes gridMove {
@@ -138,14 +138,14 @@ onUnmounted(() => {
   border-radius: 50%;
   background: radial-gradient(
     circle at 30% 30%,
-    rgba(10, 132, 255, 0.8),
-    rgba(10, 132, 255, 0.2) 50%,
+    color-mix(in srgb, var(--accent) 80%, transparent),
+    color-mix(in srgb, var(--accent) 20%, transparent) 50%,
     transparent 70%
   );
-  box-shadow: 
-    0 0 10px rgba(10, 132, 255, 0.5),
-    0 0 20px rgba(10, 132, 255, 0.3),
-    0 0 30px rgba(10, 132, 255, 0.1);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--accent) 50%, transparent),
+    0 0 20px color-mix(in srgb, var(--accent) 30%, transparent),
+    0 0 30px color-mix(in srgb, var(--accent) 10%, transparent);
   animation: particleFloat linear infinite;
   opacity: 0;
 }
@@ -188,8 +188,8 @@ onUnmounted(() => {
   height: 400px;
   background: radial-gradient(
     circle,
-    rgba(10, 132, 255, 0.4) 0%,
-    rgba(10, 132, 255, 0.1) 50%,
+    color-mix(in srgb, var(--accent) 40%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 10%, transparent) 50%,
     transparent 70%
   );
   top: -100px;
@@ -202,8 +202,8 @@ onUnmounted(() => {
   height: 300px;
   background: radial-gradient(
     circle,
-    rgba(138, 43, 226, 0.3) 0%,
-    rgba(138, 43, 226, 0.1) 50%,
+    color-mix(in srgb, var(--purple) 30%, transparent) 0%,
+    color-mix(in srgb, var(--purple) 10%, transparent) 50%,
     transparent 70%
   );
   bottom: -50px;
@@ -216,8 +216,8 @@ onUnmounted(() => {
   height: 250px;
   background: radial-gradient(
     circle,
-    rgba(0, 212, 255, 0.25) 0%,
-    rgba(0, 212, 255, 0.08) 50%,
+    color-mix(in srgb, var(--accent) 25%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 8%, transparent) 50%,
     transparent 70%
   );
   top: 50%;
@@ -250,7 +250,7 @@ onUnmounted(() => {
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    rgba(10, 132, 255, 0.02) 50%,
+    color-mix(in srgb, var(--accent) 2%, transparent) 50%,
     transparent 100%
   );
   background-size: 100% 4px;

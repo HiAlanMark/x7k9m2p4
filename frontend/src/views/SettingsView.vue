@@ -3,12 +3,12 @@
     <div class="settings-layout">
       <!-- Left navigation -->
       <aside class="settings-nav">
-        <div class="settings-nav-title">设置</div>
+        <div class="settings-nav-title">{{ t('settings.title') }}</div>
         <div class="settings-search-box">
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="搜索设置项..."
+            :placeholder="t('settings.search')"
             class="settings-search-input"
           />
         </div>
@@ -26,21 +26,21 @@
       <div class="settings-content">
         <!-- Account section -->
         <div v-if="activeSection === 'account'" class="content-section">
-          <h2 class="section-title">gfw.net 账户</h2>
+          <h2 class="section-title">{{ t('settings.account') }}</h2>
 
           <div v-if="!isLoggedIn">
             <HxCard>
               <div class="form-row">
-                <label class="form-label">邮箱</label>
-                <HxInput v-model="email" type="email" placeholder="请输入邮箱" />
+                <label class="form-label">{{ t('settings.email') }}</label>
+                <HxInput v-model="email" type="email" :placeholder="t('settings.email')" />
               </div>
               <div class="form-row">
-                <label class="form-label">密码</label>
-                <HxInput v-model="password" type="password" placeholder="请输入密码" />
+                <label class="form-label">{{ t('settings.password') }}</label>
+                <HxInput v-model="password" type="password" :placeholder="t('settings.password')" />
               </div>
               <div class="form-actions">
                 <HxButton variant="primary" :loading="loading" @click="handleLogin">
-                  {{ loading ? '登录中...' : '登录' }}
+                  {{ loading ? t('settings.loggingIn') : t('settings.login') }}
                 </HxButton>
               </div>
             </HxCard>
@@ -56,15 +56,15 @@
                   <div class="user-name">{{ user?.nickname || user?.email }}</div>
                   <div class="user-group">{{ userInfo?.group_name || 'Standard' }}</div>
                 </div>
-                <HxButton variant="danger" size="sm" @click="logout">登出</HxButton>
+                <HxButton variant="danger" size="sm" @click="logout">{{ t('settings.logout') }}</HxButton>
               </div>
               <div class="stats-grid">
                 <div class="stat-item">
-                  <span class="stat-label">余额</span>
-                  <span class="stat-value primary">{{ balance?.toFixed(2) }} G币</span>
+                  <span class="stat-label">{{ t('app.balance') }}</span>
+                  <span class="stat-value primary">{{ balance?.toFixed(2) }} {{ t('settings.gcoinUnit') }}</span>
                 </div>
                 <div class="stat-item">
-                  <span class="stat-label">用户组</span>
+                  <span class="stat-label">{{ t('settings.userGroup') }}</span>
                   <span class="stat-value">{{ userInfo?.group_name || '-' }}</span>
                 </div>
               </div>
@@ -74,7 +74,7 @@
 
         <!-- Model settings section -->
         <div v-if="activeSection === 'model'" class="content-section">
-          <h2 class="section-title">模型设置</h2>
+          <h2 class="section-title">{{ t('settings.modelSettings') }}</h2>
 
           <!-- Provider 选择 -->
           <HxCard style="margin-bottom: 20px;">
@@ -84,14 +84,14 @@
                 @click="providerMode = 'gfw'; chatStore.setProviderMode('gfw')"
               >
                 <img class="provider-logo" src="../assets/gfw-logo.svg" alt="GFW.NET" />
-                <span>GFW.NET 内置</span>
+                <span>{{ t('settings.gfwProvider') }}</span>
               </button>
               <button
                 :class="['provider-tab', { active: providerMode === 'custom' }]"
                 @click="providerMode = 'custom'; chatStore.setProviderMode('custom')"
               >
                 <svg class="provider-logo" viewBox="0 0 1024 1024"><path d="M0 0m256 0l512 0q256 0 256 256l0 512q0 256-256 256l-512 0q-256 0-256-256l0-512q0-256 256-256Z" fill="#176AF0"></path><path d="M837.76 639.808a112.512 112.512 0 0 1-14.592 55.36 109.696 109.696 0 0 1-39.744 40.512l-217.152 128a106.816 106.816 0 0 1-108.8 0l-217.088-128a109.632 109.632 0 0 1-39.744-40.512 112.512 112.512 0 0 1-14.592-55.36v-256a112.512 112.512 0 0 1 14.528-55.36 109.696 109.696 0 0 1 39.744-40.512l217.152-128a106.816 106.816 0 0 1 108.8 0l217.216 128a109.696 109.696 0 0 1 39.744 40.576 112.448 112.448 0 0 1 14.528 55.36v256z m-157.44-198.912a36.224 36.224 0 0 0-22.592-15.936 35.584 35.584 0 0 0-27.264 4.992l-125.76 82.56-124.992-82.432-3.712-2.112a35.52 35.52 0 0 0-26.624-2.24 36.352 36.352 0 0 0-20.864 17.088 37.568 37.568 0 0 0-3.648 27.008 36.928 36.928 0 0 0 15.552 22.208l144.512 95.296 4.096 2.304a35.584 35.584 0 0 0 35.136-2.304l145.344-95.424 3.456-2.496a37.504 37.504 0 0 0 7.424-48.512z" fill="#FFFFFF"></path></svg>
-                <span>自定义提供商</span>
+                <span>{{ t('settings.customProvider') }}</span>
               </button>
             </div>
           </HxCard>
@@ -99,12 +99,12 @@
           <!-- GFW.NET 模式 -->
           <HxCard v-if="providerMode === 'gfw'">
             <template #header>
-              <span>内置模型服务</span>
+              <span>{{ t('settings.builtInModelService') }}</span>
             </template>
 
             <!-- 认证方式选择 -->
             <div class="form-row">
-              <label class="form-label">认证方式</label>
+              <label class="form-label">{{ t('settings.authMethod') }}</label>
               <div class="gfw-auth-modes">
                 <button
                   :class="['gfw-auth-mode', { active: gfwAuthMode === 'account' }]"
@@ -114,7 +114,7 @@
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                     <circle cx="12" cy="7" r="4"></circle>
                   </svg>
-                  <span>账户登录</span>
+                  <span>{{ t('settings.accountLogin') }}</span>
                 </button>
                 <button
                   :class="['gfw-auth-mode', { active: gfwAuthMode === 'manual' }]"
@@ -124,7 +124,7 @@
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                   </svg>
-                  <span>手动输入 Key</span>
+                  <span>{{ t('settings.manualKeyInput') }}</span>
                 </button>
               </div>
             </div>
@@ -133,16 +133,16 @@
             <template v-if="gfwAuthMode === 'account'">
               <div v-if="!isLoggedIn">
                 <div class="form-row">
-                  <label class="form-label">邮箱</label>
-                  <HxInput v-model="gfwAccountEmail" type="email" placeholder="请输入邮箱" />
+                  <label class="form-label">{{ t('settings.email') }}</label>
+                  <HxInput v-model="gfwAccountEmail" type="email" :placeholder="t('settings.email')" />
                 </div>
                 <div class="form-row">
-                  <label class="form-label">密码</label>
-                  <HxInput v-model="gfwAccountPassword" type="password" placeholder="请输入密码" @keydown.enter="handleGfwAccountLogin" />
+                  <label class="form-label">{{ t('settings.password') }}</label>
+                  <HxInput v-model="gfwAccountPassword" type="password" :placeholder="t('settings.password')" @keydown.enter="handleGfwAccountLogin" />
                 </div>
                 <div class="form-actions">
                   <HxButton variant="primary" :loading="gfwAccountLoggingIn" @click="handleGfwAccountLogin">
-                    {{ gfwAccountLoggingIn ? '登录中...' : '登录' }}
+                    {{ gfwAccountLoggingIn ? t('settings.loggingIn') : t('settings.login') }}
                   </HxButton>
                 </div>
               </div>
@@ -156,9 +156,9 @@
                     </div>
                     <div class="gfw-user-detail">
                       <div class="gfw-user-name">{{ user?.nickname || user?.email }}</div>
-                      <div class="gfw-user-balance">{{ balance?.toFixed(2) }} G币</div>
+                      <div class="gfw-user-balance">{{ balance?.toFixed(2) }} {{ t('settings.gcoinUnit') }}</div>
                     </div>
-                    <HxButton variant="ghost" size="sm" @click="gfwStore.logout(); gfwAccountEmail=''; gfwAccountPassword=''; gfwSelectedKeyId=''">登出</HxButton>
+                    <HxButton variant="ghost" size="sm" @click="gfwStore.logout(); gfwAccountEmail=''; gfwAccountPassword=''; gfwSelectedKeyId=''">{{ t('settings.logout') }}</HxButton>
                   </div>
                 </div>
 
@@ -172,10 +172,10 @@
                           <line x1="12" y1="5" x2="12" y2="19"></line>
                           <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
-                        创建新 Key
+                        {{ t('settings.createNewKey') }}
                       </button>
                       <HxButton variant="ghost" size="sm" :loading="gfwKeysLoading" @click="gfwStore.fetchApiKeys()">
-                        {{ gfwKeysLoading ? '刷新中...' : '刷新' }}
+                        {{ gfwKeysLoading ? t('settings.refreshing') : t('settings.refresh') }}
                       </HxButton>
                     </div>
                   </div>
@@ -190,10 +190,10 @@
                         <span class="gfw-key-name">{{ key.name }}</span>
                         <span class="gfw-key-prefix">{{ key.key_prefix }}****</span>
                       </div>
-                      <span class="gfw-key-quota">{{ key.gcoin_limit ? key.gcoin_limit + 'G' : '无限额' }}</span>
+                      <span class="gfw-key-quota">{{ key.gcoin_limit ? key.gcoin_limit + 'G' : t('settings.noQuota') }}</span>
                     </button>
                   </div>
-                  <p v-else class="form-hint">暂无 API Key，点击创建</p>
+                  <p v-else class="form-hint">{{ t('settings.noApiKey') }}</p>
                 </div>
               </div>
             </template>
@@ -203,7 +203,7 @@
               <div class="form-row">
                 <label class="form-label">GFW API Key</label>
                 <HxInput v-model="gfwApiKey" type="password" placeholder="gfw-..." />
-                <p class="form-hint">在 gfw.net 控制台获取 API Key</p>
+                <p class="form-hint">{{ t('settings.getApiKeyHint') }}</p>
               </div>
             </template>
 
@@ -211,16 +211,16 @@
             <template v-if="gfwAuthMode === 'manual' || isLoggedIn">
               <div class="form-row">
                 <label class="form-label">
-                  提供商
+                  {{ t('settings.provider') }}
                   <HxButton variant="ghost" size="sm" :loading="gfwSyncing" @click="syncGfwModels" style="margin-left:8px;">
-                    {{ gfwSyncing ? '同步中...' : '同步' }}
+                    {{ gfwSyncing ? t('settings.syncing') : t('settings.sync') }}
                   </HxButton>
                 </label>
                 <div v-if="gfwProviders.length > 0" class="provider-chips">
                   <button
                     :class="['chip', { active: !selectedProvider }]"
                     @click="selectedProvider = ''"
-                  >全部</button>
+                  >{{ t('settings.all') }}</button>
                   <button
                     v-for="p in gfwProviders"
                     :key="p"
@@ -228,17 +228,17 @@
                     @click="selectedProvider = p"
                   >{{ p }} <span class="chip-count">{{ providerModelCount(p) }}</span></button>
                 </div>
-                <p v-else class="form-hint">点击「同步」获取提供商列表</p>
+                <p v-else class="form-hint">{{ t('settings.clickSyncHint') }}</p>
               </div>
 
               <div class="form-row">
-                <label class="form-label">模型</label>
+                <label class="form-label">{{ t('settings.model') }}</label>
                 <HxSelect
                   v-model="selectedModel"
                   v-if="filteredGfwModels.length > 0"
                   :options="gfwModelOptions"
                 />
-                <HxInput v-else v-model="selectedModel" placeholder="输入模型名称" />
+                <HxInput v-else v-model="selectedModel" :placeholder="t('settings.inputModelName')" />
               </div>
 
               <!-- 当前选中模型的详情 -->
@@ -261,17 +261,17 @@
                 </div>
               </div>
             </template>
-            <p v-else class="form-hint" style="text-align:center;padding:12px 0;">请先登录后再选择模型</p>
+            <p v-else class="form-hint" style="text-align:center;padding:12px 0;">{{ t('settings.pleaseLoginFirst') }}</p>
           </HxCard>
 
           <!-- 自定义提供商模式 -->
           <HxCard v-if="providerMode === 'custom'">
             <template #header>
-              <span>自定义 API 提供商</span>
+              <span>{{ t('settings.customApiProvider') }}</span>
             </template>
             <!-- 上游选择 -->
             <div class="form-row">
-              <label class="form-label">上游提供商</label>
+              <label class="form-label">{{ t('settings.upstreamProvider') }}</label>
               <div class="provider-chips">
                 <button
                   v-for="preset in providerPresets"
@@ -286,33 +286,33 @@
                 <button
                   :class="['chip', { active: customUpstream === '__manual__' }]"
                   @click="customUpstream = '__manual__'"
-                  title="手动输入自定义提供商"
+                  :title="t('settings.manualInputCustomProvider')"
                 >
                   <span class="chip-icon">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                   </span>
-                  <span class="chip-name">手动</span>
+                  <span class="chip-name">{{ t('settings.manual') }}</span>
                 </button>
               </div>
             </div>
 
             <div class="form-row" v-if="customUpstream === '__manual__'">
-              <label class="form-label">提供商名称</label>
+              <label class="form-label">{{ t('settings.providerName') }}</label>
               <HxInput v-model="customName" placeholder="my-provider" />
             </div>
             <div class="form-row">
-              <label class="form-label">API Base URL</label>
+              <label class="form-label">{{ t('settings.baseUrl') }}</label>
               <HxInput v-model="customBaseUrl" placeholder="https://api.openai.com/v1" :disabled="customUpstream !== '__manual__' && !hasPlaceholder(customBaseUrl)" />
               <p v-if="hasPlaceholder(customBaseUrl)" class="form-hint" style="color: var(--color-warning); margin-top: 4px;">
-                ⚠️ 请将 <code>{resource-name}</code> 替换为您的 Azure OpenAI 资源名称，例如：<code>https://my-resource.openai.azure.com/openai</code>
+                {{ t('settings.customUpstreamHint', { resource: '{resource-name}' }) }}
               </p>
             </div>
             <div class="form-row">
-              <label class="form-label">API Key</label>
+              <label class="form-label">{{ t('settings.modelApiKey') }}</label>
               <div style="display: flex; gap: 8px;">
                 <HxInput v-model="customApiKey" type="password" placeholder="sk-..." style="flex: 1;" />
                 <HxButton variant="secondary" :loading="testing" @click="testConnection" style="white-space: nowrap;">
-                  {{ testing ? '测试中...' : '测试连接' }}
+                  {{ testing ? t('settings.testing') : t('settings.testConnection') }}
                 </HxButton>
               </div>
             </div>
@@ -328,9 +328,9 @@
             <template v-if="apiVerified">
               <div class="form-row" style="margin-top: 16px; border-top: 1px solid var(--color-border); padding-top: 16px;">
                 <label class="form-label">
-                  模型
+                  {{ t('settings.model') }}
                   <HxButton variant="ghost" size="sm" :loading="upstreamModelsSyncing" @click="fetchUpstreamModels" style="margin-left:8px;">
-                    {{ upstreamModelsSyncing ? '获取中...' : '刷新' }}
+                    {{ upstreamModelsSyncing ? t('settings.fetching') : t('settings.refresh') }}
                   </HxButton>
                 </label>
                 <HxSelect 
@@ -339,51 +339,51 @@
                   :options="upstreamModelOptions"
                   @change="onModelChange" 
                 />
-                <HxInput v-else v-model="customModel" placeholder="输入模型名称" />
+                <HxInput v-else v-model="customModel" :placeholder="t('settings.inputModelName')" />
                 <p v-if="upstreamModelsError" class="form-hint" style="color: var(--color-error);">{{ upstreamModelsError }}</p>
-                <p v-else-if="upstreamModels.length > 0" class="form-hint" style="color: var(--color-success); margin-top: 4px;">✓ 已获取 {{ upstreamModels.length }} 个模型，请选择</p>
-                <p v-else-if="apiVerified" class="form-hint" style="color: var(--color-primary); margin-top: 4px;">✓ API 验证成功，已加载预设模型</p>
+                <p v-else-if="upstreamModels.length > 0" class="form-hint" style="color: var(--color-success); margin-top: 4px;">{{ t('settings.modelsFetched', { n: upstreamModels.length }) }}</p>
+                <p v-else-if="apiVerified" class="form-hint" style="color: var(--color-primary); margin-top: 4px;">{{ t('settings.apiVerified') }}</p>
               </div>
               <div class="form-row">
-                <label class="form-label">上下文长度</label>
+                <label class="form-label">{{ t('settings.contextLength') }}</label>
                 <HxInput v-model.number="contextLength" type="number" style="max-width: 200px;" :min="512" :max="128000" :step="512" />
-                <p class="form-hint">根据所选模型自动设置，可手动调整</p>
+                <p class="form-hint">{{ t('settings.contextLengthHint') }}</p>
               </div>
             </template>
           </HxCard>
 
           <div class="form-actions" style="margin-top: 20px;">
-            <HxButton variant="primary" @click="saveModelSettings">保存设置</HxButton>
-            <span v-if="saveSuccess" class="save-feedback">设置已保存</span>
+            <HxButton variant="primary" @click="saveModelSettings">{{ t('settings.saveSettings') }}</HxButton>
+            <span v-if="saveSuccess" class="save-feedback">{{ t('settings.settingsSaved') }}</span>
             <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
-              <span class="save-dot blue"></span> 已编辑未保存
+              <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
             </span>
             <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
-              <span class="save-dot green"></span> 正在自动保存
+              <span class="save-dot green"></span> {{ t('settings.autoSaving') }}
             </span>
             <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              已保存
+              {{ t('settings.saved') }}
             </span>
           </div>
         </div>
 
         <!-- Usage section -->
         <div v-if="activeSection === 'usage'" class="content-section">
-          <h2 class="section-title">用量统计</h2>
+          <h2 class="section-title">{{ t('settings.usageStats') }}</h2>
 
           <!-- Summary cards -->
           <div class="usage-summary">
             <div class="usage-card">
-              <div class="usage-card-label">总请求</div>
+              <div class="usage-card-label">{{ t('settings.totalRequests') }}</div>
               <div class="usage-card-value">{{ usageTotal.requests.toLocaleString() }}</div>
             </div>
             <div class="usage-card">
-              <div class="usage-card-label">输入 Tokens</div>
+              <div class="usage-card-label">{{ t('settings.inputTokens') }}</div>
               <div class="usage-card-value">{{ formatNum(usageTotal.inputTokens) }}</div>
             </div>
             <div class="usage-card">
-              <div class="usage-card-label">输出 Tokens</div>
+              <div class="usage-card-label">{{ t('settings.outputTokens') }}</div>
               <div class="usage-card-value">{{ formatNum(usageTotal.outputTokens) }}</div>
             </div>
           </div>
@@ -391,7 +391,7 @@
           <!-- Daily chart: bar chart -->
           <HxCard style="margin-top: 16px;">
             <template #header>
-              <span>Tokens 用量趋势（近 {{ dailyUsage.length }} 天）</span>
+              <span>{{ t('settings.tokenTrend', { n: dailyUsage.length }) }}</span>
             </template>
             <div class="bar-chart">
               <div class="bar-chart__y-labels">
@@ -417,24 +417,24 @@
               </div>
             </div>
             <div class="bar-legend">
-              <span class="bar-legend__item"><span class="bar-legend__dot bar-legend__dot--input"></span> 输入</span>
-              <span class="bar-legend__item"><span class="bar-legend__dot bar-legend__dot--output"></span> 输出</span>
+              <span class="bar-legend__item"><span class="bar-legend__dot bar-legend__dot--input"></span> {{ t('settings.input') }}</span>
+              <span class="bar-legend__item"><span class="bar-legend__dot bar-legend__dot--output"></span> {{ t('settings.output') }}</span>
             </div>
           </HxCard>
 
           <!-- Per-model breakdown from chat history -->
           <HxCard style="margin-top: 16px;">
             <template #header>
-              <span>各模型用量</span>
+              <span>{{ t('settings.modelUsage') }}</span>
             </template>
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>模型</th>
-                  <th>请求数</th>
-                  <th>输入 Tokens</th>
-                  <th>输出 Tokens</th>
-                  <th>合计</th>
+                  <th>{{ t('settings.modelCol') }}</th>
+                  <th>{{ t('settings.requestsCol') }}</th>
+                  <th>{{ t('settings.inputTokensCol') }}</th>
+                  <th>{{ t('settings.outputTokensCol') }}</th>
+                  <th>{{ t('settings.totalCol') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -446,7 +446,7 @@
                   <td class="cell-cost">{{ formatNum(m.total) }}</td>
                 </tr>
                 <tr v-if="modelStats.length === 0">
-                  <td colspan="5" class="empty-cell">暂无对话记录</td>
+                  <td colspan="5" class="empty-cell">{{ t('settings.noChatRecords') }}</td>
                 </tr>
               </tbody>
             </table>
@@ -456,19 +456,19 @@
           <HxCard style="margin-top: 16px;">
             <template #header>
               <div class="card-header-row">
-                <span>近期请求记录</span>
-                <span class="page-info">共 {{ requestLog.length }} 条，第 {{ reqLogPage }}/{{ reqLogTotalPages }} 页</span>
+                <span>{{ t('settings.recentRequests') }}</span>
+                <span class="page-info">{{ t('settings.paginationInfo', { total: requestLog.length, page: reqLogPage, pages: reqLogTotalPages }) }}</span>
               </div>
             </template>
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>时间</th>
-                  <th>模型</th>
-                  <th>角色</th>
-                  <th>内容摘要</th>
-                  <th>Tokens</th>
-                  <th>耗时</th>
+                  <th>{{ t('settings.timeCol') }}</th>
+                  <th>{{ t('settings.modelCol') }}</th>
+                  <th>{{ t('settings.roleCol') }}</th>
+                  <th>{{ t('settings.contentSummary') }}</th>
+                  <th>{{ t('settings.tokensCol') }}</th>
+                  <th>{{ t('settings.durationCol') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -476,14 +476,14 @@
                   <td>{{ r.time }}</td>
                   <td class="cell-mono">{{ r.model || '-' }}</td>
                   <td>
-                    <span :class="['role-tag', r.role]">{{ r.role === 'user' ? '提问' : '回复' }}</span>
+                    <span :class="['role-tag', r.role]">{{ r.role === 'user' ? t('settings.question') : t('settings.reply') }}</span>
                   </td>
                   <td class="cell-preview">{{ r.preview }}</td>
                   <td>{{ r.tokens.toLocaleString() }}</td>
                   <td>{{ r.duration }}</td>
                 </tr>
                 <tr v-if="paginatedRequestLog.length === 0">
-                  <td colspan="6" class="empty-cell">暂无请求记录</td>
+                  <td colspan="6" class="empty-cell">{{ t('settings.noRequestRecords') }}</td>
                 </tr>
               </tbody>
             </table>
@@ -504,7 +504,7 @@
 
         <!-- Recharge section -->
         <div v-if="activeSection === 'recharge'" class="content-section">
-          <h2 class="section-title">充值</h2>
+          <h2 class="section-title">{{ t('settings.recharge') }}</h2>
 
           <div class="packages-grid">
             <div
@@ -516,21 +516,160 @@
               <h3 class="package-name">{{ pkg.name }}</h3>
               <p class="package-desc">{{ pkg.description }}</p>
               <div class="package-price">{{ pkg.price }}</div>
-              <div class="package-amount">{{ pkg.gcoin_amount }} G币</div>
-              <div v-if="pkg.bonus_gcoin > 0" class="package-bonus">+{{ pkg.bonus_gcoin }} 赠送</div>
-              <HxButton variant="primary" class="package-btn">立即充值</HxButton>
+              <div class="package-amount">{{ pkg.gcoin_amount }} {{ t('settings.gcoinUnit') }}</div>
+              <div v-if="pkg.bonus_gcoin > 0" class="package-bonus">+{{ pkg.bonus_gcoin }} {{ t('settings.bonus') }}</div>
+              <HxButton variant="primary" class="package-btn">{{ t('settings.rechargeNow') }}</HxButton>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 模型配置 (多模型) ===== -->
+        <div v-if="activeSection === 'profiles'" class="content-section">
+          <h2 class="section-title">{{ $t('settings.modelProfiles') }}</h2>
+
+          <!-- 当前活跃模型 -->
+          <HxCard style="margin-bottom: 16px;">
+            <template #header>
+              <span>{{ t('settings.currentModel') }}</span>
+            </template>
+            <div v-if="chatStore.activeModelProfile" class="active-model-row">
+              <div class="active-model-indicator"></div>
+              <div class="active-model-info">
+                <div class="active-model-name">{{ chatStore.activeModelProfile.name }}</div>
+                <div class="active-model-meta">
+                  <span class="model-tag" :class="chatStore.activeModelProfile.provider">{{ chatStore.activeModelProfile.provider === 'gfw' ? 'GFW.NET' : t('settings.custom') }}</span>
+                  <span class="model-code">{{ chatStore.activeModelProfile.model }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="no-active-model">
+              <span>{{ t('settings.noModelSelected') }}</span>
+            </div>
+          </HxCard>
+
+          <!-- 模型配置列表 -->
+          <div class="profile-grid">
+            <div
+              v-for="profile in chatStore.modelProfiles"
+              :key="profile.id"
+              :class="['profile-card', { active: chatStore.activeModelId === profile.id }]"
+            >
+              <div class="profile-card-header">
+                <div class="profile-card-indicator" :class="{ pulse: chatStore.activeModelId === profile.id }"></div>
+                <span class="profile-card-name">{{ profile.name }}</span>
+                <span v-if="profile.isDefault" class="profile-badge-default">{{ $t('settings.modelDefault') }}</span>
+              </div>
+              <div class="profile-card-body">
+                <div class="profile-card-row">
+                  <span class="profile-card-label">Provider</span>
+                  <span class="profile-card-value">
+                    <span class="model-tag" :class="profile.provider">{{ profile.provider === 'gfw' ? 'GFW.NET' : t('settings.custom') }}</span>
+                  </span>
+                </div>
+                <div class="profile-card-row">
+                  <span class="profile-card-label">{{ $t('settings.model') }}</span>
+                  <span class="profile-card-value model-code">{{ profile.model }}</span>
+                </div>
+                <div v-if="profile.provider === 'custom'" class="profile-card-row">
+                  <span class="profile-card-label">Base URL</span>
+                  <span class="profile-card-value model-code">{{ profile.baseUrl }}</span>
+                </div>
+              </div>
+              <div class="profile-card-actions">
+                <button
+                  v-if="chatStore.activeModelId !== profile.id"
+                  class="profile-action-btn profile-action-switch"
+                  @click="chatStore.switchModel(profile.id)"
+                >{{ $t('settings.switchModel') }}</button>
+                <span v-else class="profile-action-active">{{ $t('settings.activeModel') }}</span>
+                <button
+                  v-if="!profile.isDefault"
+                  class="profile-action-btn profile-action-default"
+                  @click="chatStore.updateModelProfile(profile.id, { isDefault: true })"
+                >{{ $t('settings.modelSetDefault') }}</button>
+                <button
+                  class="profile-action-btn profile-action-delete"
+                  @click="chatStore.removeModelProfile(profile.id)"
+                >{{ $t('settings.removeModel') }}</button>
+              </div>
+            </div>
+
+            <!-- 添加新模型卡片 -->
+            <div class="profile-card profile-card-add" @click="showAddProfile = true">
+              <div class="profile-add-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </div>
+              <span class="profile-add-text">{{ $t('settings.addModel') }}</span>
+            </div>
+          </div>
+
+          <!-- 添加模型弹窗 -->
+          <div v-if="showAddProfile" class="modal-overlay" @click.self="showAddProfile = false" @contextmenu.prevent>
+            <div class="modal-panel">
+              <div class="modal-header">
+                <h3 class="modal-title">{{ $t('settings.addModel') }}</h3>
+                <button class="modal-close" @click="showAddProfile = false">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </button>
+              </div>
+              <div class="modal-body">
+                <div class="form-row">
+                  <label class="form-label">{{ $t('settings.modelName') }}</label>
+                  <HxInput v-model="newProfile.name" placeholder="GPT-4o / Claude 3.5 / ..." />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">{{ $t('settings.modelProvider') }}</label>
+                  <div class="provider-tabs">
+                    <button :class="['provider-tab', { active: newProfile.provider === 'gfw' }]" @click="newProfile.provider = 'gfw'">
+                      <span>GFW.NET</span>
+                    </button>
+                    <button :class="['provider-tab', { active: newProfile.provider === 'custom' }]" @click="newProfile.provider = 'custom'">
+                      <span>{{ $t('settings.customProvider') }}</span>
+                    </button>
+                  </div>
+                </div>
+                <div v-if="newProfile.provider === 'gfw'" class="form-row">
+                  <label class="form-label">API Key</label>
+                  <HxInput v-model="newProfile.apiKey" type="password" placeholder="gfw-..." />
+                </div>
+                <div v-if="newProfile.provider === 'custom'" class="form-row">
+                  <label class="form-label">{{ $t('settings.modelBaseUrl') }}</label>
+                  <HxInput v-model="newProfile.baseUrl" placeholder="https://api.openai.com/v1" />
+                </div>
+                <div v-if="newProfile.provider === 'custom'" class="form-row">
+                  <label class="form-label">{{ $t('settings.modelApiKey') }}</label>
+                  <HxInput v-model="newProfile.apiKey" type="password" placeholder="sk-..." />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">{{ $t('settings.model') }}</label>
+                  <HxInput v-model="newProfile.model" placeholder="gpt-4o / claude-3-5-sonnet / ..." />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">{{ $t('settings.modelDefault') }}</label>
+                  <HxToggle :modelValue="newProfile.isDefault" @update:modelValue="newProfile.isDefault = $event" />
+                </div>
+              </div>
+              <div class="modal-footer">
+                <HxButton variant="ghost" @click="showAddProfile = false">{{ $t('common.cancel') }}</HxButton>
+                <HxButton variant="primary" :disabled="!newProfile.name || !newProfile.model" @click="addModelProfile">
+                  {{ $t('common.create') }}
+                </HxButton>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- ===== Agent 设置 ===== -->
         <div v-if="activeSection === 'agent'" class="content-section">
-          <h2 class="section-title">Agent 设置</h2>
+          <h2 class="section-title">{{ t('settings.agentSettings') }}</h2>
 
           <!-- Hermes Agent 状态卡片 -->
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <span>Hermes Agent 状态</span>
+              <span>{{ t('settings.hermesAgentStatus') }}</span>
             </template>
             <div v-if="appStore.connectionState === 'disconnected'" class="hermes-status-card disconnected">
               <div class="hermes-status-icon">
@@ -541,8 +680,8 @@
                 </svg>
               </div>
               <div class="hermes-status-info">
-                <div class="hermes-status-title">后端未连接</div>
-                <div class="hermes-status-desc">Hermes Agent 服务不可用，请检查后端是否启动</div>
+                <div class="hermes-status-title">{{ t('settings.backendDisconnectedTitle') }}</div>
+                <div class="hermes-status-desc">{{ t('settings.backendDisconnectedDesc') }}</div>
               </div>
             </div>
             <div v-else-if="appStore.hermesStatus" class="hermes-status-card">
@@ -555,23 +694,23 @@
               <div class="hermes-status-info">
                 <div class="hermes-status-title">
                   <span class="status-dot connected"></span>
-                  {{ appStore.hermesStatus.available ? '已集成' : '未集成' }}
+                  {{ appStore.hermesStatus.available ? t('settings.integrated') : t('settings.notIntegrated') }}
                 </div>
                 <div class="hermes-status-grid">
                   <div class="hermes-status-row">
-                    <span class="hermes-label">版本</span>
-                    <span class="hermes-value mono">{{ appStore.hermesStatus.version || '未知' }}</span>
+                    <span class="hermes-label">{{ t('settings.version') }}</span>
+                    <span class="hermes-value mono">{{ appStore.hermesStatus.version || t('settings.unknown') }}</span>
                   </div>
                   <div class="hermes-status-row">
-                    <span class="hermes-label">模式</span>
+                    <span class="hermes-label">{{ t('settings.mode') }}</span>
                     <span class="hermes-value">{{ sourceLabel(appStore.hermesStatus.source) }}</span>
                   </div>
                   <div class="hermes-status-row">
-                    <span class="hermes-label">路径</span>
+                    <span class="hermes-label">{{ t('settings.path') }}</span>
                     <span class="hermes-value mono">{{ appStore.hermesStatus.path || 'N/A' }}</span>
                   </div>
                   <div class="hermes-status-row">
-                    <span class="hermes-label">运行时间</span>
+                    <span class="hermes-label">{{ t('settings.uptime') }}</span>
                     <span class="hermes-value">{{ appStore.uptimeText }}</span>
                   </div>
                 </div>
@@ -582,42 +721,42 @@
                 <div class="mini-spinner"></div>
               </div>
               <div class="hermes-status-info">
-                <div class="hermes-status-title">检测中...</div>
+                <div class="hermes-status-title">{{ t('settings.detecting') }}</div>
               </div>
             </div>
           </HxCard>
 
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <span>对话行为</span>
+              <span>{{ t('settings.chatBehavior') }}</span>
             </template>
             <div class="form-row">
-              <label class="form-label">最大轮次</label>
+              <label class="form-label">{{ t('settings.maxTurns') }}</label>
               <HxInput v-model.number="agentSettings.maxTurns" type="number" style="max-width: 120px;" />
-              <p class="form-hint">Agent 单次对话的最大工具调用轮次 (默认 90)</p>
+              <p class="form-hint">{{ t('settings.maxTurnsHint') }}</p>
             </div>
             <div class="form-row">
-              <label class="form-label">系统提示词</label>
-              <HxTextarea v-model="agentSettings.systemPrompt" :rows="4" placeholder="自定义系统提示词（留空使用默认）"></HxTextarea>
-              <p class="form-hint">追加到 Agent 默认系统提示词之后</p>
+              <label class="form-label">{{ t('settings.systemPrompt') }}</label>
+              <HxTextarea v-model="agentSettings.systemPrompt" :rows="4" :placeholder="t('settings.systemPromptPlaceholder')"></HxTextarea>
+              <p class="form-hint">{{ t('settings.systemPromptHint') }}</p>
             </div>
           </HxCard>
 
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <span>上下文压缩</span>
+              <span>{{ t('settings.contextCompression') }}</span>
             </template>
             <div class="toolset-grid">
               <label class="toolset-item">
-                <span class="toolset-label">最大回合数</span>
+                <span class="toolset-label">{{ t('settings.maxRounds') }}</span>
                 <HxInput v-model.number="agentSettings.maxTurns" type="number" :min="1" :max="50" :step="1" />
               </label>
               <label class="toolset-item">
-                <span class="toolset-label">压缩阈值</span>
+                <span class="toolset-label">{{ t('settings.compressionThreshold') }}</span>
                 <HxInput v-model.number="agentSettings.compressionThreshold" type="number" step="0.05" min="0.1" max="0.95" :showNumberControls="true" />
               </label>
               <label class="toolset-item">
-                <span class="toolset-label">压缩目标</span>
+                <span class="toolset-label">{{ t('settings.compressionTarget') }}</span>
                 <HxInput v-model.number="agentSettings.compressionTarget" type="number" step="0.05" min="0.05" max="0.5" :showNumberControls="true" />
               </label>
             </div>
@@ -625,261 +764,261 @@
 
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <span>持久记忆</span>
+              <span>{{ t('settings.persistentMemory') }}</span>
             </template>
             <div class="toolset-grid">
               <label class="toolset-item">
-                <span class="toolset-label">记忆系统</span>
-                <HxToggle v-model="agentSettings.memoryEnabled" :label="agentSettings.memoryEnabled ? '已启用' : '已禁用'" />
+                <span class="toolset-label">{{ t('settings.memorySystem') }}</span>
+                <HxToggle v-model="agentSettings.memoryEnabled" :label="agentSettings.memoryEnabled ? t('settings.enabled') : t('settings.disabled')" />
               </label>
               <label class="toolset-item">
-                <span class="toolset-label">用户画像</span>
-                <HxToggle v-model="agentSettings.userProfileEnabled" :label="agentSettings.userProfileEnabled ? '已启用' : '已禁用'" />
+                <span class="toolset-label">{{ t('settings.userProfile') }}</span>
+                <HxToggle v-model="agentSettings.userProfileEnabled" :label="agentSettings.userProfileEnabled ? t('settings.enabled') : t('settings.disabled')" />
               </label>
             </div>
           </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <HxButton variant="primary" @click="saveAgentSettings">保存设置</HxButton>
-            <span v-if="agentSaveOk" class="save-feedback">已保存</span>
+            <HxButton variant="primary" @click="saveAgentSettings">{{ t('settings.saveSettings') }}</HxButton>
+            <span v-if="agentSaveOk" class="save-feedback">{{ t('settings.saved') }}</span>
             <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
-              <span class="save-dot blue"></span> 已编辑未保存
+              <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
             </span>
             <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
-              <span class="save-dot green"></span> 正在自动保存
+              <span class="save-dot green"></span> {{ t('settings.autoSaving') }}
             </span>
             <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              已保存
+              {{ t('settings.saved') }}
             </span>
           </div>
         </div>
 
         <!-- ===== 终端设置 ===== -->
         <div v-if="activeSection === 'terminal'" class="content-section">
-          <h2 class="section-title">终端设置</h2>
+          <h2 class="section-title">{{ t('settings.terminalSettings') }}</h2>
 
           <HxCard style="margin-bottom: 16px;">
             <div class="form-row">
-              <label class="form-label">终端后端</label>
+              <label class="form-label">{{ t('settings.terminalBackend') }}</label>
               <HxSelect v-model="terminalSettings.backend" :options="backendOptions" style="max-width: 200px;" />
-              <p class="form-hint">命令执行环境</p>
+              <p class="form-hint">{{ t('settings.commandExecutionEnv') }}</p>
             </div>
             <div class="form-row">
-              <label class="form-label">工作目录</label>
-              <HxInput v-model="terminalSettings.cwd" placeholder="留空使用当前目录" />
-              <p class="form-hint">Agent 的默认工作目录</p>
+              <label class="form-label">{{ t('settings.workingDirectory') }}</label>
+              <HxInput v-model="terminalSettings.cwd" :placeholder="t('settings.workingDirectoryPlaceholder')" />
+              <p class="form-hint">{{ t('settings.workingDirectoryHint') }}</p>
             </div>
             <div class="form-row">
-              <label class="form-label">命令超时 (秒)</label>
+              <label class="form-label">{{ t('settings.commandTimeout') }}</label>
               <HxInput v-model.number="terminalSettings.timeout" type="number" style="max-width: 120px;" />
-              <p class="form-hint">前台命令最大执行时间 (默认 180)</p>
+              <p class="form-hint">{{ t('settings.commandTimeoutHint') }}</p>
             </div>
             <div class="form-row">
-              <label class="form-label">命令审批</label>
+              <label class="form-label">{{ t('settings.commandApproval') }}</label>
               <HxSelect v-model="terminalSettings.approvalMode" :options="approvalModeOptions" style="max-width: 200px;" />
-              <p class="form-hint">危险命令的审批方式</p>
+              <p class="form-hint">{{ t('settings.dangerousApprovalHint') }}</p>
             </div>
           </HxCard>
 
           <HxCard v-if="terminalSettings.backend === 'ssh'" style="margin-bottom: 16px;">
             <template #header>
-              <span>远程连接配置</span>
+              <span>{{ t('settings.remoteConnectionConfig') }}</span>
             </template>
             <div class="form-row">
-              <label class="form-label">主机</label>
+              <label class="form-label">{{ t('settings.host') }}</label>
               <HxInput v-model="terminalSettings.sshHost" placeholder="user@host" />
             </div>
             <div class="form-row">
-              <label class="form-label">端口</label>
+              <label class="form-label">{{ t('settings.port') }}</label>
               <HxInput v-model.number="terminalSettings.sshPort" type="number" style="max-width: 120px;" />
             </div>
             <div class="form-row">
-              <label class="form-label">密钥路径</label>
+              <label class="form-label">{{ t('settings.keyPath') }}</label>
               <HxInput v-model="terminalSettings.sshKey" placeholder="~/.ssh/id_rsa" />
             </div>
           </HxCard>
 
           <HxCard v-if="terminalSettings.backend === 'docker'" style="margin-bottom: 16px;">
             <template #header>
-              <span>容器配置</span>
+              <span>{{ t('settings.containerConfig') }}</span>
             </template>
             <div class="form-row">
-              <label class="form-label">镜像</label>
+              <label class="form-label">{{ t('settings.image') }}</label>
               <HxInput v-model="terminalSettings.dockerImage" placeholder="ubuntu:22.04" />
             </div>
             <div class="form-row">
-              <label class="form-label">挂载目录</label>
+              <label class="form-label">{{ t('settings.mountDirectory') }}</label>
               <HxInput v-model="terminalSettings.dockerMount" placeholder="/home/user/project" />
             </div>
           </HxCard>
 
           <div class="form-actions">
-            <HxButton variant="primary" @click="saveTerminalSettings">保存设置</HxButton>
-            <span v-if="terminalSaveOk" class="save-feedback">已保存</span>
+            <HxButton variant="primary" @click="saveTerminalSettings">{{ t('settings.saveSettings') }}</HxButton>
+            <span v-if="terminalSaveOk" class="save-feedback">{{ t('settings.saved') }}</span>
             <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
-              <span class="save-dot blue"></span> 已编辑未保存
+              <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
             </span>
             <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
-              <span class="save-dot green"></span> 正在自动保存
+              <span class="save-dot green"></span> {{ t('settings.autoSaving') }}
             </span>
             <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              已保存
+              {{ t('settings.saved') }}
             </span>
           </div>
         </div>
 
         <!-- ===== 显示设置 ===== -->
         <div v-if="activeSection === 'display'" class="content-section">
-          <h2 class="section-title">显示设置</h2>
+          <h2 class="section-title">{{ t('settings.displaySettings') }}</h2>
 
           <HxCard>
             <div class="form-row">
-              <label class="form-label">工具调用详情</label>
-              <HxToggle v-model="displaySettings.showToolProgress" :label="displaySettings.showToolProgress ? '显示' : '隐藏'" />
-              <p class="form-hint">是否显示工具调用的输入参数和输出结果</p>
+              <label class="form-label">{{ t('settings.toolCallDetails') }}</label>
+              <HxToggle v-model="displaySettings.showToolProgress" :label="displaySettings.showToolProgress ? t('settings.show') : t('settings.hide')" />
+              <p class="form-hint">{{ t('settings.toolCallHint') }}</p>
             </div>
             <div class="form-row">
-              <label class="form-label">推理过程</label>
+              <label class="form-label">{{ t('settings.reasoningProcess') }}</label>
               <HxSelect v-model="displaySettings.showReasoning" :options="showReasoningOptions" style="max-width: 200px;" />
-              <p class="form-hint">模型的 thinking/reasoning 内容</p>
+              <p class="form-hint">{{ t('settings.reasoningContentHint') }}</p>
             </div>
             <div class="form-row">
-              <label class="form-label">显示费用</label>
-              <HxToggle v-model="displaySettings.showCost" :label="displaySettings.showCost ? '显示' : '隐藏'" />
-              <p class="form-hint">在消息底部显示 token 用量和费用</p>
+              <label class="form-label">{{ t('settings.showCost') }}</label>
+              <HxToggle v-model="displaySettings.showCost" :label="displaySettings.showCost ? t('settings.show') : t('settings.hide')" />
+              <p class="form-hint">{{ t('settings.showCostHint') }}</p>
             </div>
             <div class="form-row">
-              <label class="form-label">Markdown 渲染</label>
-              <HxToggle v-model="displaySettings.renderMarkdown" :label="displaySettings.renderMarkdown ? '已启用' : '纯文本'" />
+              <label class="form-label">{{ t('settings.markdownRender') }}</label>
+              <HxToggle v-model="displaySettings.renderMarkdown" :label="displaySettings.renderMarkdown ? t('settings.enabled') : t('settings.plainText')" />
             </div>
             <div class="form-row">
-              <label class="form-label">代码高亮</label>
-              <HxToggle v-model="displaySettings.syntaxHighlight" :label="displaySettings.syntaxHighlight ? '已启用' : '已禁用'" />
+              <label class="form-label">{{ t('settings.syntaxHighlight') }}</label>
+              <HxToggle v-model="displaySettings.syntaxHighlight" :label="displaySettings.syntaxHighlight ? t('settings.enabled') : t('settings.disabled')" />
             </div>
           </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <HxButton variant="primary" @click="saveDisplaySettings">保存设置</HxButton>
-            <span v-if="displaySaveOk" class="save-feedback">已保存</span>
+            <HxButton variant="primary" @click="saveDisplaySettings">{{ t('settings.saveSettings') }}</HxButton>
+            <span v-if="displaySaveOk" class="save-feedback">{{ t('settings.saved') }}</span>
             <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
-              <span class="save-dot blue"></span> 已编辑未保存
+              <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
             </span>
             <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
-              <span class="save-dot green"></span> 正在自动保存
+              <span class="save-dot green"></span> {{ t('settings.autoSaving') }}
             </span>
             <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              已保存
+              {{ t('settings.saved') }}
             </span>
           </div>
         </div>
 
         <!-- ===== 语音设置 ===== -->
         <div v-if="activeSection === 'voice'" class="content-section">
-          <h2 class="section-title">语音设置</h2>
+          <h2 class="section-title">{{ t('settings.voiceSettings') }}</h2>
 
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <span>STT · 语音转文字</span>
+              <span>{{ t('settings.sttTitle') }}</span>
             </template>
             <div class="form-row">
-              <label class="form-label">启用 STT</label>
-              <HxToggle v-model="voiceSettings.sttEnabled" :label="voiceSettings.sttEnabled ? '已启用' : '已禁用'" />
+              <label class="form-label">{{ t('settings.enableStt') }}</label>
+              <HxToggle v-model="voiceSettings.sttEnabled" :label="voiceSettings.sttEnabled ? t('settings.enabled') : t('settings.disabled')" />
             </div>
             <div class="form-row">
-              <label class="form-label">STT 提供商</label>
+              <label class="form-label">{{ t('settings.sttProvider') }}</label>
               <HxSelect v-model="voiceSettings.sttProvider" :options="sttProviderOptions" style="max-width: 200px;" />
             </div>
             <div v-if="voiceSettings.sttProvider === 'local'" class="form-row">
-              <label class="form-label">Whisper 模型</label>
+              <label class="form-label">{{ t('settings.whisperModel') }}</label>
               <HxSelect v-model="voiceSettings.whisperModel" :options="whisperModelOptions" style="max-width: 200px;" />
             </div>
           </HxCard>
 
           <HxCard>
             <template #header>
-              <span>TTS · 文字转语音</span>
+              <span>{{ t('settings.ttsTitle') }}</span>
             </template>
             <div class="form-row">
-              <label class="form-label">TTS 提供商</label>
+              <label class="form-label">{{ t('settings.ttsProvider') }}</label>
               <HxSelect v-model="voiceSettings.ttsProvider" :options="ttsProviderOptions" style="max-width: 200px;" />
             </div>
             <div v-if="voiceSettings.ttsProvider !== 'edge'" class="form-row">
-              <label class="form-label">TTS API Key</label>
+              <label class="form-label">{{ t('settings.modelApiKey') }}</label>
               <HxInput v-model="voiceSettings.ttsApiKey" type="password" placeholder="API Key" />
             </div>
           </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <HxButton variant="primary" @click="saveVoiceSettings">保存设置</HxButton>
-            <span v-if="voiceSaveOk" class="save-feedback">已保存</span>
+            <HxButton variant="primary" @click="saveVoiceSettings">{{ t('settings.saveSettings') }}</HxButton>
+            <span v-if="voiceSaveOk" class="save-feedback">{{ t('settings.saved') }}</span>
             <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
-              <span class="save-dot blue"></span> 已编辑未保存
+              <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
             </span>
             <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
-              <span class="save-dot green"></span> 正在自动保存
+              <span class="save-dot green"></span> {{ t('settings.autoSaving') }}
             </span>
             <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              已保存
+              {{ t('settings.saved') }}
             </span>
           </div>
         </div>
 
         <!-- ===== 安全设置 ===== -->
         <div v-if="activeSection === 'security'" class="content-section">
-          <h2 class="section-title">安全设置</h2>
+          <h2 class="section-title">{{ t('settings.securitySettings') }}</h2>
 
           <HxCard style="margin-bottom: 16px;">
             <div class="form-row">
-              <label class="form-label">密钥脱敏</label>
-              <HxToggle v-model="securitySettings.redactSecrets" :label="securitySettings.redactSecrets ? '已启用' : '已禁用'" />
-              <p class="form-hint">自动遮盖工具输出中的 API Key、Token 等敏感信息</p>
+              <label class="form-label">{{ t('settings.keyRedaction') }}</label>
+              <HxToggle v-model="securitySettings.redactSecrets" :label="securitySettings.redactSecrets ? t('settings.enabled') : t('settings.disabled')" />
+              <p class="form-hint">{{ t('settings.keyRedactionHint') }}</p>
             </div>
             <div class="form-row">
-              <label class="form-label">PII 脱敏</label>
-              <HxToggle v-model="securitySettings.redactPii" :label="securitySettings.redactPii ? '已启用' : '已禁用'" />
-              <p class="form-hint">对用户 ID、手机号等个人信息进行哈希处理</p>
+              <label class="form-label">{{ t('settings.piiRedaction') }}</label>
+              <HxToggle v-model="securitySettings.redactPii" :label="securitySettings.redactPii ? t('settings.enabled') : t('settings.disabled')" />
+              <p class="form-hint">{{ t('settings.piiRedactionHint') }}</p>
             </div>
           </HxCard>
 
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <span>网站 · 访问限制</span>
+              <span>{{ t('settings.websiteAccessRestriction') }}</span>
             </template>
             <div class="form-row">
-              <label class="form-label">网站黑名单</label>
-              <HxTextarea v-model="securitySettings.blocklist" :rows="3" placeholder="每行一个域名，如：&#10;example.com&#10;malware.test"></HxTextarea>
-              <p class="form-hint">Agent 禁止访问的域名列表</p>
+              <label class="form-label">{{ t('settings.websiteBlocklist') }}</label>
+              <HxTextarea v-model="securitySettings.blocklist" :rows="3" :placeholder="t('settings.blocklistPlaceholder')"></HxTextarea>
+              <p class="form-hint">{{ t('settings.blocklistHint') }}</p>
             </div>
           </HxCard>
 
           <HxCard>
             <template #header>
-              <span>工具 · 工具权限</span>
+              <span>{{ t('settings.toolPermissions') }}</span>
             </template>
             <div class="toolset-grid">
               <label v-for="ts in toolsetList" :key="ts.id" class="toolset-item">
                 <span class="toolset-label">{{ ts.label }}</span>
-                <HxToggle v-model="ts.enabled" :label="ts.enabled ? '启用' : '禁用'" />
+                <HxToggle v-model="ts.enabled" :label="ts.enabled ? t('settings.enabled') : t('settings.disabled')" />
               </label>
             </div>
           </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <HxButton variant="primary" @click="saveSecuritySettings">保存设置</HxButton>
-            <span v-if="securitySaveOk" class="save-feedback">已保存</span>
+            <HxButton variant="primary" @click="saveSecuritySettings">{{ t('settings.saveSettings') }}</HxButton>
+            <span v-if="securitySaveOk" class="save-feedback">{{ t('settings.saved') }}</span>
             <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
-              <span class="save-dot blue"></span> 已编辑未保存
+              <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
             </span>
             <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
-              <span class="save-dot green"></span> 正在自动保存
+              <span class="save-dot green"></span> {{ t('settings.autoSaving') }}
             </span>
             <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              已保存
+              {{ t('settings.saved') }}
             </span>
           </div>
         </div>
@@ -893,7 +1032,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               </div>
               <div>
-                <h2 class="modal-name">创建 API Key</h2>
+                <h2 class="modal-name">{{ t('settings.createApiKey') }}</h2>
                 <div class="modal-subtitle"></div>
               </div>
             </div>
@@ -903,44 +1042,45 @@
           </div>
           <div class="modal-body">
             <div class="modal-section">
-              <h4 class="section-label">Key 名称</h4>
-              <HxInput v-model="newKeyName" placeholder="例如: 我的开发Key" />
+              <h4 class="section-label">{{ t('settings.keyName') }}</h4>
+              <HxInput v-model="newKeyName" :placeholder="t('settings.keyNamePlaceholder')" />
             </div>
             <div class="modal-section">
-              <h4 class="section-label">使用限额</h4>
+              <h4 class="section-label">{{ t('settings.usageQuota') }}</h4>
               <div class="gfw-quota-toggle">
-                <button :class="['gfw-quota-btn', { active: newKeyUnlimited }]" @click="newKeyUnlimited = true">无限额</button>
-                <button :class="['gfw-quota-btn', { active: !newKeyUnlimited }]" @click="newKeyUnlimited = false">限额</button>
+                <button :class="['gfw-quota-btn', { active: newKeyUnlimited }]" @click="newKeyUnlimited = true">{{ t('settings.unlimited') }}</button>
+                <button :class="['gfw-quota-btn', { active: !newKeyUnlimited }]" @click="newKeyUnlimited = false">{{ t('settings.limited') }}</button>
               </div>
               <div v-if="!newKeyUnlimited" class="gfw-quota-input">
-                <HxInput v-model.number="newKeyLimit" type="number" placeholder="输入G币数量" :min="1" :max="1000" :step="1" />
+                <HxInput v-model.number="newKeyLimit" type="number" :placeholder="t('settings.inputGcoinAmount')" :min="1" :max="1000" :step="1" />
                 <span class="gfw-quota-unit">G</span>
               </div>
-              <p class="section-text">设置该 Key 可使用的最大 G 币额度，无限额则不限制</p>
+              <p class="section-text">{{ t('settings.quotaHint') }}</p>
             </div>
           </div>
           <div class="modal-footer">
-            <HxButton variant="ghost" @click="showGfwCreateKey = false">取消</HxButton>
+            <HxButton variant="ghost" @click="showGfwCreateKey = false">{{ t('common.cancel') }}</HxButton>
             <HxButton variant="primary" :loading="gfwCreatingKey" @click="createGfwKey">
               <svg width="15" height="15" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 85.333333a42.666667 42.666667 0 0 0-42.666667 42.666667v512a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V128a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M128 597.333333a42.666667 42.666667 0 0 0-42.666667 42.666667v170.666667c0 70.186667 57.813333 128 128 128h597.333334c70.186667 0 128-57.813333 128-128v-170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667 42.666667 42.666667 0 0 0-42.666667 42.666667v170.666667c0 24.064-18.602667 42.666667-42.666666 42.666666H213.333333c-24.064 0-42.666667-18.602667-42.666666-42.666666v-170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M298.666667 384a42.666667 42.666667 0 0 0-30.165334 12.501333 42.666667 42.666667 0 0 0 0 60.330667l213.333334 213.333333a42.666667 42.666667 0 0 0 60.330666 0l213.333334-213.333333a42.666667 42.666667 0 0 0 0-60.330667 42.666667 42.666667 0 0 0-60.330667 0L512 579.669333 328.832 396.501333A42.666667 42.666667 0 0 0 298.666667 384z"/></svg>
-              <span>创建</span>
+              <span>{{ t('common.create') }}</span>
             </HxButton>
           </div>
         </div>
       </div>
       <!-- Context menu (inside root to avoid fragment breaking transition) -->
       <div v-if="settingsCtx.show" class="ctx-menu" :style="{ top: settingsCtx.y + 'px', left: settingsCtx.x + 'px' }" @click.stop @contextmenu.prevent>
-        <button v-if="settingsCtx.hasSelection" @click="settingsCtxCopy" class="ctx-item">复制</button>
-        <button v-if="settingsCtx.hasSelection" @click="settingsCtxCut" class="ctx-item">剪切</button>
-        <button v-if="settingsCtx.hasContent && !settingsCtx.hasSelection" @click="settingsCtxSelectAll" class="ctx-item">全选</button>
-        <button @click="settingsCtxPaste" class="ctx-item">粘贴</button>
+        <button v-if="settingsCtx.hasSelection" @click="settingsCtxCopy" class="ctx-item">{{ t('common.copy') }}</button>
+        <button v-if="settingsCtx.hasSelection" @click="settingsCtxCut" class="ctx-item">{{ t('common.cut') }}</button>
+        <button v-if="settingsCtx.hasContent && !settingsCtx.hasSelection" @click="settingsCtxSelectAll" class="ctx-item">{{ t('common.selectAll') }}</button>
+        <button @click="settingsCtxPaste" class="ctx-item">{{ t('common.paste') }}</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useGfwStore } from '../stores/gfw'
 import { useChatStore } from '../stores/chat'
 import { useAppStore } from '../stores/app'
@@ -952,10 +1092,13 @@ import { HxButton, HxInput, HxTextarea, HxSelect, HxToggle, HxCard, HxBadge, HxM
 import { providerIconMap } from '../assets/provider-icons'
 import { useToast } from '../composables/useToast'
 
+const { t } = useI18n()
 const toast = useToast()
 
 // Context menu
 const settingsCtx = reactive({ show: false, x: 0, y: 0, hasContent: false, hasSelection: false, target: null as HTMLInputElement | HTMLTextAreaElement | null })
+const settingsCtxDismiss = () => { settingsCtx.show = false }
+
 function onSettingsContextMenu(e: MouseEvent) {
   let target = e.target as HTMLElement
   // 尝试从目标元素或其父容器中找到底层 input/textarea
@@ -972,7 +1115,7 @@ function onSettingsContextMenu(e: MouseEvent) {
   settingsCtx.x = e.clientX
   settingsCtx.y = e.clientY
   settingsCtx.show = true
-  nextTick(() => { document.addEventListener('click', () => { settingsCtx.show = false }, { once: true }) })
+  nextTick(() => { document.addEventListener('click', settingsCtxDismiss, { once: true }) })
 }
 function settingsCtxCopy() { try { document.execCommand('copy') } catch {}; settingsCtx.show = false }
 function settingsCtxCut() { try { document.execCommand('cut') } catch {}; settingsCtx.show = false }
@@ -1063,6 +1206,7 @@ const ttsProviderOptions = [
 const searchQuery = ref('')
 const navItems = [
   { key: 'model', label: '模型设置', keywords: 'API 提供商 模型 provider 同步 连接测试 自定义 GFW', icon: 'IconSettings' },
+  { key: 'profiles', label: '模型配置', keywords: '多模型 切换 配置 profile 添加 删除', icon: '' },
   { key: 'agent', label: 'Agent', keywords: '轮次 系统提示 上下文压缩 记忆 用户档案 max turns', icon: '' },
   { key: 'terminal', label: '终端', keywords: '后端 超时 审批模式 SSH Docker 工作目录 timeout', icon: '' },
   { key: 'display', label: '显示', keywords: '工具进度 推理过程 费用 markdown 代码高亮 语法', icon: '' },
@@ -1080,10 +1224,16 @@ const filteredNavItems = computed(() => {
   )
 })
 function highlightMatch(label: string): string {
-  if (!searchQuery.value.trim()) return label
+  if (!searchQuery.value.trim()) return escapeHtml(label)
   const q = searchQuery.value.trim()
-  const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
-  return label.replace(re, '<mark style="background:var(--color-primary);color:#fff;border-radius:2px;padding:0 2px;">$1</mark>')
+  const escaped = escapeHtml(label)
+  const escapedQ = escapeHtml(q)
+  const re = new RegExp(`(${escapedQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+  return escaped.replace(re, '<mark style="background:var(--accent);color:var(--text-inverse);border-radius:2px;padding:0 2px;">$1</mark>')
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
 // 自定义 provider
@@ -1096,6 +1246,31 @@ const testing = ref(false)
 const testResult = ref<{ ok: boolean; message: string } | null>(null)
 const saveSuccess = ref(false)
 const apiVerified = ref(false)  // API Key 验证通过标志
+
+// 多模型配置
+const showAddProfile = ref(false)
+const newProfile = ref({
+  name: '',
+  provider: 'gfw' as 'gfw' | 'custom',
+  baseUrl: '',
+  apiKey: '',
+  model: '',
+  isDefault: false,
+})
+function addModelProfile() {
+  if (!newProfile.value.name || !newProfile.value.model) return
+  chatStore.addModelProfile({
+    name: newProfile.value.name,
+    provider: newProfile.value.provider,
+    baseUrl: newProfile.value.provider === 'gfw' ? 'https://api.gfw.net/v1' : newProfile.value.baseUrl,
+    apiKey: newProfile.value.apiKey,
+    model: newProfile.value.model,
+    isDefault: newProfile.value.isDefault,
+  })
+  // Reset form
+  newProfile.value = { name: '', provider: 'gfw', baseUrl: '', apiKey: '', model: '', isDefault: false }
+  showAddProfile.value = false
+}
 
 // 模型上下文长度映射（根据模型名称自动设置）
 const modelContextMap: Record<string, number> = {
@@ -1266,7 +1441,7 @@ async function syncGfwModels() {
 try {
   const cached = localStorage.getItem('gfw_models_cache')
   if (cached) gfwModels.value = JSON.parse(cached)
-} catch { /* ignore */ }
+} catch (e) { console.warn('[SettingsView] Failed to load models cache:', e) }
 
 // 提供商图标映射 (本地图片)
 // 预设提供商（对齐 Hermes Agent 支持的上游列表）
@@ -1999,7 +2174,7 @@ async function loadToolsets(): Promise<void> {
         enabled: t.enabled,
       }))
     }
-  } catch { /* agent not running */ }
+  } catch (e) { console.warn('[SettingsView] Hermes tools list failed (agent not running):', e) }
 }
 
 // 从 Hermes config.yaml 加载设置初始值
@@ -2022,7 +2197,7 @@ async function loadConfigValues() {
     // Approvals
     const mode = get('mode', '')
     if (mode && ['manual','smart','off'].includes(mode)) terminalSettings.value.approvalMode = mode
-  } catch { /* agent not running */ }
+  } catch (e) { console.warn('[SettingsView] Hermes config load failed (agent not running):', e) }
 }
 
 onMounted(async () => {
@@ -2036,6 +2211,10 @@ onMounted(async () => {
   await loadToolsets()
   await loadConfigValues()
   _initialLoadDone = true
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', settingsCtxDismiss)
 })
 
 // ===== Auto-save (8s: 5s wait + 3s save) =====
@@ -2300,20 +2479,20 @@ const pageNumbers = computed<(number | string)[]>(() => {
 .settings-nav-item.active {
   background: linear-gradient(
     135deg,
-    rgba(90, 200, 250, 0.25) 0%,
-    rgba(90, 200, 250, 0.15) 100%
+    color-mix(in srgb, var(--accent) 25%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 15%, transparent) 100%
   );
-  color: rgba(90, 200, 250, 1);
-  border-left: 3px solid rgba(90, 200, 250, 0.8);
+  color: var(--accent);
+  border-left: 3px solid color-mix(in srgb, var(--accent) 80%, transparent);
   box-shadow: 
-    inset 0 0 0 1px rgba(90, 200, 250, 0.15),
-    0 0 16px rgba(90, 200, 250, 0.2);
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent),
+    0 0 16px color-mix(in srgb, var(--accent) 20%, transparent);
   font-weight: var(--font-semibold);
 }
 
 .settings-nav-item.active .nav-icon-dot {
-  background: rgba(90, 200, 250, 1) !important;
-  box-shadow: 0 0 8px rgba(90, 200, 250, 0.6);
+  background: var(--accent) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
 /* ===== Right Content ===== */
@@ -2508,7 +2687,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   background: var(--color-primary);
   border: none;
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono);
@@ -2518,7 +2697,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 
 .btn-primary:hover {
   filter: brightness(1.1);
-  box-shadow: 0 2px 8px rgba(10,132,255,0.25);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--info) 25%, transparent);
 }
 
 .btn-primary:disabled {
@@ -2736,7 +2915,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   pointer-events: none;
 }
 .bar-chart__grid-line {
-  border-bottom: 1px dashed rgba(255,255,255,0.06);
+  border-bottom: 1px dashed var(--border-base);
 }
 .bar-chart__bars {
   flex: 1;
@@ -2770,7 +2949,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .bar--input { background: var(--accent); opacity: 0.85; }
-.bar--output { background: #a78bfa; opacity: 0.85; }
+.bar--output { background: var(--purple); opacity: 0.85; }
 .bar-label {
   position: absolute;
   top: -16px;
@@ -2810,7 +2989,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   border-radius: 2px;
 }
 .bar-legend__dot--input { background: var(--accent); }
-.bar-legend__dot--output { background: #a78bfa; }
+.bar-legend__dot--output { background: var(--purple); }
 
 /* Role tag */
 .role-tag {
@@ -2821,12 +3000,12 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-family: var(--font-mono);
 }
 .role-tag.user {
-  background: rgba(90, 200, 250, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent);
 }
 .role-tag.assistant {
-  background: rgba(167, 139, 250, 0.12);
-  color: #a78bfa;
+  background: color-mix(in srgb, var(--purple) 12%, transparent);
+  color: var(--purple);
 }
 
 .cell-preview {
@@ -2882,7 +3061,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 .page-btn.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-inverse);
   border-color: var(--accent);
 }
 .page-btn:disabled {
@@ -2975,10 +3154,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .provider-tab.active {
-  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
-  color: rgba(90, 200, 250, 1);
-  border-color: rgba(90, 200, 250, 0.3);
-  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, transparent) 0%, color-mix(in srgb, var(--accent) 12%, transparent) 100%);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 12px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 /* GFW Auth Mode */
@@ -3008,10 +3187,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
   color: var(--text-primary);
 }
 .gfw-auth-mode.active {
-  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
-  border-color: rgba(90, 200, 250, 0.3);
-  color: rgba(90, 200, 250, 1);
-  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, transparent) 0%, color-mix(in srgb, var(--accent) 12%, transparent) 100%);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 12px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 /* GFW User Info */
@@ -3091,10 +3270,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
   transform: translateY(-1px);
 }
 .gfw-key-item.active {
-  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
-  border-color: rgba(90, 200, 250, 0.3);
-  color: rgba(90, 200, 250, 1);
-  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, transparent) 0%, color-mix(in srgb, var(--accent) 12%, transparent) 100%);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 12px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 /* Active indicator */
 .gfw-key-item.active::before {
@@ -3140,14 +3319,14 @@ const pageNumbers = computed<(number | string)[]>(() => {
   color: var(--text-secondary);
   padding: 3px 8px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--glass-weak);
   border: 1px solid var(--border-base);
   white-space: nowrap;
   flex-shrink: 0;
 }
 .gfw-key-item.active .gfw-key-quota {
-  background: rgba(90, 200, 250, 0.1);
-  border-color: rgba(90, 200, 250, 0.2);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--accent);
 }
 
@@ -3206,10 +3385,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .provider-chips .chip.active {
-  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
-  border-color: rgba(90, 200, 250, 0.3);
-  color: rgba(90, 200, 250, 1);
-  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, transparent) 0%, color-mix(in srgb, var(--accent) 12%, transparent) 100%);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 12px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .provider-chips .chip .chip-icon {
@@ -3371,13 +3550,13 @@ const pageNumbers = computed<(number | string)[]>(() => {
   flex-shrink: 0;
 }
 .save-dot.blue {
-  background: #4da3ff;
-  box-shadow: 0 0 8px #4da3ff88;
+  background: var(--info);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--info) 53%, transparent);
   animation: breathe-blue 1.5s ease-in-out infinite;
 }
 .save-dot.green {
-  background: #4caf50;
-  box-shadow: 0 0 8px #4caf5088;
+  background: var(--success);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--success) 53%, transparent);
   animation: breathe-green 1.2s ease-in-out infinite;
 }
 
@@ -3390,8 +3569,8 @@ const pageNumbers = computed<(number | string)[]>(() => {
   50% { transform: scale(1.3); opacity: 1; }
 }
 
-.save-dirty { color: #4da3ff; }
-.save-saving { color: #4caf50; }
+.save-dirty { color: var(--info); }
+.save-saving { color: var(--success); }
 .save-saved svg {
   stroke: var(--color-success);
   animation: popIn 0.3s ease;
@@ -3449,11 +3628,11 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 .chip.active {
-  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
-  border-color: rgba(90, 200, 250, 0.3);
-  color: rgba(90, 200, 250, 1);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, transparent) 0%, color-mix(in srgb, var(--accent) 12%, transparent) 100%);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent);
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 12px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .chip-count {
@@ -3521,17 +3700,17 @@ const pageNumbers = computed<(number | string)[]>(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 132, 255, 0.08);
+  background: color-mix(in srgb, var(--info) 8%, transparent);
   color: var(--color-primary);
 }
 
 .hermes-status-card.disconnected .hermes-status-icon {
-  background: rgba(255, 69, 58, 0.08);
+  background: color-mix(in srgb, var(--error) 8%, transparent);
   color: var(--error);
 }
 
 .hermes-status-card.loading .hermes-status-icon {
-  background: rgba(255, 159, 10, 0.08);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
   color: var(--warning);
 }
 
@@ -3597,13 +3776,13 @@ const pageNumbers = computed<(number | string)[]>(() => {
 
 .status-dot.connected {
   background: var(--success);
-  box-shadow: 0 0 6px rgba(48, 209, 88, 0.5);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--success) 50%, transparent);
 }
 
 .mini-spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 159, 10, 0.3);
+  border: 2px solid color-mix(in srgb, var(--warning) 30%, transparent);
   border-top-color: var(--warning);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -3802,10 +3981,10 @@ const pageNumbers = computed<(number | string)[]>(() => {
   color: var(--text-primary);
 }
 .gfw-quota-btn.active {
-  background: linear-gradient(135deg, rgba(90, 200, 250, 0.2) 0%, rgba(90, 200, 250, 0.12) 100%);
-  color: rgba(90, 200, 250, 1);
-  border: 1px solid rgba(90, 200, 250, 0.3);
-  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.1), 0 0 12px rgba(90, 200, 250, 0.15);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, transparent) 0%, color-mix(in srgb, var(--accent) 12%, transparent) 100%);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 12px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 .gfw-quota-input {
   display: flex;
@@ -3828,7 +4007,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 .gfw-quota-input :deep(.hixns-input__field:focus) {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(90, 200, 250, 0.1);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 .gfw-quota-unit {
   font-size: var(--text-sm);
@@ -3839,5 +4018,263 @@ const pageNumbers = computed<(number | string)[]>(() => {
   background: var(--glass-base);
   border: 1px solid var(--border-base);
   border-radius: var(--radius-md);
+}
+
+/* ═══ 模型配置 (多模型) ═══ */
+.active-model-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
+}
+.active-model-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+.active-model-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.active-model-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #e6edf3);
+}
+.active-model-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.no-active-model {
+  color: var(--text-secondary, #8b949e);
+  text-align: center;
+  padding: 16px 0;
+}
+.model-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.model-tag.gfw {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent, #5ac8fa);
+}
+.model-tag.custom {
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
+  color: var(--warning);
+}
+.model-code {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--text-secondary, #8b949e);
+}
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.profile-card {
+  border-radius: 12px;
+  background: var(--glass-bg, rgba(255,255,255,0.06));
+  border: 1px solid var(--border-base, rgba(255,255,255,0.1));
+  backdrop-filter: blur(32px) saturate(1.5);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.2s;
+}
+.profile-card.active {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.profile-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.profile-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.profile-card-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-secondary, #6e7681);
+  flex-shrink: 0;
+}
+.profile-card-indicator.pulse {
+  background: var(--success);
+  animation: pulse 2s infinite;
+}
+.profile-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #e6edf3);
+  flex: 1;
+}
+.profile-badge-default {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent, #5ac8fa);
+  font-weight: 500;
+}
+.profile-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.profile-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.profile-card-label {
+  font-size: 12px;
+  color: var(--text-secondary, #8b949e);
+}
+.profile-card-value {
+  font-size: 13px;
+  color: var(--text-primary, #e6edf3);
+}
+.profile-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-base, rgba(255,255,255,0.06));
+}
+.profile-action-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-base, rgba(255,255,255,0.1));
+  background: transparent;
+  color: var(--text-secondary, #8b949e);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.profile-action-btn:hover {
+  color: var(--text-primary, #e6edf3);
+  border-color: var(--border-strong);
+}
+.profile-action-switch {
+  color: var(--accent, #5ac8fa);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.profile-action-switch:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.profile-action-default {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+}
+.profile-action-default:hover {
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+}
+.profile-action-delete {
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 20%, transparent);
+}
+.profile-action-delete:hover {
+  background: color-mix(in srgb, var(--error) 10%, transparent);
+}
+.profile-action-active {
+  font-size: 12px;
+  color: var(--success);
+  font-weight: 500;
+  padding: 4px 10px;
+}
+.profile-card-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  border-style: dashed;
+  border-color: var(--border-light);
+  min-height: 160px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.profile-card-add:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+.profile-add-icon {
+  color: var(--text-secondary, #6e7681);
+}
+.profile-add-text {
+  font-size: 13px;
+  color: var(--text-secondary, #8b949e);
+}
+/* Model profile modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-panel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light, rgba(255,255,255,0.1));
+  border-radius: 16px;
+  width: 440px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  backdrop-filter: blur(48px) saturate(2);
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-base, rgba(255,255,255,0.06));
+}
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #e6edf3);
+  margin: 0;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary, #8b949e);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+.modal-close:hover {
+  background: var(--glass-weak);
+  color: var(--text-primary, #e6edf3);
+}
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-base, rgba(255,255,255,0.06));
 }
 </style>

@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import path from 'path'
 import http from 'http'
 import https from 'https'
 import { URL } from 'url'
 import fs from 'fs'
+import { fileURLToPath } from 'node:url'
 
 // 读取 package.json 获取版本号
 const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'))
@@ -12,6 +14,11 @@ const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 
 export default defineConfig({
   plugins: [
     vue(),
+    VueI18nPlugin({
+      include: path.resolve(__dirname, './src/i18n/locales/**'),
+      strictMessage: false,
+      escapeHtml: false,
+    }),
     // 通用 CORS 代理插件
     {
       name: 'cors-proxy',
@@ -80,8 +87,21 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router', 'pinia', 'vue-i18n'],
+          'vendor-3d': ['three', 'postprocessing', 'ogl'],
+          'vendor-markdown': ['marked', 'highlight.js', 'dompurify'],
+          'vendor-flow': ['@vue-flow/core', '@vue-flow/background', '@vue-flow/controls', '@vue-flow/minimap'],
+        },
+      },
+    },
+  },
   clearScreen: false,
   server: {
+    host: '0.0.0.0',
     port: 1420,
     strictPort: true,
     watch: {
@@ -104,6 +124,10 @@ export default defineConfig({
         target: 'http://127.0.0.1:9800',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/proxy\/agent/, ''),
+      },
+      '/v1': {
+        target: 'http://127.0.0.1:9800',
+        changeOrigin: true,
       },
     },
   },

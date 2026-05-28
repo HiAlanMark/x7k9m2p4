@@ -180,7 +180,7 @@ defineExpose({
 }
 
 .hixns-input--error:focus-within {
-  box-shadow: 0 0 8px rgba(255, 69, 58, 0.3), inset 0 0 8px rgba(255, 69, 58, 0.05);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--error) 30%, transparent), inset 0 0 8px color-mix(in srgb, var(--error) 5%, transparent);
 }
 
 .hixns-input__field--has-right {

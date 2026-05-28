@@ -3,8 +3,8 @@
     <!-- Header -->
     <div class="tasks-header">
       <div class="header-left">
-        <h1 class="tasks-title">任务中心</h1>
-        <span class="store-count" v-if="allTasks.length > 0">{{ allTasks.length }} 个任务</span>
+        <h1 class="tasks-title">{{ t('tasks.title') }}</h1>
+        <span class="store-count" v-if="allTasks.length > 0">{{ allTasks.length }} {{ t('tasks.taskCount') }}</span>
       </div>
     </div>
 
@@ -16,7 +16,7 @@
             <div class="modal-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </div>
-            <h2 class="modal-name">创建定时任务</h2>
+            <h2 class="modal-name">{{ t('tasks.createCron') }}</h2>
           </div>
           <button class="modal-close" @click="showCreate = false">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -24,21 +24,21 @@
         </div>
         <div class="modal-body">
           <div class="form-row">
-            <label class="form-label">任务名称</label>
-            <HxInput v-model="newTask.name" placeholder="例如: 每日数据报告" />
+            <label class="form-label">{{ t('tasks.taskName') }}</label>
+            <HxInput v-model="newTask.name" :placeholder="t('tasks.taskNamePlaceholder')" />
           </div>
           <div class="form-row">
-            <label class="form-label">执行计划</label>
-            <HxInput v-model="newTask.schedule" placeholder="30m / every 2h / 0 9 * * * / ISO时间" />
-            <p class="form-hint">支持: 30m, every 2h, cron表达式(0 9 * * *), ISO时间戳</p>
+            <label class="form-label">{{ t('tasks.executionPlan') }}</label>
+            <HxInput v-model="newTask.schedule" :placeholder="t('tasks.schedulePlaceholder')" />
+            <p class="form-hint">{{ t('tasks.scheduleHint') }}</p>
           </div>
           <div class="form-row">
-            <label class="form-label">提示词</label>
-            <HxTextarea v-model="newTask.prompt" placeholder="任务要执行的提示词内容" :rows="3" />
+            <label class="form-label">{{ t('tasks.prompt') }}</label>
+            <HxTextarea v-model="newTask.prompt" :placeholder="t('tasks.prompt')" :rows="3" />
           </div>
           <div class="form-row">
-            <label class="form-label">技能 (可选)</label>
-            <HxInput v-model="skillsSearch" placeholder="搜索或输入技能名称..." @focus="fetchAvailableSkills()" />
+            <label class="form-label">{{ t('tasks.skillsOptional') }}</label>
+            <HxInput v-model="skillsSearch" :placeholder="t('tasks.skillsSearchPlaceholder')" @focus="fetchAvailableSkills()" />
             <div v-if="filteredSkills.length > 0" class="skills-suggest">
               <button
                 v-for="sk in filteredSkills"
@@ -50,12 +50,12 @@
                 <span class="chip-cat">{{ sk.category }}</span>
               </button>
             </div>
-            <p v-if="newTask.skills" class="form-hint">已选: {{ newTask.skills }}</p>
+            <p v-if="newTask.skills" class="form-hint">{{ t('tasks.selected') }}: {{ newTask.skills }}</p>
           </div>
         </div>
         <div class="modal-footer">
-          <HxButton variant="ghost" @click="showCreate = false">取消</HxButton>
-          <HxButton variant="primary" @click="createTask">创建</HxButton>
+          <HxButton variant="ghost" @click="showCreate = false">{{ t('common.cancel') }}</HxButton>
+          <HxButton variant="primary" @click="createTask">{{ t('common.create') }}</HxButton>
         </div>
       </div>
     </div>
@@ -68,7 +68,7 @@
             <div class="modal-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </div>
-            <h2 class="modal-name">编辑任务</h2>
+            <h2 class="modal-name">{{ t('tasks.editTask') }}</h2>
           </div>
           <button class="modal-close" @click="editingTask = null">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -76,21 +76,21 @@
         </div>
         <div class="modal-body">
           <div class="form-row">
-            <label class="form-label">任务名称</label>
+            <label class="form-label">{{ t('tasks.taskName') }}</label>
             <HxInput v-model="editForm.name" />
           </div>
           <div class="form-row">
-            <label class="form-label">执行计划</label>
+            <label class="form-label">{{ t('tasks.executionPlan') }}</label>
             <HxInput v-model="editForm.schedule" />
-            <p class="form-hint">支持: 30m, every 2h, cron表达式(0 9 * * *), ISO时间戳</p>
+            <p class="form-hint">{{ t('tasks.scheduleHint') }}</p>
           </div>
           <div class="form-row">
-            <label class="form-label">提示词</label>
+            <label class="form-label">{{ t('tasks.prompt') }}</label>
             <HxTextarea v-model="editForm.prompt" :rows="3" />
           </div>
           <div class="form-row">
-            <label class="form-label">技能 (可选)</label>
-            <HxInput v-model="editSkillsSearch" placeholder="搜索或输入技能名称..." @focus="fetchAvailableSkills()" />
+            <label class="form-label">{{ t('tasks.skillsOptional') }}</label>
+            <HxInput v-model="editSkillsSearch" :placeholder="t('tasks.skillsSearchPlaceholder')" @focus="fetchAvailableSkills()" />
             <div v-if="filteredEditSkills.length > 0" class="skills-suggest">
               <button
                 v-for="sk in filteredEditSkills"
@@ -102,12 +102,12 @@
                 <span class="chip-cat">{{ sk.category }}</span>
               </button>
             </div>
-            <p v-if="editSkills" class="form-hint">已选: {{ editSkills }}</p>
+            <p v-if="editSkills" class="form-hint">{{ t('tasks.selected') }}: {{ editSkills }}</p>
           </div>
         </div>
         <div class="modal-footer">
-          <HxButton variant="ghost" @click="editingTask = null">取消</HxButton>
-          <HxButton variant="primary" @click="saveEdit">保存修改</HxButton>
+          <HxButton variant="ghost" @click="editingTask = null">{{ t('common.cancel') }}</HxButton>
+          <HxButton variant="primary" @click="saveEdit">{{ t('tasks.saveChanges') }}</HxButton>
         </div>
       </div>
     </div>
@@ -120,18 +120,18 @@
             <div class="modal-icon" style="color: var(--error); background: rgba(255,69,58,0.1);">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </div>
-            <h2 class="modal-name">删除任务</h2>
+            <h2 class="modal-name">{{ t('tasks.deleteTask') }}</h2>
           </div>
           <button class="modal-close" @click="deleteTarget = null">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="modal-body">
-          <p class="section-text">确定要删除任务 <strong>{{ deleteTarget.name }}</strong> 吗？此操作不可撤销。</p>
+          <p class="section-text">{{ t('tasks.deleteConfirmPrefix') }} <strong>{{ deleteTarget.name }}</strong> {{ t('tasks.deleteConfirmSuffix') }}</p>
         </div>
         <div class="modal-footer">
-          <HxButton variant="ghost" @click="deleteTarget = null">取消</HxButton>
-          <HxButton variant="danger" @click="confirmDeleteTask" style="background: rgba(255,69,58,0.85); border-color: rgba(255,69,58,0.9); color: #fff;">确认删除</HxButton>
+          <HxButton variant="ghost" @click="deleteTarget = null">{{ t('common.cancel') }}</HxButton>
+          <HxButton variant="danger" @click="confirmDeleteTask" style="background: rgba(255,69,58,0.85); border-color: rgba(255,69,58,0.9); color: #fff;">{{ t('common.confirm') }}</HxButton>
         </div>
       </div>
     </div>
@@ -140,20 +140,20 @@
     <div class="tabs-row">
       <div class="main-tabs">
         <button :class="['main-tab', { active: activeTab === 'cron' }]" @click="activeTab = 'cron'">
-          定时任务
+          {{ t('tasks.cron') }}
           <span class="tab-count">{{ cronTasks.length }}</span>
         </button>
         <button :class="['main-tab', { active: activeTab === 'running' }]" @click="activeTab = 'running'">
-          运行中
+          {{ t('tasks.executing') }}
           <span :class="['tab-count', { live: runningTasks.length > 0 }]">{{ runningTasks.length }}</span>
         </button>
         <button :class="['main-tab', { active: activeTab === 'history' }]" @click="activeTab = 'history'">
-          执行历史
+          {{ t('tasks.executionHistory') }}
           <span class="tab-count">{{ historyTasks.length }}</span>
         </button>
       </div>
       <HxButton variant="primary" size="sm" @click="toggleCreate">
-        + 新建
+        + {{ t('tasks.createNew') }}
       </HxButton>
     </div>
 
@@ -161,8 +161,8 @@
     <template v-if="activeTab === 'cron'">
       <HxEmpty v-if="cronTasks.length === 0">
         <template #default>
-          <div class="empty-text">暂无定时任务</div>
-          <div class="empty-hint">点击「新建定时任务」创建你的第一个自动化任务</div>
+          <div class="empty-text">{{ t('tasks.emptyCron') }}</div>
+          <div class="empty-hint">{{ t('tasks.emptyCronHint') }}</div>
         </template>
       </HxEmpty>
       <div v-else class="task-list">
@@ -175,8 +175,8 @@
               <HxBadge :variant="task.status === 'active' ? 'success' : task.status === 'paused' ? 'warning' : 'info'" size="sm">{{ statusLabel(task.status) }}</HxBadge>
             </div>
             <div class="task-header-right">
-              <span class="task-meta" v-if="task.nextRun">下次: {{ formatTime(task.nextRun) }}</span>
-              <span class="task-meta" v-if="task.lastRun">上次: {{ formatTime(task.lastRun) }}</span>
+              <span class="task-meta" v-if="task.nextRun">{{ t('tasks.nextRun') }}: {{ formatTime(task.nextRun) }}</span>
+              <span class="task-meta" v-if="task.lastRun">{{ t('tasks.lastRun') }}: {{ formatTime(task.lastRun) }}</span>
             </div>
           </div>
           <div class="task-prompt" v-if="task.prompt">{{ task.prompt }}</div>
@@ -272,10 +272,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { hermesCronList, hermesCronCreate, hermesCronPause, hermesCronResume, hermesCronRemove, hermesCronRun, hermesCronUpdate } from '../api'
 import { HxButton, HxInput, HxTextarea, HxCard, HxBadge, HxSpinner, HxEmpty } from '../components/ui'
 import { useToast } from '../composables/useToast'
 
+const { t } = useI18n()
 const toast = useToast()
 
 // Scroll mask
@@ -338,7 +340,7 @@ async function fetchAvailableSkills() {
       name: s.name || s.slug,
       category: s.category || '',
     }))
-  } catch { /* ignore */ }
+  } catch (e) { console.warn('[TasksView] Failed to load installed skills:', e) }
 }
 
 function toggleSkill(slug: string) {
@@ -396,13 +398,13 @@ function loadHistory(): HistoryTask[] {
   try {
     const raw = localStorage.getItem('hixns_task_history')
     return raw ? JSON.parse(raw) : []
-  } catch { return [] }
+  } catch (e) { console.warn('[TasksView] loadHistory parse failed:', e); return [] }
 }
 
 function saveHistory() {
   try {
     localStorage.setItem('hixns_task_history', JSON.stringify(historyTasks.value.slice(0, 50)))
-  } catch {}
+  } catch (e) { console.warn('[TasksView] saveHistory failed:', e) }
 }
 const loading = ref(false)
 
@@ -424,7 +426,7 @@ async function loadTasks() {
       nextRun: j.next_run,
       runCount: j.run_count || 0,
     }))
-  } catch { /* agent not running */ }
+  } catch (e) { console.warn('[TasksView] Cron list failed (agent not running):', e) }
   loading.value = false
 }
 
@@ -609,7 +611,7 @@ function formatElapsed(iso?: string): string {
   background: var(--color-primary);
   border: none;
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-inverse);
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -617,7 +619,7 @@ function formatElapsed(iso?: string): string {
   transition: all 0.15s;
 }
 
-.btn-create:hover { filter: brightness(1.1); box-shadow: 0 2px 8px rgba(10,132,255,0.25); transform: scale(1.04); }
+.btn-create:hover { filter: brightness(1.1); box-shadow: 0 2px 8px color-mix(in srgb, var(--info) 25%, transparent); transform: scale(1.04); }
 .btn-create:active { transform: scale(0.95); }
 
 /* Create form */
@@ -644,7 +646,7 @@ function formatElapsed(iso?: string): string {
 .card-header-tag {
   font-family: var(--font-mono); padding: 2px 6px; border-radius: 3px;
   font-size: 10px; font-weight: 600;
-  background: var(--color-primary); color: #fff;
+  background: var(--color-primary); color: var(--text-inverse);
 }
 
 .card-body { padding: 16px 20px; }
@@ -676,7 +678,7 @@ function formatElapsed(iso?: string): string {
 
 .btn-primary {
   padding: 6px 16px; background: var(--color-primary); border: none; border-radius: var(--radius-btn);
-  color: #fff; font-size: 12px; font-weight: 600; font-family: var(--font-mono);
+  color: var(--text-inverse); font-size: 12px; font-weight: 600; font-family: var(--font-mono);
   cursor: pointer; transition: all 0.2s var(--spring-bounce);
 }
 .btn-primary:hover { filter: brightness(1.1); transform: scale(1.03); }
@@ -739,7 +741,7 @@ function formatElapsed(iso?: string): string {
   color: var(--color-bg-page);
 }
 
-.tab-count.live { background: var(--color-primary); color: #fff; animation: pulse 2s ease infinite; }
+.tab-count.live { background: var(--color-primary); color: var(--text-inverse); animation: pulse 2s ease infinite; }
 
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
 
@@ -841,21 +843,21 @@ function formatElapsed(iso?: string): string {
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border-base);
-  background: #0D1117;
+  background: var(--bg-surface);
 }
 
 .task-output-header {
   display: flex;
   align-items: center;
   padding: 6px 12px;
-  background: rgba(255,255,255,0.03);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: var(--glass-weak);
+  border-bottom: 1px solid var(--border-base);
 }
 
 .task-output-label {
   font-size: 10px;
   font-weight: 600;
-  color: #8B949E;
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -866,7 +868,7 @@ function formatElapsed(iso?: string): string {
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.65;
-  color: #E6EDF3;
+  color: var(--text-primary);
   white-space: pre-wrap;
   word-break: break-word;
   overflow: auto;
@@ -909,8 +911,8 @@ function formatElapsed(iso?: string): string {
   margin: 6px 0;
 }
 .task-output pre {
-  background: #0D1117; color: #8B949E;
-  border: 1px solid #21262D; border-radius: 6px;
+  background: var(--bg-surface); color: var(--text-tertiary);
+  border: 1px solid var(--bg-elevated); border-radius: 6px;
   padding: 8px 10px; font-family: var(--font-mono); font-size: 11px;
   line-height: 1.5; max-height: 120px; overflow: auto;
   white-space: pre-wrap; word-break: break-all;

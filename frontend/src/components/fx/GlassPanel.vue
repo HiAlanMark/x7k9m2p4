@@ -32,7 +32,7 @@ const cssVars = computed(() => ({
   '--gp-border': props.border ? `1px solid rgba(${props.tint}, ${props.opacity + 0.06})` : 'none',
   '--gp-radius': `${props.radius}px`,
   '--gp-shadow-inset': `inset 0 1px 0 0 rgba(${props.tint}, ${props.opacity + 0.04}), inset 0 -1px 0 0 rgba(0,0,0,0.06)`,
-  '--gp-shadow-outer': '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
+  '--gp-shadow-outer': 'var(--shadow-sm)',
 }))
 </script>
 
@@ -51,7 +51,6 @@ const cssVars = computed(() => ({
 .fx-glass--hover:hover {
   transform: translateY(-2px) scale(1.005);
   box-shadow: var(--gp-shadow-inset),
-              0 12px 40px rgba(0,0,0,0.12),
-              0 4px 12px rgba(0,0,0,0.06);
+              var(--shadow-md);
 }
 </style>

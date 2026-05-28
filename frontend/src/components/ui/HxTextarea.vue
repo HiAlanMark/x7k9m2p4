@@ -93,7 +93,7 @@ defineExpose({ focus: () => areaRef.value?.focus(), blur: () => areaRef.value?.b
 
 .hixns-textarea-wrap.focused .hixns-textarea-inner {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(90,200,250,0.1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .hixns-textarea-wrap.error .hixns-textarea-inner {

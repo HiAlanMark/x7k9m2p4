@@ -13,33 +13,33 @@
             </div>
             <div class="status-panel-body">
               <div v-if="appStore.connectionState === 'connected'" class="status-panel-ready">
-                <span class="status-panel-ready-text">就绪 · {{ appStore.hermesStatus?.version?.split(' ')[0] || 'Hermes 已集成' }}</span>
+                <span class="status-panel-ready-text">{{ t('chatView.ready') }} · {{ appStore.hermesStatus?.version?.split(' ')[0] || t('chatView.hermesIntegrated') }}</span>
               </div>
               <div v-else-if="appStore.connectionState === 'connecting'" class="status-panel-ready">
                 <div class="status-panel-spinner"></div>
-                <span class="status-panel-ready-text">连接中...</span>
+                <span class="status-panel-ready-text">{{ t('chatView.connecting') }}</span>
               </div>
               <div v-else class="status-panel-ready">
-                <span class="status-panel-ready-text error">后端未连接</span>
+                <span class="status-panel-ready-text error">{{ t('chatView.backendDisconnected') }}</span>
               </div>
             </div>
           </div>
           <div class="quick-actions stagger-children">
             <div class="quick-item hover-lift" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
               <span class="qa-icon">></span>
-              <span class="qa-text">快速排序 · Python</span>
+              <span class="qa-text">{{ t('chatView.quickSort') }}</span>
             </div>
             <div class="quick-item hover-lift" @click="quickAsk('解释 TCP 三次握手的工作原理')">
               <span class="qa-icon">></span>
-              <span class="qa-text">TCP 三次握手</span>
+              <span class="qa-text">{{ t('chatView.tcpHandshake') }}</span>
             </div>
             <div class="quick-item hover-lift" @click="quickAsk('审查这段代码的性能问题: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
               <span class="qa-icon">></span>
-              <span class="qa-text">代码审查 · 斐波那契</span>
+              <span class="qa-text">{{ t('chatView.codeReview') }}</span>
             </div>
             <div class="quick-item hover-lift" @click="quickAsk('生成一个 Node.js 应用的多阶段构建 Dockerfile')">
               <span class="qa-icon">></span>
-              <span class="qa-text">Dockerfile · 多阶段构建</span>
+              <span class="qa-text">{{ t('chatView.dockerfile') }}</span>
             </div>
           </div>
         </div>
@@ -70,7 +70,13 @@
                 <span v-if="msg.model" class="meta-tag">{{ msg.model }}</span>
                 <template v-if="msg.duration_ms">
                   <span class="meta-dot"></span>
-                  <span>{{ (msg.duration_ms / 1000).toFixed(1) }}s</span>
+                  <span class="timing-badge" :title="timingTooltip(msg)">
+                    <span v-if="msg.ttft_ms" class="timing-ttft">TTFT {{ msg.ttft_ms }}ms</span>
+                    <span v-if="msg.ttft_ms" class="timing-sep">→</span>
+                    <span v-if="msg.tool_time_ms" class="timing-tool">🔧{{ (msg.tool_time_ms / 1000).toFixed(1) }}s</span>
+                    <span v-if="msg.tool_time_ms" class="timing-sep">→</span>
+                    <span>{{ (msg.duration_ms / 1000).toFixed(1) }}s</span>
+                  </span>
                 </template>
               </span>
             </div>
@@ -84,15 +90,15 @@
                   <span class="tool-tri">{{ (tc as any)._open ? '▾' : '▸' }}</span>
                   <span :class="['tool-status', tc.status]"></span>
                   <span class="tool-name">{{ tc.tool }}</span>
-                  <span class="tool-label">{{ tc.status === 'completed' ? '完成' : tc.status === 'failed' ? '失败' : '运行中...' }}</span>
+                  <span class="tool-label">{{ tc.status === 'completed' ? t('chatView.completed') : tc.status === 'failed' ? t('chatView.failed') : t('chatView.running') }}</span>
                 </div>
                 <div v-if="(tc as any)._open" class="tool-body">
                   <div v-if="tc.input" class="tool-section">
-                    <div class="tool-label-sm">Input</div>
+                    <div class="tool-label-sm">{{ t('chatView.inputLabel') }}</div>
                     <pre class="tool-json">{{ formatJson(tc.input) }}</pre>
                   </div>
                   <div v-if="tc.output" class="tool-section">
-                    <div class="tool-label-sm">Output</div>
+                    <div class="tool-label-sm">{{ t('chatView.outputLabel') }}</div>
                     <pre class="tool-json">{{ tc.output }}</pre>
                   </div>
                 </div>
@@ -101,14 +107,14 @@
 
             <div class="card-footer">
               <span v-if="msg.token_usage" class="footer-tokens">
-                <span class="token-item">输入 {{ (msg.token_usage.prompt_tokens || 0).toLocaleString() }}</span>
-                <span class="token-item">输出 {{ (msg.token_usage.completion_tokens || 0).toLocaleString() }}</span>
+                <span class="token-item">{{ t('chatView.inputLabel') }} {{ (msg.token_usage.prompt_tokens || 0).toLocaleString() }}</span>
+                <span class="token-item">{{ t('chatView.outputLabel') }} {{ (msg.token_usage.completion_tokens || 0).toLocaleString() }}</span>
               </span>
               <div class="action-group">
-                <button class="action-icon" @click="copyMessage(msg.content)" title="复制">
+                <button class="action-icon" @click="copyMessage(msg.content)" :title="t('chatView.copy')">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 </button>
-                <button class="action-icon" @click="regenerateMessage(idx)" :disabled="isStreaming" title="重新生成">
+                <button class="action-icon" @click="regenerateMessage(idx)" :disabled="isStreaming" :title="t('chatView.regenerate')">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                 </button>
               </div>
@@ -141,30 +147,35 @@
             <div class="thinking-dots">
               <span></span><span></span><span></span>
             </div>
-            <span class="status-text">思考中...</span>
+            <span class="status-text">{{ t('chatView.thinking') }}</span>
           </div>
 
           <!-- Approval -->
           <div v-if="pendingApproval" class="approval-card">
             <div class="approval-header">
               <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/><path d="M512 298.666667a42.666667 42.666667 0 0 0-42.666667 42.666666v170.666667a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V341.333333a42.666667 42.666667 0 0 0-42.666667-42.666666zM512 640a42.666667 42.666667 0 0 0-42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667 42.666666h0.426667a42.666667 42.666667 0 0 0 42.666666-42.666666 42.666667 42.666667 0 0 0-42.666666-42.666667z"/></svg>
-              <span>需要您的授权</span>
+              <span>{{ t('chatView.authorizationRequired') }}</span>
             </div>
             <div class="approval-body">
               <div class="approval-cmd">
-                <span class="approval-label">命令</span>
+                <span class="approval-label">{{ t('chatView.command') }}</span>
                 <code>{{ pendingApproval.command }}</code>
               </div>
               <div class="approval-reason">{{ pendingApproval.reason }}</div>
             </div>
+            <textarea v-model="approvalReply" class="approval-reply-input" :placeholder="t('chatView.replyFeedbackPlaceholder')" rows="2"></textarea>
             <div class="approval-actions">
               <button class="approve-btn" @click="approveCommand">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>允许执行</span>
+                <span>{{ t('chatView.allowExecution') }}</span>
+              </button>
+              <button class="reply-btn" @click="replyApproval">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span>{{ t('chatView.replyBtn') }}</span>
               </button>
               <button class="deny-btn" @click="denyCommand">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                <span>拒绝</span>
+                <span>{{ t('chatView.deny') }}</span>
               </button>
             </div>
           </div>
@@ -181,7 +192,7 @@
                 <span v-if="tc.status === 'running'" class="tool-spinner-sm"></span>
                 <span v-else :class="['tool-status', tc.status]"></span>
                 <span class="tool-name">{{ tc.tool }}</span>
-                <span class="tool-label">{{ tc.status === 'completed' ? '完成' : tc.status === 'failed' ? '失败' : tc.status === 'denied' ? '已拒绝' : tc.status === 'timeout' ? '审批超时' : '执行中...' }}</span>
+                <span class="tool-label">{{ tc.status === 'completed' ? t('chatView.completed') : tc.status === 'failed' ? t('chatView.failed') : tc.status === 'denied' ? t('chatView.denied') : tc.status === 'timeout' ? t('chatView.approvalTimeout') : t('chatView.executing') }}</span>
               </div>
             </div>
           </div>
@@ -193,15 +204,20 @@
         <div class="connecting-dots">
           <span class="dot"></span><span class="dot"></span><span class="dot"></span>
         </div>
-        <span>连接中</span>
+        <span>{{ t('chatView.connectingLabel') }}</span>
       </div>
     </div>
 
     <div class="input-area">
       <!-- Upload bar floating above input -->
       <div class="upload-bar">
-        <button @click="triggerFileUpload" class="upload-btn" title="上传文件">
+        <button @click="triggerFileUpload" class="upload-btn" :title="t('chatView.uploadFile')">
           <svg width="18" height="14" viewBox="0 0 1329 1024" fill="currentColor"><path d="M1036.572 951.784h-780.721c-62.416 0-113.411-47.899-115.072-107.38l-78.125-495.818v-2.735c0-60.873 51.662-110.396 115.164-110.396h14.961v-63.036c0-60.873 51.651-110.396 115.13-110.396h234.199c42.067 0 105.428 34.714 140.178 74.338h302.237c48.717 0 161.228 35.661 166.943 104.891 45.468 14.762 78.311 56.069 78.311 104.599v2.747l-78.137 495.807c-1.659 59.493-52.643 107.38-115.072 107.38zM136.887 343.559l78.008 495.07v2.747c0 21.109 18.374 38.279 40.957 38.279h780.721c22.582 0 40.957-17.17 40.957-38.279v-2.747l78.008-495.07c-1.274-20.046-19.146-35.989-40.932-35.989h-37.075v-59.903c-1.823-3.846-12.027-14.026-34.48-24.113-23.096-10.357-46.52-15.078-58.536-15.078h-341.532l-10.87-17.147c-17.953-28.368-70.714-57.191-90-57.191h-234.199c-22.593 0-40.968 17.182-40.968 38.279v135.152h-89.135c-21.775 0-39.647 15.942-40.921 36z"/><path d="M100.875 306.542h1086.428v69.779h-1086.428z"/></svg>
+        </button>
+        <button class="toolbar-btn" @click="toggleBlueprintPicker" :title="t('chatView.attachBlueprint')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
         </button>
         <input 
           type="file" 
@@ -214,9 +230,10 @@
         
         <!-- File Previews to the right of upload button -->
         <template v-if="attachedFiles.length > 0">
-          <span v-for="(file, index) in attachedFiles.slice(0, 6)" :key="file.id" class="file-chip">
+          <span v-for="(file, index) in attachedFiles.slice(0, 6)" :key="file.id" class="file-chip" :class="{ 'has-text': file.extractedText }">
             <span class="file-chip-name">{{ file.file.name }}</span>
-            <button @click="removeFile(index)" class="file-chip-remove" title="移除">
+            <span v-if="file.extractedText" class="file-chip-badge" :title="t('chatView.fileExtracted')">✎</span>
+            <button @click="removeFile(index)" class="file-chip-remove" :title="t('chatView.removeFile')">
               <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -227,12 +244,36 @@
         </template>
       </div>
 
+      <!-- Blueprint context indicator -->
+      <div v-if="blueprintRunId" class="blueprint-context-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <span>{{ t('chatView.blueprintContext') }}: {{ blueprintRunId.slice(0, 8) }}...</span>
+        <button class="clear-context-btn" @click="chatStore.blueprintRunId = ''">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
       <div class="fab-anchor">
         <transition name="fab-fade">
-          <button v-if="showScrollBtn" class="scroll-fab" @click="scrollToBottom(true)" title="滚动到底部">
+          <button v-if="showScrollBtn" class="scroll-fab" @click="scrollToBottom(true)" :title="t('chatView.scrollDown')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
         </transition>
+
+        <!-- Blueprint run picker dropdown -->
+        <div v-if="showBlueprintPicker" class="blueprint-picker-dropdown">
+          <div v-if="blueprintRuns.length === 0" class="bp-picker-empty">
+            {{ t('chatView.noBlueprintRuns') }}
+          </div>
+          <div v-for="run in blueprintRuns" :key="run.id" class="bp-picker-item" @click="selectBlueprintRun(run)">
+            <span class="bp-picker-name">{{ run.blueprint_name || run.blueprint_id?.slice(0, 8) }}</span>
+            <span class="bp-picker-status" :class="'status-' + run.status">{{ run.status }}</span>
+          </div>
+        </div>
 
         <div class="input-capsule" :class="{ focused: inputFocused }">
         <span class="prompt-symbol">❯</span>
@@ -243,7 +284,7 @@
           @focus="inputFocused = true"
           @blur="inputFocused = false"
           @contextmenu.prevent="showContextMenu"
-          placeholder="输入指令..."
+          :placeholder="t('chatView.inputPlaceholder')"
           rows="1"
           ref="textareaRef"
         ></textarea>
@@ -252,41 +293,68 @@
           <svg class="send-arrow" width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M853.333333 128a42.666667 42.666667 0 0 0-42.666666 42.666667v298.666666c0 71.210667-56.789333 128-128 128H170.666667a42.666667 42.666667 0 0 0-42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667 42.666667h512c117.632 0 213.333333-95.701333 213.333333-213.333334V170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M384 384a42.666667 42.666667 0 0 0-30.165333 12.501333l-213.333334 213.333334a42.666667 42.666667 0 0 0 0 60.330666l213.333334 213.333334a42.666667 42.666667 0 0 0 60.330666 0 42.666667 42.666667 0 0 0 0-60.330667L231.168 640l182.997333-182.997333a42.666667 42.666667 0 0 0 0-60.330667A42.666667 42.666667 0 0 0 384 384z"/></svg>
         </button>
         <button @click="cancelExecution" class="cancel-btn" v-if="isStreaming">
-          <span>停止</span>
+          <span>{{ t('chatView.stop') }}</span>
           <svg class="cancel-icon" width="10" height="10" viewBox="0 0 1024 1024" fill="currentColor"><path d="M213.333333 85.333333C143.146667 85.333333 85.333333 143.146667 85.333333 213.333333v597.333334c0 70.186667 57.813333 128 128 128h597.333334c70.186667 0 128-57.813333 128-128V213.333333c0-70.186667-57.813333-128-128-128z"/></svg>
         </button>
       </div>
       </div>
       <div class="input-status">
-        <span class="status-pill">{{ chatStore.getActiveConfig().model || '未选择模型' }}</span>
+        <span class="status-pill">{{ chatStore.getActiveConfig().model || t('chatView.noModelSelected') }}</span>
         <span class="status-dot-sep">·</span>
         <span class="status-pill" :class="chatStore.providerMode === 'custom' ? 'warning' : 'success'">{{ chatStore.providerMode === 'custom' ? 'Custom API' : 'gfw.net' }}</span>
         <span class="status-dot-sep">·</span>
-        <span class="status-pill" :class="{ streaming: isStreaming }">{{ isStreaming ? 'Generating' : 'Ready' }}</span>
+        <span class="status-pill" :class="{ streaming: isStreaming }">{{ isStreaming ? `${t('chatView.generating')} ${streamElapsed}s` : t('chatView.ready') }}</span>
         <span v-if="messages.length > 0" class="status-dot-sep">·</span>
-        <button v-if="messages.length > 0" class="export-btn" @click="exportChat" title="导出对话为 Markdown 文件">导出 Markdown</button>
+        <button v-if="messages.length > 0" class="export-btn" @click="exportChat" :title="t('chatView.exportMarkdown')">{{ t('chatView.exportMarkdown') }}</button>
       </div>
     </div>
     <!-- Context menu -->
     <div v-if="ctxMenu.show" class="ctx-menu" :style="{ top: ctxMenu.y + 'px', left: ctxMenu.x + 'px' }" @click.stop @contextmenu.prevent>
-      <button v-if="ctxMenu.hasSelection && ctxMenu.source === 'body'" @click="ctxBodyCopy" class="ctx-item">复制</button>
-      <button v-if="ctxMenu.hasSelection && ctxMenu.source === 'input'" @click="ctxCopy" class="ctx-item">复制</button>
-      <button v-if="ctxMenu.hasSelection && ctxMenu.source === 'input'" @click="ctxCut" class="ctx-item">剪切</button>
-      <button v-if="ctxMenu.hasContent && !ctxMenu.hasSelection && ctxMenu.source === 'input'" @click="ctxSelectAll" class="ctx-item">全选</button>
-      <button v-if="ctxMenu.source === 'input'" @click="ctxPaste" class="ctx-item">粘贴</button>
+      <button v-if="ctxMenu.hasSelection && ctxMenu.source === 'body'" @click="ctxBodyCopy" class="ctx-item">{{ t('chatView.copy') }}</button>
+      <button v-if="ctxMenu.hasSelection && ctxMenu.source === 'input'" @click="ctxCopy" class="ctx-item">{{ t('chatView.copy') }}</button>
+      <button v-if="ctxMenu.hasSelection && ctxMenu.source === 'input'" @click="ctxCut" class="ctx-item">{{ t('chatView.cut') }}</button>
+      <button v-if="ctxMenu.hasContent && !ctxMenu.hasSelection && ctxMenu.source === 'input'" @click="ctxSelectAll" class="ctx-item">{{ t('chatView.selectAll') }}</button>
+      <button v-if="ctxMenu.source === 'input'" @click="ctxPaste" class="ctx-item">{{ t('chatView.paste') }}</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch, onMounted, reactive } from 'vue'
+import { ref, nextTick, watch, onMounted, onBeforeUnmount, reactive, computed } from 'vue'
 import { useChatStore } from '../stores/chat'
 import { useAppStore } from '../stores/app'
 import { useGfwStore } from '../stores/gfw'
+import { useBlueprintStore } from '@/stores/blueprint'
 import { storeToRefs } from 'pinia'
 import { marked, type Tokens } from 'marked'
 import DOMPurify from 'dompurify'
-import hljs from 'highlight.js'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import python from 'highlight.js/lib/languages/python'
+import bash from 'highlight.js/lib/languages/bash'
+import json from 'highlight.js/lib/languages/json'
+import yaml from 'highlight.js/lib/languages/yaml'
+import xml from 'highlight.js/lib/languages/xml'
+import css from 'highlight.js/lib/languages/css'
+import sql from 'highlight.js/lib/languages/sql'
+import go from 'highlight.js/lib/languages/go'
+import rust from 'highlight.js/lib/languages/rust'
+import java from 'highlight.js/lib/languages/java'
+import cpp from 'highlight.js/lib/languages/cpp'
+import markdown from 'highlight.js/lib/languages/markdown'
+import dockerfile from 'highlight.js/lib/languages/dockerfile'
+import shell from 'highlight.js/lib/languages/shell'
+
+// Register only commonly-used languages to reduce bundle size
+const hljsLanguages: Record<string, typeof javascript> = {
+  javascript, typescript, python, bash, json, yaml, xml, css,
+  sql, go, rust, java, cpp, markdown, dockerfile, shell,
+  js: javascript, ts: typescript, py: python, sh: bash, yml: yaml,
+  html: xml, svg: xml, c: cpp, cc: cpp, cxx: cpp, hpp: cpp,
+  md: markdown, Dockerfile: dockerfile,
+}
+Object.entries(hljsLanguages).forEach(([name, lang]) => hljs.registerLanguage(name, lang))
 import * as api from '../api'
 import { isBrowserMode, browserChat, hermesCancel, generateTitle } from '../api'
 import IconSend from '../components/icons/IconSend.vue'
@@ -300,19 +368,64 @@ import IconChevronDown from '../components/icons/IconChevronDown.vue'
 import { SpotlightCard, FadeIn, ShinyText } from '../components/fx'
 import { HxBadge } from '../components/ui'
 import { useToast } from '../composables/useToast'
+import { useI18n } from 'vue-i18n'
 
 const toast = useToast()
+const { t } = useI18n()
 
 const chatStore = useChatStore()
 const appStore = useAppStore()
 const gfwStore = useGfwStore()
+const blueprintStore = useBlueprintStore()
 const appVersion = __APP_VERSION__
 const { messages, isStreaming, currentResponse, currentToolCalls, selectedModel } = storeToRefs(chatStore)
+
+// Blueprint context association
+const showBlueprintPicker = ref(false)
+const blueprintRunId = computed(() => chatStore.blueprintRunId)
+const blueprintRuns = computed(() => blueprintStore.runs)
+
+function toggleBlueprintPicker() {
+  showBlueprintPicker.value = !showBlueprintPicker.value
+  if (showBlueprintPicker.value) {
+    blueprintStore.fetchAllRuns()
+  }
+}
+
+function selectBlueprintRun(run: any) {
+  chatStore.blueprintRunId = run.id
+  showBlueprintPicker.value = false
+}
 
 const inputText = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// Streaming timing: live elapsed counter
+const streamElapsed = ref('0.0')
+let streamTimer: ReturnType<typeof setInterval> | null = null
+
+watch(() => chatStore.isStreaming, (streaming) => {
+  if (streaming) {
+    streamTimer = setInterval(() => {
+      if (chatStore.streamStartTime) {
+        streamElapsed.value = ((Date.now() - chatStore.streamStartTime) / 1000).toFixed(1)
+      }
+    }, 100)
+  } else {
+    if (streamTimer) { clearInterval(streamTimer); streamTimer = null }
+    streamElapsed.value = '0.0'
+  }
+})
+
+function timingTooltip(msg: any): string {
+  const parts: string[] = []
+  if (msg.ttft_ms) parts.push(`${t('chatView.timingTtft')}: ${msg.ttft_ms}ms`)
+  if (msg.tool_time_ms) parts.push(`${t('chatView.timingTool')}: ${(msg.tool_time_ms / 1000).toFixed(1)}s`)
+  if (msg.duration_ms) parts.push(`${t('chatView.timingTotal')}: ${(msg.duration_ms / 1000).toFixed(1)}s`)
+  return parts.join('\n')
+}
 
 // Context menu state
 const ctxMenu = reactive({ show: false, x: 0, y: 0, hasContent: false, hasSelection: false, source: '' as 'input' | 'body' | '' })
@@ -392,11 +505,12 @@ function ctxSelectAll() {
   textareaRef.value?.select()
   hideContextMenu()
 }
-const attachedFiles = ref<Array<{ id: string; file: File; type: string; name: string; size: number }>>([])
+const attachedFiles = ref<Array<{ id: string; file: File; type: string; name: string; size: number; extractedText?: string }>>([])
 const agentStatus = ref('')
 const agentIteration = ref(0)
 const agentMaxIter = ref(0)
 const pendingApproval = ref<{ id: string; tool: string; command: string; reason: string } | null>(null)
+const approvalReply = ref('')
 const isConnecting = ref(false)
 const inputFocused = ref(false)
 const showScrollBtn = ref(false)
@@ -429,14 +543,14 @@ function getLangIcon(lang: string): string {
   return map[lang.toLowerCase()] || '📄'
 }
 
-marked.setOptions({ renderer })
+marked.setOptions({ renderer, gfm: true, breaks: true })
 
 // File upload functions
 const triggerFileUpload = () => {
   fileInputRef.value?.click()
 }
 
-const handleFileSelect = (event: Event) => {
+const handleFileSelect = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const files = target.files
   if (!files || files.length === 0) return
@@ -472,28 +586,32 @@ const handleFileSelect = (event: Event) => {
     
     // Check file size
     if (file.size > maxFileSize) {
-      toast.error(`文件 "${file.name}" 超过 50MB 限制`)
+      toast.error(t('chatView.fileTooLarge', { name: file.name }))
       continue
     }
     
     // Check file type
     if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx|ppt|pptx|xls|xlsx|txt|md|json|yaml|yml|csv|xml|png|jpg|jpeg|gif|webp|svg|mp4|webm|avi|mov|mkv)$/i)) {
-      toast.warning(`文件类型不支持：${file.name}`)
+      toast.warning(t('chatView.fileTypeNotSupported', { name: file.name }))
       continue
     }
+    
+    // Extract text from text-based files
+    const extractedText = await extractFileText(file)
     
     attachedFiles.value.push({
       id: `${Date.now()}-${i}`,
       file,
       type: file.type || 'unknown',
       name: file.name,
-      size: file.size
+      size: file.size,
+      extractedText
     })
   }
   
   // Reset input to allow re-selecting same file
   target.value = ''
-  toast.success(`已添加 ${files.length} 个文件`)
+  toast.success(t('chatView.filesAdded', { n: files.length }))
 }
 
 const removeFile = (index: number) => {
@@ -529,6 +647,21 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
+/** Extract text from text-based files for inclusion in prompt */
+const TEXT_EXTENSIONS = new Set(['txt','md','json','csv','xml','yaml','yml','toml','ini','conf','log','ts','js','py','go','rs','java','c','cpp','h','sh','bash','sql','html','css','scss','vue','jsx','tsx'])
+
+async function extractFileText(file: File): Promise<string | undefined> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || ''
+  if (!TEXT_EXTENSIONS.has(ext)) return undefined
+  const maxChars = 50000
+  try {
+    const text = await file.text()
+    return text.length > maxChars ? text.slice(0, maxChars) + '\n...[truncated]' : text
+  } catch {
+    return undefined
+  }
+}
+
 const getFilePreviewUrl = (file: File): string => {
   return URL.createObjectURL(file)
 }
@@ -543,18 +676,18 @@ watch(inputText, async () => {
 
 function renderMarkdown(content: string) {
   const html = marked(content) as string
-  return DOMPurify.sanitize(html, { ADD_ATTR: ['class', 'onclick'] })
+  return DOMPurify.sanitize(html, { ADD_ATTR: ['class', 'onclick', 'type', 'disabled', 'checked'] })
 }
 
 function formatJson(obj: Record<string, unknown>) {
-  try { return JSON.stringify(obj, null, 2) } catch { return String(obj) }
+  try { return JSON.stringify(obj, null, 2) } catch (e) { console.warn('[ChatView] formatJson failed:', e); return String(obj) }
 }
 
 function formatTime(ts: string) {
   try {
     const d = new Date(ts)
     return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-  } catch { return '' }
+  } catch (e) { console.warn('[ChatView] formatTime failed:', e); return '' }
 }
 
 function quickAsk(text: string) {
@@ -568,13 +701,17 @@ async function sendMessage() {
   
   if (!text && !hasAttachments) return
 
-  // 构建消息内容（包含文件信息）
+  // 构建消息内容（包含文件信息和提取的文本）
   let messageContent = text
   if (hasAttachments) {
-    const fileInfos = attachedFiles.value.map(f => 
-      `[附件：${f.name} (${formatFileSize(f.size)})]`
-    ).join('\n')
-    messageContent = text ? `${text}\n\n${fileInfos}` : fileInfos
+    const fileParts = attachedFiles.value.map(f => {
+      let part = `[${t('chatView.attachment')}：${f.name} (${formatFileSize(f.size)})]`
+      if (f.extractedText) {
+        part += `\n\`\`\`\n${f.extractedText}\n\`\`\``
+      }
+      return part
+    }).join('\n\n')
+    messageContent = text ? `${text}\n\n${fileParts}` : fileParts
   }
   
   // 如果正在生成，先取消当前任务再发送新消息（支持中途打断/补充）
@@ -597,7 +734,7 @@ async function sendMessage() {
       await api.agentStart('')
       appStore.agentRunning = true
     } catch (e: unknown) {
-      chatStore.addSystemMessage(`Agent 启动失败: ${e}`)
+      chatStore.addSystemMessage(t('chatView.agentStartFailed') + e)
       isConnecting.value = false
       return
     }
@@ -657,7 +794,7 @@ async function sendMessage() {
     )
   } else {
     try { await api.agentSendMessage(text, selectedModel.value) }
-    catch { chatStore.finishResponse() }
+    catch (e) { console.warn('[ChatView] agentSendMessage failed:', e); chatStore.finishResponse() }
   }
 }
 
@@ -719,13 +856,13 @@ function updateCopyBtn(btn: HTMLElement) {
   const span = btn.querySelector('span')
   if (!span) return
   const original = span.textContent || 'Copy'
-  span.textContent = '已复制!'
+  span.textContent = t('chatView.copied')
   setTimeout(() => { span.textContent = original }, 1500)
 }
 
 function copyMessage(content: string) {
   copyToClipboard(content)
-  toast.success('已复制', undefined, 1500)
+  toast.success(t('chatView.copiedToast'), undefined, 1500)
 }
 
 async function regenerateMessage(idx: number) {
@@ -759,13 +896,15 @@ async function approveCommand() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, approved: true }),
     })
-  } catch { /* ignore */ }
+  } catch (e) { console.warn('[ChatView] approveCommand failed:', e) }
 }
 
 async function denyCommand() {
   if (!pendingApproval.value) return
   const { id } = pendingApproval.value
+  const reason = approvalReply.value.trim() || t('chatView.userDenied')
   pendingApproval.value = null
+  approvalReply.value = ''
   // 发送拒绝到后端
   try {
     const isDev = import.meta.env?.DEV ?? false
@@ -773,10 +912,28 @@ async function denyCommand() {
     await fetch(`${agentUrl}/v1/agent/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, approved: false, reason: '用户拒绝了命令执行' }),
+        body: JSON.stringify({ id, approved: false, reason }),
     })
-  } catch { /* ignore */ }
-  chatStore.addSystemMessage('用户拒绝了命令执行')
+  } catch (e) { console.warn('[ChatView] denyCommand failed:', e) }
+  chatStore.addSystemMessage(reason)
+}
+
+async function replyApproval() {
+  if (!pendingApproval.value || !approvalReply.value.trim()) return
+  const { id } = pendingApproval.value
+  const reason = approvalReply.value.trim()
+  approvalReply.value = ''
+  // 发送反馈到后端，不清除 pendingApproval 以支持多轮迭代
+  try {
+    const isDev = import.meta.env?.DEV ?? false
+    const agentUrl = isDev ? '/proxy/agent' : ''
+    await fetch(`${agentUrl}/v1/agent/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, approved: false, reason }),
+    })
+  } catch (e) { console.warn('[ChatView] replyApproval failed:', e) }
+  chatStore.addSystemMessage(t('chatView.replyFeedback') + ': ' + reason)
 }
 
 async function cancelExecution() {
@@ -790,14 +947,14 @@ async function cancelExecution() {
       fetch(`${agentUrl}/v1/agent/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, approved: false, reason: '用户取消了执行' }),
+        body: JSON.stringify({ id, approved: false, reason: t('chatView.userCancelled') }),
       }).catch(() => {})
     }
     await hermesCancel()
     agentStatus.value = ''
     chatStore.finishResponse()
-    chatStore.addSystemMessage('已停止执行')
-  } catch { /* ignore */ }
+    chatStore.addSystemMessage(t('chatView.executionStopped'))
+  } catch (e) { console.warn('[ChatView] cancelExecution failed:', e) }
 }
 
 async function autoGenerateTitle(userText: string, aiReply: string, config: { baseUrl: string; apiKey: string; model: string }) {
@@ -812,39 +969,43 @@ async function autoGenerateTitle(userText: string, aiReply: string, config: { ba
   const defaultTitle = firstUser.content.trim().length > 30
     ? firstUser.content.trim().substring(0, 30) + '...'
     : firstUser.content.trim()
-  if (session.title !== defaultTitle && session.title !== '新会话') return
+  if (session.title !== defaultTitle && session.title !== t('chatView.newSession')) return
   // 后台异步生成标题，不阻塞 UI
   try {
     const title = await generateTitle(userText, aiReply, config)
     if (title && title.length >= 2) {
       chatStore.renameSession(session.id, title)
     }
-  } catch { /* ignore */ }
+  } catch (e) { console.warn('[ChatView] autoGenerateTitle failed:', e) }
 }
 
 onMounted(async () => {
   if (gfwStore.models.length === 0) await gfwStore.fetchModels()
 })
 
+onBeforeUnmount(() => {
+  document.removeEventListener('click', hideContextMenu)
+})
+
 function exportChat() {
   const session = chatStore.currentSession
   if (!session || session.messages.length === 0) return
-  const title = session.title || '对话'
+  const title = session.title || t('chatView.chatTitle')
   const date = new Date().toLocaleDateString('zh-CN')
-  let md = `# ${title}\n\n> 导出时间: ${date}\n\n---\n\n`
+  let md = `# ${title}\n\n> ${t('chatView.exportTime')}: ${date}\n\n---\n\n`
   for (const msg of session.messages) {
     if (msg.role === 'system') {
-      md += `> **[系统]** ${msg.content}\n\n`
+      md += `> **[${t('chatView.systemLabel')}]** ${msg.content}\n\n`
     } else if (msg.role === 'user') {
-      md += `## 我\n\n${msg.content}\n\n`
+      md += `## ${t('chatView.meLabel')}\n\n${msg.content}\n\n`
     } else if (msg.role === 'assistant') {
       md += `## Hi!XNS\n\n${msg.content}\n\n`
       if (msg.tool_calls && msg.tool_calls.length > 0) {
-        md += `<details><summary>工具调用 (${msg.tool_calls.length})</summary>\n\n`
+        md += `<details><summary>${t('chatView.toolCalls')} (${msg.tool_calls.length})</summary>\n\n`
         for (const tc of msg.tool_calls) {
           md += `- **${tc.tool}** [${tc.status}]\n`
-          if (tc.input) md += `  - 参数: \`${JSON.stringify(tc.input).substring(0, 200)}\`\n`
-          if (tc.output) md += `  - 结果: \`${tc.output.substring(0, 200)}\`\n`
+          if (tc.input) md += `  - ${t('chatView.params')}: \`${JSON.stringify(tc.input).substring(0, 200)}\`\n`
+          if (tc.output) md += `  - ${t('chatView.result')}: \`${tc.output.substring(0, 200)}\`\n`
         }
         md += `\n</details>\n\n`
       }
@@ -862,7 +1023,7 @@ function exportChat() {
   a.download = `${title.replace(/[/\\:*?"<>|]/g, '_')}_${new Date().toISOString().slice(0, 10)}.md`
   a.click()
   URL.revokeObjectURL(url)
-  toast.success('导出成功', '对话已保存为 Markdown 文件', 3000)
+  toast.success(t('chatView.exportSuccess'), t('chatView.exportSaved'), 3000)
 }
 </script>
 
@@ -953,8 +1114,8 @@ function exportChat() {
   flex-shrink: 0;
 }
 
-.status-panel-dot.connected { background: var(--success); box-shadow: 0 0 8px rgba(48, 209, 88, 0.4); }
-.status-panel-dot.connecting { background: var(--warning); box-shadow: 0 0 8px rgba(255, 159, 10, 0.4); }
+.status-panel-dot.connected { background: var(--success); box-shadow: 0 0 8px var(--success-glow); }
+.status-panel-dot.connecting { background: var(--warning); box-shadow: 0 0 8px var(--warning-glow); }
 .status-panel-dot.disconnected { background: var(--error); }
 
 .status-panel-title {
@@ -993,7 +1154,7 @@ function exportChat() {
 .status-panel-spinner {
   width: 12px;
   height: 12px;
-  border: 2px solid rgba(255, 159, 10, 0.3);
+  border: 2px solid var(--warning-glow);
   border-top-color: var(--warning);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -1076,12 +1237,12 @@ function exportChat() {
 }
 
 .user-content {
-  background: linear-gradient(135deg, rgba(90, 200, 250, 0.22) 0%, rgba(90, 200, 250, 0.12) 100%);
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid rgba(90, 200, 250, 0.32);
-  border-right-color: rgba(90, 200, 250, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.08), 0 0 12px rgba(90, 200, 250, 0.1);
+  border: 1px solid var(--primary-border);
+  border-right-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary-light), 0 0 12px var(--primary-glow-sm);
   border-radius: 18px 18px 4px 18px;
   padding: 10px 16px;
   font-size: 14px;
@@ -1107,14 +1268,14 @@ function exportChat() {
   -webkit-backdrop-filter: blur(48px) saturate(2);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
-  box-shadow: var(--glass-inset), 0 4px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--glass-inset), var(--shadow-sm);
   animation: cardSlideIn 0.4s var(--ease-expo) both;
   overflow: hidden;
 }
 
 .msg-card.ai-card.glass-glow {
-  border-color: rgba(10, 132, 255, 0.2);
-  box-shadow: 0 0 12px rgba(10, 132, 255, 0.1);
+  border-color: var(--border-glow);
+  box-shadow: 0 0 12px var(--primary-glow-sm);
 }
 
 @keyframes cardSlideIn {
@@ -1128,7 +1289,7 @@ function exportChat() {
   gap: 8px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--glass-weak);
 }
 
 .author-badge {
@@ -1145,7 +1306,7 @@ function exportChat() {
   height: 8px;
   border-radius: 50%;
   background: var(--success);
-  box-shadow: 0 0 6px rgba(48, 209, 88, 0.4);
+  box-shadow: 0 0 6px var(--success-glow);
 }
 
 .ai-dot.pulsing {
@@ -1168,7 +1329,7 @@ function exportChat() {
 
 .meta-tag {
   font-family: var(--font-mono);
-  background: rgba(10, 132, 255, 0.08);
+  background: var(--primary-light);
   color: var(--primary-text);
   padding: 2px 6px;
   border-radius: 6px;
@@ -1179,6 +1340,25 @@ function exportChat() {
   height: 3px;
   border-radius: 50%;
   background: var(--text-tertiary);
+}
+
+.timing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: help;
+}
+.timing-ttft {
+  color: var(--accent, #5ac8fa);
+}
+.timing-tool {
+  color: var(--warning, #f0ad4e);
+}
+.timing-sep {
+  color: var(--text-tertiary);
+  opacity: 0.5;
 }
 
 .meta-tokens {
@@ -1247,7 +1427,7 @@ function exportChat() {
 }
 
 .action-icon:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--glass-bg-hover);
   border-color: var(--glass-border);
   color: var(--text-primary);
 }
@@ -1264,7 +1444,7 @@ function exportChat() {
 }
 
 .tool-item {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border-base);
 }
 
 .tool-header {
@@ -1280,7 +1460,7 @@ function exportChat() {
 
 .tool-header:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-weak);
   border-radius: 6px;
   padding-left: 8px;
 }
@@ -1335,7 +1515,7 @@ function exportChat() {
 }
 
 .tool-json {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-overlay);
   border: 1px solid var(--glass-border);
   border-radius: 8px;
   padding: 10px 12px;
@@ -1376,8 +1556,8 @@ function exportChat() {
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--glass-border);
-  background: #0D1117;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
 }
 
 .markdown-body :deep(.code-tab) {
@@ -1385,14 +1565,14 @@ function exportChat() {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-weak);
   border-bottom: 1px solid var(--glass-border);
 }
 
 .markdown-body :deep(.code-lang-icon) {
   font-size: 11px;
   font-weight: 600;
-  color: #8B949E;
+  color: var(--text-tertiary);
   text-transform: lowercase;
 }
 
@@ -1401,9 +1581,9 @@ function exportChat() {
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  color: #8B949E;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-tertiary);
+  background: var(--glass-bg-hover);
+  border: 1px solid var(--border-base);
   border-radius: 6px;
   padding: 3px 8px;
   cursor: pointer;
@@ -1411,9 +1591,9 @@ function exportChat() {
 }
 
 .markdown-body :deep(.code-copy-btn:hover) {
-  color: #E6EDF3;
-  border-color: rgba(90, 200, 250, 0.4);
-  background: rgba(90, 200, 250, 0.15);
+  color: var(--text-primary);
+  border-color: var(--primary-border);
+  background: var(--primary-light);
 }
 
 .markdown-body :deep(.code-body) {
@@ -1428,9 +1608,9 @@ function exportChat() {
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.65;
-  color: #484F58;
-  background: rgba(255, 255, 255, 0.01);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-disabled);
+  background: var(--glass-weak);
+  border-right: 1px solid var(--border-base);
   user-select: none;
   white-space: pre;
 }
@@ -1448,7 +1628,7 @@ function exportChat() {
 .markdown-body :deep(code.hljs) {
   background: none;
   padding: 0;
-  color: #E6EDF3;
+  color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.65;
@@ -1484,9 +1664,39 @@ function exportChat() {
 .markdown-body :deep(.hljs-name) { color: #7EE787; }
 .markdown-body :deep(.hljs-attribute) { color: #79C0FF; }
 
+/* highlight.js light theme overrides (GitHub Light) */
+[data-theme="light"] .markdown-body :deep(.hljs-keyword),
+[data-theme="light"] .markdown-body :deep(.hljs-selector-tag),
+[data-theme="light"] .markdown-body :deep(.hljs-built_in),
+[data-theme="light"] .markdown-body :deep(.hljs-type) { color: #CF222E; }
+
+[data-theme="light"] .markdown-body :deep(.hljs-string),
+[data-theme="light"] .markdown-body :deep(.hljs-addition) { color: #79C0FF; }
+
+[data-theme="light"] .markdown-body :deep(.hljs-number),
+[data-theme="light"] .markdown-body :deep(.hljs-literal) { color: #0550AE; }
+
+[data-theme="light"] .markdown-body :deep(.hljs-comment),
+[data-theme="light"] .markdown-body :deep(.hljs-deletion) { color: #6E7781; }
+
+[data-theme="light"] .markdown-body :deep(.hljs-function),
+[data-theme="light"] .markdown-body :deep(.hljs-title) { color: #8250DF; }
+
+[data-theme="light"] .markdown-body :deep(.hljs-variable),
+[data-theme="light"] .markdown-body :deep(.hljs-attr) { color: #953800; }
+
+[data-theme="light"] .markdown-body :deep(.hljs-symbol),
+[data-theme="light"] .markdown-body :deep(.hljs-bullet) { color: #116327; }
+
+[data-theme="light"] .markdown-body :deep(.hljs-regexp) { color: #116327; }
+
+[data-theme="light"] .markdown-body :deep(.hljs-tag) { color: #116327; }
+[data-theme="light"] .markdown-body :deep(.hljs-name) { color: #116327; }
+[data-theme="light"] .markdown-body :deep(.hljs-attribute) { color: #0550AE; }
+
 /* Inline code */
 .markdown-body :deep(code:not(.hljs)) {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--glass-bg-hover);
   border: 1px solid var(--glass-border);
   padding: 2px 6px;
   border-radius: 6px;
@@ -1499,13 +1709,63 @@ function exportChat() {
 .markdown-body :deep(ol) { padding-left: 22px; margin: 10px 0; }
 .markdown-body :deep(li) { margin: 4px 0; line-height: 1.65; }
 
+/* GFM Task Lists */
+.markdown-body :deep(.contains-task-list) {
+  list-style: none;
+  padding-left: 0;
+}
+
+.markdown-body :deep(.contains-task-list li) {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.markdown-body :deep(.contains-task-list input[type="checkbox"]) {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 3px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  position: relative;
+  cursor: default;
+}
+
+.markdown-body :deep(.contains-task-list input[type="checkbox"]:checked) {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.markdown-body :deep(.contains-task-list input[type="checkbox"]:checked::after) {
+  content: '✓';
+  position: absolute;
+  top: -1px;
+  left: 2px;
+  font-size: 10px;
+  color: white;
+  font-weight: 700;
+}
+
+.markdown-body :deep(.contains-task-list .task-list-item-block) {
+  flex: 1;
+}
+
+/* GFM Strikethrough */
+.markdown-body :deep(del) {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
 .markdown-body :deep(blockquote) {
-  border-left: 3px solid var(--primary);
-  padding: 8px 16px;
-  margin: 14px 0;
+  border-left: 3px solid var(--accent);
+  padding: 4px 12px;
+  margin: 8px 0;
   color: var(--text-secondary);
-  background: rgba(90, 200, 250, 0.03);
-  border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--glass-bg) 40%, transparent);
+  border-radius: 0 6px 6px 0;
 }
 
 .markdown-body :deep(a) {
@@ -1525,7 +1785,7 @@ function exportChat() {
 .markdown-body :deep(table) {
   width: 100%;
   border-collapse: collapse;
-  margin: 14px 0;
+  margin: 8px 0;
   font-size: 13px;
   border-radius: 8px;
   overflow: hidden;
@@ -1533,13 +1793,17 @@ function exportChat() {
 }
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
-  border: 1px solid var(--glass-border);
-  padding: 8px 12px;
+  border: 1px solid var(--border-base);
+  padding: 6px 10px;
   text-align: left;
 }
 .markdown-body :deep(th) {
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   font-weight: 600;
+  font-size: 12px;
+}
+.markdown-body :deep(tr:nth-child(even)) {
+  background: color-mix(in srgb, var(--glass-bg) 60%, transparent);
 }
 
 .markdown-body :deep(img) {
@@ -1599,7 +1863,7 @@ function exportChat() {
   color: var(--primary-text);
   animation: cursorBlink 0.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   margin-left: 1px;
-  text-shadow: 0 0 8px rgba(90, 200, 250, 0.6);
+  text-shadow: 0 0 8px var(--primary-glow);
 }
 
 @keyframes cursorBlink {
@@ -1642,7 +1906,7 @@ function exportChat() {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: rgba(255, 159, 10, 0.08);
+  background: var(--warning-glow);
   border-bottom: 1px solid var(--glass-border);
   color: var(--warning);
   font-size: 12px;
@@ -1663,8 +1927,8 @@ function exportChat() {
 
 .approval-cmd code {
   display: block;
-  background: rgba(0, 0, 0, 0.2);
-  color: #FF7B72;
+  background: var(--bg-overlay);
+  color: var(--error);
   padding: 8px 10px;
   border-radius: 6px;
   font-family: var(--font-mono);
@@ -1691,7 +1955,7 @@ function exportChat() {
   background: var(--success);
   border: none;
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-inverse);
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s;
@@ -1711,6 +1975,36 @@ function exportChat() {
   transition: opacity 0.15s;
 }
 .deny-btn:hover { opacity: 0.75; }
+
+.approval-reply-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-base);
+  background: var(--glass-weak);
+  color: var(--text-primary);
+  font-size: 13px;
+  resize: vertical;
+  min-height: 36px;
+  margin: 8px 0;
+  font-family: inherit;
+}
+.reply-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-base);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.reply-btn:hover {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+}
 
 /* ===== System Messages ===== */
 .sys-line {
@@ -1769,16 +2063,16 @@ function exportChat() {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--glass-inset), 0 4px 16px rgba(0,0,0,0.15);
+  box-shadow: var(--glass-inset), var(--shadow-md);
   transition: all 0.3s var(--ease-expo);
 }
 
 .scroll-fab:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg-hover);
   color: var(--text-primary);
   border-color: var(--border-light);
   transform: translateY(-3px) scale(1.08);
-  box-shadow: var(--glass-inset), 0 8px 24px rgba(0,0,0,0.2);
+  box-shadow: var(--glass-inset), var(--shadow-lg);
 }
 
 .scroll-fab:active { transform: scale(0.92); }
@@ -1808,14 +2102,14 @@ function exportChat() {
   border-radius: 24px;
   padding: 10px 12px 10px 16px;
   gap: 10px;
-  box-shadow: var(--glass-inset), 0 8px 32px rgba(0,0,0,0.1);
+  box-shadow: var(--glass-inset), var(--shadow-lg);
   transition: all 0.3s var(--ease-expo);
   min-height: 52px;
 }
 
 .input-capsule.focused {
-  border-color: rgba(10, 132, 255, 0.4);
-  box-shadow: var(--glass-inset), 0 8px 32px rgba(0,0,0,0.1), 0 0 12px rgba(10, 132, 255, 0.2);
+  border-color: var(--border-focus);
+  box-shadow: var(--glass-inset), var(--shadow-lg), 0 0 12px var(--primary-glow-sm);
 }
 
 .prompt-symbol {
@@ -1855,10 +2149,10 @@ function exportChat() {
 }
 
 .upload-btn:hover {
-  background: rgba(90, 200, 250, 0.15);
-  border-color: rgba(90, 200, 250, 0.35);
+  background: var(--primary-light);
+  border-color: var(--primary-border);
   color: var(--info);
-  box-shadow: 0 0 8px rgba(90, 200, 250, 0.15);
+  box-shadow: 0 0 8px var(--primary-glow-sm);
 }
 
 .file-input-hidden { display: none; }
@@ -1887,8 +2181,8 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
   justify-content: center;
   width: 36px;
   height: 36px;
-  background: rgba(10, 132, 255, 0.15);
-  border: 1px solid rgba(10, 132, 255, 0.2);
+  background: var(--primary);
+  border: 1px solid var(--primary-border);
   border-radius: 50%;
   color: var(--primary-text);
   cursor: pointer;
@@ -1897,8 +2191,8 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
 }
 
 .send-btn:hover:not(:disabled) {
-  background: rgba(10, 132, 255, 0.3);
-  box-shadow: 0 0 10px rgba(10, 132, 255, 0.2);
+  background: var(--primary-dark);
+  box-shadow: 0 0 10px var(--primary-glow-sm);
   transform: scale(1.05);
 }
 
@@ -1910,8 +2204,8 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--error-glow);
+  border: 1px solid var(--error);
   border-radius: 10px;
   color: var(--error);
   cursor: pointer;
@@ -1943,7 +2237,7 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
 }
 
 .file-chip:hover {
-  border-color: rgba(90, 200, 250, 0.3);
+  border-color: var(--primary-border);
 }
 
 .file-chip-name {
@@ -1970,7 +2264,18 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
 
 .file-chip-remove:hover {
   color: var(--error);
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--error-glow);
+}
+
+.file-chip.has-text {
+  border-color: var(--accent, #5ac8fa);
+  background: color-mix(in srgb, var(--accent, #5ac8fa) 8%, var(--glass-base));
+}
+
+.file-chip-badge {
+  font-size: 10px;
+  color: var(--accent, #5ac8fa);
+  flex-shrink: 0;
 }
 
 .file-overflow {
@@ -2003,9 +2308,9 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
   border: 1px solid var(--glass-border);
 }
 
-.status-pill.warning { color: var(--warning); border-color: rgba(255, 159, 10, 0.2); background: rgba(255, 159, 10, 0.05); }
-.status-pill.success { color: var(--success); border-color: rgba(48, 209, 88, 0.2); background: rgba(48, 209, 88, 0.05); }
-.status-pill.streaming { color: var(--primary-text); border-color: rgba(10, 132, 255, 0.2); background: rgba(10, 132, 255, 0.05); }
+.status-pill.warning { color: var(--warning); border-color: var(--warning-glow); background: var(--warning-glow); }
+.status-pill.success { color: var(--success); border-color: var(--success-glow); background: var(--success-glow); }
+.status-pill.streaming { color: var(--primary-text); border-color: var(--primary-glow-sm); background: var(--primary-light); }
 
 .status-dot-sep { font-size: 12px; opacity: 0.4; }
 
@@ -2024,7 +2329,7 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
 .export-btn:hover {
   color: var(--primary-text);
   border-color: var(--border-light);
-  background: rgba(90, 200, 250, 0.1);
+  background: var(--primary-light);
 }
 
 /* Context menu */
@@ -2057,5 +2362,123 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
 
 .ctx-item:hover {
   background: var(--bg-elevated);
+}
+
+/* ===== Blueprint Context Bar ===== */
+.blueprint-context-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin: 0 16px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.clear-context-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.clear-context-btn:hover {
+  color: var(--error);
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.toolbar-btn:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* ===== Blueprint Picker Dropdown ===== */
+.blueprint-picker-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  margin-bottom: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+}
+
+.bp-picker-empty {
+  padding: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.bp-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--border-base);
+}
+
+.bp-picker-item:last-child {
+  border-bottom: none;
+}
+
+.bp-picker-item:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.bp-picker-name {
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.bp-picker-status {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.bp-picker-status.status-succeeded {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+}
+
+.bp-picker-status.status-failed {
+  background: color-mix(in srgb, var(--error) 12%, transparent);
+  color: var(--error);
+}
+
+.bp-picker-status.status-running {
+  background: color-mix(in srgb, var(--info) 12%, transparent);
+  color: var(--info);
 }
 </style>

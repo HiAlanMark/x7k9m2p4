@@ -3,19 +3,19 @@
     <!-- Header -->
     <div class="store-header">
       <div class="header-left">
-        <h1 class="store-title">技能商店</h1>
-        <span class="store-count" v-if="totalCount > 0">{{ totalCount }} 个技能</span>
+        <h1 class="store-title">{{ t('skillStore.title') }}</h1>
+        <span class="store-count" v-if="totalCount > 0">{{ totalCount }} {{ t('skillStore.skillCount') }}</span>
       </div>
     </div>
 
     <!-- Tabs: 商店 / 已安装 -->
     <div class="main-tabs">
       <button :class="['main-tab', { active: activeTab === 'store' }]" @click="activeTab = 'store'">
-        商店
+        {{ t('skillStore.store') }}
         <span class="tab-count" v-if="totalCount > 0">{{ totalCount }}</span>
       </button>
       <button :class="['main-tab', { active: activeTab === 'installed' }]" @click="activeTab = 'installed'; loadInstalled()">
-        已安装
+        {{ t('skillStore.installed') }}
         <span class="tab-count" v-if="installedSkills.length > 0">{{ installedSkills.length }}</span>
       </button>
     </div>
@@ -27,7 +27,7 @@
     <div class="search-bar">
       <HxInput
         v-model="searchQuery"
-        placeholder="搜索技能名称、描述、标签..."
+        :placeholder="t('skillStore.searchPlaceholder')"
         :icon="IconSearch"
         @input="debounceSearch"
       />
@@ -48,18 +48,18 @@
     <!-- Rate limit warning -->
     <div v-if="rateLimited" class="rate-warning">
       <span class="warn-icon">!</span>
-      <span>请求过于频繁，建议前往 <HxButton variant="ghost" size="sm" @click="goSettings">设置</HxButton> 绑定 2x CLI Token 以解除限制</span>
+      <span>{{ t('skillStore.rateLimitWarning') }}</span>
     </div>
 
     <!-- Loading -->
     <!-- Loading -->
-    <HxSpinner v-if="loading && skills.length === 0" label="加载中..." />
+    <HxSpinner v-if="loading && skills.length === 0" :label="t('skillStore.loading')" />
 
     <!-- Empty -->
     <HxEmpty v-else-if="!loading && skills.length === 0">
       <template #default>
-        <span v-if="searchQuery">未找到匹配「{{ searchQuery }}」的技能</span>
-        <span v-else>暂无技能数据</span>
+        <span v-if="searchQuery">{{ t('skillStore.noMatch', { query: searchQuery }) }}</span>
+        <span v-else>{{ t('skillStore.noSkills') }}</span>
       </template>
     </HxEmpty>
 
@@ -98,7 +98,7 @@
               variant="success" size="sm" disabled
             >
               <svg width="15" height="15" viewBox="0 0 1024 1024" fill="currentColor"><path d="M835.413333 316.586667a42.666667 42.666667 0 0 1-12.586666 30.293333L431.786667 737.92C418.773333 750.933333 405.333333 768 384 746.666667l-202.24-207.36a44.8 44.8 0 0 1-4.053333-60.16 42.666667 42.666667 0 0 1 62.506666-2.133334l161.066667 161.066667a6.826667 6.826667 0 0 0 9.813333 0l352.853334-353.066667a38.4 38.4 0 0 1 37.76-10.666666 44.16 44.16 0 0 1 33.706666 42.24z"/></svg>
-              <span>已安装</span>
+              <span>{{ t('skillStore.installedLabel') }}</span>
             </HxButton>
             <HxButton
               v-else-if="!installState[skill.slug]"
@@ -106,28 +106,28 @@
               @click="installSkill(skill)"
             >
               <IconDownload :size="13" />
-              <span>安装</span>
+              <span>{{ t('skillStore.install') }}</span>
             </HxButton>
             <HxButton
               v-else-if="installState[skill.slug] === 'installing'"
               variant="primary" size="sm" disabled
             >
               <span class="spinner"></span>
-              <span>安装中</span>
+              <span>{{ t('skillStore.installing') }}</span>
             </HxButton>
             <HxButton
               v-else-if="installState[skill.slug] === 'success'"
               variant="success" size="sm" disabled
             >
               <svg width="15" height="15" viewBox="0 0 1024 1024" fill="currentColor"><path d="M835.413333 316.586667a42.666667 42.666667 0 0 1-12.586666 30.293333L431.786667 737.92C418.773333 750.933333 405.333333 768 384 746.666667l-202.24-207.36a44.8 44.8 0 0 1-4.053333-60.16 42.666667 42.666667 0 0 1 62.506666-2.133334l161.066667 161.066667a6.826667 6.826667 0 0 0 9.813333 0l352.853334-353.066667a38.4 38.4 0 0 1 37.76-10.666666 44.16 44.16 0 0 1 33.706666 42.24z"/></svg>
-              <span>已安装</span>
+              <span>{{ t('skillStore.installedLabel') }}</span>
             </HxButton>
             <HxButton
               v-else-if="installState[skill.slug] === 'error'"
               variant="danger" size="sm"
               @click="installSkill(skill)"
             >
-              安装失败，重试
+              {{ t('skillStore.installFailedRetry') }}
             </HxButton>
           </div>
           </div>
@@ -150,24 +150,24 @@
     <template v-if="activeTab === 'installed'">
       <!-- Installed search -->
       <div class="search-bar">
-        <HxInput v-model="installedSearch" placeholder="搜索已安装技能..." :icon="IconSearch" />
+        <HxInput v-model="installedSearch" :placeholder="t('skillStore.installedSearch')" :icon="IconSearch" />
       </div>
 
       <!-- Source filter -->
       <div class="filter-bar">
         <div class="filter-chips">
-          <HxButton :variant="installedFilter === 'all' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = 'all'">全部</HxButton>
-          <HxButton :variant="installedFilter === 'builtin' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = 'builtin'">内置</HxButton>
-          <HxButton :variant="installedFilter === '2x' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = '2x'">商店安装</HxButton>
+          <HxButton :variant="installedFilter === 'all' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = 'all'">{{ t('skillStore.all') }}</HxButton>
+          <HxButton :variant="installedFilter === 'builtin' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = 'builtin'">{{ t('skillStore.builtin') }}</HxButton>
+          <HxButton :variant="installedFilter === '2x' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = '2x'">{{ t('skillStore.storeInstall') }}</HxButton>
         </div>
       </div>
 
-      <HxSpinner v-if="installedLoading" label="扫描已安装技能..." />
+      <HxSpinner v-if="installedLoading" :label="t('skillStore.scanning')" />
 
       <HxEmpty v-else-if="filteredInstalled.length === 0">
         <template #default>
-          <span v-if="installedSearch">未找到匹配的已安装技能</span>
-          <span v-else>暂无已安装技能</span>
+          <span v-if="installedSearch">{{ t('skillStore.noInstalledMatch') }}</span>
+          <span v-else>{{ t('skillStore.noInstalled') }}</span>
         </template>
       </HxEmpty>
 
@@ -179,19 +179,19 @@
               <h3 class="card-name">{{ sk.name || sk.slug }}</h3>
             </div>
             <HxBadge v-if="sk.version" variant="info" size="sm">v{{ sk.version }}</HxBadge>
-            <HxBadge v-if="sk.hasUpdate" variant="warning" size="sm">可更新</HxBadge>
+            <HxBadge v-if="sk.hasUpdate" variant="warning" size="sm">{{ t('skillStore.hasUpdate') }}</HxBadge>
           </div>
           <p class="card-desc" v-if="sk.description">{{ sk.description }}</p>
           <div class="card-footer">
             <div class="card-tags">
               <span v-if="sk.category" class="tag">{{ sk.category }}</span>
-              <span class="tag" :class="{ cap: sk.source === '2x' }">{{ sk.source === '2x' ? '商店' : '内置' }}</span>
+              <span class="tag" :class="{ cap: sk.source === '2x' }">{{ sk.source === '2x' ? t('skillStore.storeSource') : t('skillStore.builtinSource') }}</span>
             </div>
             <div class="card-footer-right">
-              <span class="meta-stat">{{ sk.files }} 文件</span>
+              <span class="meta-stat">{{ sk.files }} {{ t('skillStore.filesUnit') }}</span>
               <div class="card-actions" @click.stop>
-                <HxButton v-if="sk.hasUpdate" variant="primary" size="sm" @click="updateSkill(sk)">更新</HxButton>
-                <HxButton variant="danger" size="sm" @click="uninstallSkill(sk)">卸载</HxButton>
+                <HxButton v-if="sk.hasUpdate" variant="primary" size="sm" @click="updateSkill(sk)">{{ t('skillStore.update') }}</HxButton>
+                <HxButton variant="danger" size="sm" @click="uninstallSkill(sk)">{{ t('skillStore.uninstall') }}</HxButton>
               </div>
             </div>
           </div>
@@ -220,35 +220,35 @@
         <div class="modal-stats">
           <div class="stat-item">
             <span class="stat-num">{{ formatNum(detailSkill.total_downloads) }}</span>
-            <span class="stat-label">下载</span>
+            <span class="stat-label">{{ t('skillStore.downloads') }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-num">{{ formatNum(detailSkill.total_favorites) }}</span>
-            <span class="stat-label">收藏</span>
+            <span class="stat-label">{{ t('skillStore.favorites') }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-num">{{ detailSkill.current_version || '-' }}</span>
-            <span class="stat-label">版本</span>
+            <span class="stat-label">{{ t('skillStore.version') }}</span>
           </div>
         </div>
 
         <div class="modal-body" @click="onModalBodyClick">
           <div class="modal-section">
-            <h4 class="section-label">简介</h4>
+            <h4 class="section-label">{{ t('skillStore.summary') }}</h4>
             <p class="section-text">{{ detailSkill.summary }}</p>
           </div>
           <div v-if="detailData?.long_description" class="modal-section">
-            <h4 class="section-label">详细描述</h4>
+            <h4 class="section-label">{{ t('skillStore.detailedDescription') }}</h4>
             <div class="section-text markdown-body" v-html="renderMd(detailData.long_description)"></div>
           </div>
           <div v-if="detailSkill.tags && detailSkill.tags.length" class="modal-section">
-            <h4 class="section-label">标签</h4>
+            <h4 class="section-label">{{ t('skillStore.tags') }}</h4>
             <div class="modal-tags">
               <span v-for="tag in detailSkill.tags" :key="tag" class="tag">{{ tag }}</span>
             </div>
           </div>
           <div v-if="detailSkill.capabilities && detailSkill.capabilities.length" class="modal-section">
-            <h4 class="section-label">能力</h4>
+            <h4 class="section-label">{{ t('skillStore.capabilities') }}</h4>
             <div class="modal-tags">
               <span v-for="cap in detailSkill.capabilities" :key="cap" class="tag cap">{{ cap }}</span>
             </div>
@@ -258,7 +258,7 @@
         <div class="modal-footer">
           <HxButton variant="primary" @click="installSkill(detailSkill); detailSkill = null">
             <IconDownload :size="15" />
-            <span>安装技能</span>
+            <span>{{ t('skillStore.installSkill') }}</span>
           </HxButton>
         </div>
       </div>
@@ -272,18 +272,18 @@
             <div class="modal-icon" style="color: var(--error); background: rgba(255,69,58,0.1);">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </div>
-            <h2 class="modal-name">卸载技能</h2>
+            <h2 class="modal-name">{{ t('skillStore.uninstallSkill') }}</h2>
           </div>
           <button class="modal-close" @click="uninstallTarget = null">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="modal-body">
-          <p class="section-text">确定要卸载 <strong>{{ uninstallTarget.name || uninstallTarget.slug }}</strong> 吗？卸载后该技能将从本地移除。</p>
+          <p class="section-text">{{ t('skillStore.uninstallConfirm', { name: uninstallTarget.name || uninstallTarget.slug }) }}</p>
         </div>
         <div class="modal-footer">
-          <HxButton variant="ghost" @click="uninstallTarget = null">取消</HxButton>
-          <HxButton variant="danger" @click="confirmUninstall" style="background: rgba(255,69,58,0.85); border-color: rgba(255,69,58,0.9); color: #fff;">确认卸载</HxButton>
+          <HxButton variant="ghost" @click="uninstallTarget = null">{{ t('common.cancel') }}</HxButton>
+          <HxButton variant="danger" @click="confirmUninstall" style="background: rgba(255,69,58,0.85); border-color: rgba(255,69,58,0.9); color: #fff;">{{ t('skillStore.confirmUninstall') }}</HxButton>
         </div>
       </div>
     </div>
@@ -296,6 +296,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, reactive, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import type { TwoXSkill, TwoXSkillDetail } from '@/types'
 import * as api from '@/api'
 import { marked } from 'marked'
@@ -308,6 +309,7 @@ import { HxButton, HxInput, HxSelect, HxCard, HxBadge, HxModal, HxSpinner, HxEmp
 import { useToast } from '../composables/useToast'
 
 const toast = useToast()
+const { t } = useI18n()
 
 const router = useRouter()
 
@@ -370,9 +372,9 @@ const searchQuery = ref('')
 const selectedCategory = ref('')
 const sortBy = ref('downloads')
 const sortOptions = [
-  { label: '下载量', value: 'downloads' },
-  { label: '收藏量', value: 'favorites' },
-  { label: '最新', value: 'latest' },
+  { label: t('skillStore.sortByDownloads'), value: 'downloads' },
+  { label: t('skillStore.sortByFavorites'), value: 'favorites' },
+  { label: t('skillStore.sortByLatest'), value: 'latest' },
 ]
 const skills = ref<TwoXSkill[]>([])
 const loading = ref(false)
@@ -437,7 +439,7 @@ const filteredInstalled = computed(() => {
 const rawCategories = ref<string[]>([])
 const categories = computed(() => {
   const seen = new Set<string>()
-  const list: { value: string; label: string }[] = [{ value: '', label: '全部' }]
+  const list: { value: string; label: string }[] = [{ value: '', label: t('skillStore.all') }]
   for (const c of rawCategories.value) {
     if (!c || seen.has(c)) continue
     seen.add(c)
@@ -501,8 +503,8 @@ function onModalBodyClick(e: MouseEvent) {
     copyToClipboard(pre.textContent || '')
     const span = btn.querySelector('span')
     if (span) {
-      span.textContent = '已复制'
-      setTimeout(() => { span.textContent = '复制' }, 1500)
+      span.textContent = t('skillStore.copied')
+      setTimeout(() => { span.textContent = t('skillStore.copy') }, 1500)
     }
   }
 }
@@ -539,9 +541,9 @@ async function loadSkills() {
     const msg = e?.message || String(e)
     if (msg.includes('429') || msg.includes('rate') || msg.includes('limit')) {
       rateLimited.value = true
-      toast.error('请求受限', '请绑定 2x Token')
+      toast.error(t('skillStore.rateLimitWarning'), t('skillStore.rateLimitWarning'))
     } else {
-      console.error('加载技能失败:', e)
+      console.error(t('skillStore.loadFailed') + ':', e)
     }
   } finally {
     loading.value = false
@@ -558,14 +560,14 @@ async function openDetail(skill: TwoXSkill) {
     // 翻译代码块复制按钮文字
     nextTick(() => {
       document.querySelectorAll('.code-copy-btn span').forEach(s => {
-        if (s.textContent === 'Copy') s.textContent = '复制'
+        if (s.textContent === 'Copy') s.textContent = t('skillStore.copy')
       })
     })
   } catch (e: any) {
     const msg = e?.message || String(e)
     if (msg.includes('429') || msg.includes('rate') || msg.includes('limit')) {
       rateLimited.value = true
-      toast.error('查询频繁', '建议绑定 2x Token')
+      toast.error(t('skillStore.rateLimitError'), t('skillStore.rateLimitErrorHint'))
     }
   } finally {
     detailLoading.value = false
@@ -591,19 +593,19 @@ async function installSkill(skill: TwoXSkill) {
     const data = await r.json()
     if (data.success) {
       installState[slug] = 'success'
-      toast.success('安装成功', skill.name || slug)
+      toast.success(t('skillStore.installSuccess'), skill.name || slug)
       await loadInstalled()
       // 3秒后清除成功状态
       setTimeout(() => { delete installState[slug] }, 5000)
     } else {
       installState[slug] = 'error'
-      installError[slug] = data.error || '安装失败'
-      toast.error('安装失败', data.error || '未知错误')
+      installError[slug] = data.error || t('skillStore.installFailed')
+      toast.error(t('skillStore.installFailed'), data.error || t('skillStore.unknownError'))
     }
   } catch (e: any) {
     installState[slug] = 'error'
-    installError[slug] = e.message || '网络错误'
-    toast.error('安装失败', 'Agent 未启动或网络错误')
+    installError[slug] = e.message || t('skillStore.networkError')
+    toast.error(t('skillStore.installFailed'), t('skillStore.networkError'))
   }
 }
 
@@ -623,7 +625,7 @@ async function loadInstalled() {
     // 异步检查商店技能是否有更新
     checkUpdates()
   } catch {
-    toast.error('加载失败', '无法获取已安装技能列表，请确认 Agent 已启动')
+    toast.error(t('skillStore.loadInstalledFailed'), t('skillStore.loadInstalledFailedHint'))
   } finally {
     installedLoading.value = false
   }
@@ -658,12 +660,12 @@ async function updateSkill(sk: InstalledSkill) {
       sk.hasUpdate = false
       sk.version = sk.storeVersion
       sk.storeVersion = undefined
-      toast.success('更新成功', `${sk.name || sk.slug} 已更新到 v${sk.version}`)
+      toast.success(t('skillStore.updateSuccess'), t('skillStore.updateSuccessMsg', { name: sk.name || sk.slug, version: sk.version }))
     } else {
-      toast.error('更新失败', data.error || '未知错误')
+      toast.error(t('skillStore.updateFailed'), data.error || t('skillStore.unknownError'))
     }
   } catch {
-    toast.error('更新失败', 'Agent 未启动或网络错误')
+    toast.error(t('skillStore.updateFailed'), t('skillStore.updateFailedHint'))
   }
 }
 
@@ -682,13 +684,13 @@ async function confirmUninstall() {
     })
     const data = await r.json()
     if (data.success) {
-      toast.success('已卸载', sk.name || sk.slug)
+      toast.success(t('skillStore.uninstalled'), sk.name || sk.slug)
       installedSkills.value = installedSkills.value.filter(s => !(s.slug === sk.slug && s.category === sk.category))
     } else {
-      toast.error('卸载失败', data.error)
+      toast.error(t('skillStore.uninstallFailed'), data.error)
     }
   } catch {
-    toast.error('卸载失败', 'Agent 未启动')
+    toast.error(t('skillStore.uninstallFailed'), t('skillStore.uninstallFailedHint'))
   } finally {
     uninstallTarget.value = null
   }
@@ -935,7 +937,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   background: var(--color-warning);
-  color: #fff;
+  color: var(--text-inverse);
   border-radius: 50%;
   font-size: 12px;
   font-weight: 700;
@@ -1228,8 +1230,8 @@ onBeforeUnmount(() => {
 }
 
 .skill-card .hixns-btn.hixns-btn--success {
-  background: rgba(48, 209, 88, 0.08) !important;
-  border-color: rgba(48, 209, 88, 0.2) !important;
+  background: color-mix(in srgb, var(--success) 8%, transparent) !important;
+  border-color: color-mix(in srgb, var(--success) 20%, transparent) !important;
   color: var(--success) !important;
 }
 
@@ -1520,19 +1522,19 @@ onBeforeUnmount(() => {
 .markdown-body :deep(li::marker) { color: var(--text-tertiary); }
 .markdown-body :deep(code) { font-family: var(--font-mono); font-size: var(--text-xs); background: var(--bg-elevated); padding: 1px 5px; border-radius: var(--radius-xs); color: var(--primary-text); }
 .markdown-body :deep(pre) { 
-  background: #0D1117; 
+  background: var(--bg-surface); 
   border-radius: var(--radius-md); 
   padding: var(--space-3); 
   overflow-x: auto; 
   margin: var(--space-3) 0; 
-  color: #E6EDF3; 
+  color: var(--text-primary); 
 }
 
 .markdown-body :deep(pre code) { 
   background: none; 
   padding: 0; 
   font-size: var(--text-xs); 
-  color: #E6EDF3; 
+  color: var(--text-primary); 
 }
 .markdown-body :deep(a) { color: var(--primary-text); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color var(--duration-150) var(--ease-expo); }
 .markdown-body :deep(a:hover) { border-bottom-color: var(--primary-text); }
@@ -1549,7 +1551,7 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border-base);
-  background: #0D1117;
+  background: var(--bg-surface);
 }
 
 .markdown-body :deep(.code-tab) {
@@ -1557,14 +1559,14 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 6px 12px;
-  background: rgba(255,255,255,0.03);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: var(--glass-weak);
+  border-bottom: 1px solid var(--border-base);
 }
 
 .markdown-body :deep(.code-lang-icon) {
   font-size: 11px;
   font-weight: 600;
-  color: #8B949E;
+  color: var(--text-tertiary);
 }
 
 .markdown-body :deep(.code-copy-btn) {
@@ -1572,9 +1574,9 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  color: #8B949E;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-tertiary);
+  background: var(--glass-bg-hover);
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   padding: 3px 8px;
   cursor: pointer;
@@ -1582,8 +1584,8 @@ onBeforeUnmount(() => {
 }
 
 .markdown-body :deep(.code-copy-btn:hover) {
-  color: #E6EDF3;
-  border-color: rgba(90,200,250,0.4);
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .markdown-body :deep(.code-body) {
@@ -1598,9 +1600,9 @@ onBeforeUnmount(() => {
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.65;
-  color: #484F58;
-  background: rgba(255,255,255,0.01);
-  border-right: 1px solid rgba(255,255,255,0.05);
+  color: var(--text-disabled);
+  background: var(--glass-weak);
+  border-right: 1px solid var(--border-base);
   user-select: none;
   white-space: pre;
 }
@@ -1618,7 +1620,7 @@ onBeforeUnmount(() => {
   background: none;
   padding: 0;
   font-size: 12px;
-  color: #E6EDF3;
+  color: var(--text-primary);
 }
 
 .modal-tags {
@@ -1642,11 +1644,11 @@ onBeforeUnmount(() => {
   font-family: var(--font-sans) !important;
   min-height: 36px !important;
   border-radius: var(--radius-md) !important;
-  background: linear-gradient(135deg, rgba(90, 200, 250, 0.25) 0%, rgba(90, 200, 250, 0.15) 100%) !important;
-  border: 1px solid rgba(90, 200, 250, 0.35) !important;
-  border-left-color: rgba(90, 200, 250, 0.6) !important;
-  color: rgba(90, 200, 250, 1) !important;
-  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.15), 0 0 16px rgba(90, 200, 250, 0.2) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 25%, transparent) 0%, color-mix(in srgb, var(--accent) 15%, transparent) 100%) !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent) !important;
+  border-left-color: color-mix(in srgb, var(--accent) 60%, transparent) !important;
+  color: var(--accent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent), 0 0 16px color-mix(in srgb, var(--accent) 20%, transparent) !important;
   transition: all var(--duration-150) var(--ease-expo) !important;
   position: relative;
   overflow: hidden;
@@ -1668,15 +1670,15 @@ onBeforeUnmount(() => {
 }
 
 .modal-footer .hixns-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(90, 200, 250, 0.35) 0%, rgba(90, 200, 250, 0.2) 100%) !important;
-  border-color: rgba(90, 200, 250, 0.5) !important;
-  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.2), 0 0 20px rgba(90, 200, 250, 0.3) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 35%, transparent) 0%, color-mix(in srgb, var(--accent) 20%, transparent) 100%) !important;
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent), 0 0 20px color-mix(in srgb, var(--accent) 30%, transparent) !important;
   transform: none !important;
 }
 
 .modal-footer .hixns-btn:active:not(:disabled) {
-  background: linear-gradient(135deg, rgba(90, 200, 250, 0.18) 0%, rgba(90, 200, 250, 0.08) 100%) !important;
-  box-shadow: inset 0 0 0 1px rgba(90, 200, 250, 0.06), 0 0 8px rgba(90, 200, 250, 0.08) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent) 0%, color-mix(in srgb, var(--accent) 8%, transparent) 100%) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent), 0 0 8px color-mix(in srgb, var(--accent) 8%, transparent) !important;
   transform: scale(0.97) !important;
 }
 
@@ -1688,7 +1690,7 @@ onBeforeUnmount(() => {
   background: var(--accent);
   border: none;
   border-radius: var(--radius-md);
-  color: #fff;
+  color: var(--text-inverse);
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
   font-family: var(--font-sans);
@@ -1716,17 +1718,17 @@ onBeforeUnmount(() => {
 
 .toast.success {
   background: var(--success);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .toast.error {
   background: var(--error);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .toast.warn {
   background: var(--warning);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 @keyframes toast-in {
@@ -1915,7 +1917,7 @@ onBeforeUnmount(() => {
   font-size: 9px;
   font-weight: 600;
   background: var(--warning);
-  color: #000;
+  color: var(--bg-base);
   padding: 1px 5px;
   border-radius: 6px;
   margin-left: 6px;
@@ -1937,7 +1939,7 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-xs);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: #fff;
+  color: var(--text-inverse);
   cursor: pointer;
   transition: opacity var(--duration-150) var(--ease-expo);
   flex-shrink: 0;
@@ -1965,7 +1967,7 @@ onBeforeUnmount(() => {
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--accent);
-  color: #fff;
+  color: var(--text-inverse);
   border: none;
   cursor: default;
   font-size: var(--text-base);
@@ -1975,8 +1977,8 @@ onBeforeUnmount(() => {
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--text-inverse);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
