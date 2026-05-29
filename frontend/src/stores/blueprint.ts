@@ -11,19 +11,58 @@ export interface SkillItem {
   description: string
 }
 
+// Backend-compatible node position
+export interface BlueprintNodePosition {
+  x: number
+  y: number
+}
+
+// Backend-compatible node data (maps to BlueprintNode.config + label etc.)
+export interface BlueprintNodeData {
+  label?: string
+  prompt?: string
+  expression?: string
+  max_iterations?: number
+  template?: string
+  instructions?: string
+  port_count?: number
+  max_handoffs?: number
+  slot?: number
+  execution_mode?: string
+  parallel_lane_count?: number
+  approval?: boolean
+  model_id?: string
+  skill_ids?: string[]
+  tools?: string[]
+  runtime_id?: string
+  agent_name?: string
+  permission_profile?: string
+  working_directory?: string
+  timeout_ms?: number
+  output_schema?: unknown
+  disabled?: boolean
+  [key: string]: unknown
+}
+
 export interface BlueprintNode {
   id: string
   type: 'agent' | 'condition' | 'loop' | 'summary' | 'note' | 'manager' | 'manager_slot' | 'group'
-  position: { x: number; y: number }
-  data: Record<string, unknown>
+  label: string
+  position: BlueprintNodePosition
+  data: BlueprintNodeData
+  parent_id?: string
+  disabled?: boolean
+  config?: Record<string, unknown>
 }
 
 export interface BlueprintEdge {
   id: string
   source: string
   target: string
-  sourceHandle?: string
-  targetHandle?: string
+  sourceHandle?: string | null
+  targetHandle?: string | null
+  condition?: string
+  label?: string
 }
 
 export interface Blueprint {
@@ -34,6 +73,7 @@ export interface Blueprint {
   edges: BlueprintEdge[]
   created_at: string
   updated_at: string
+  version?: number
 }
 
 export interface BlueprintRun {
@@ -45,6 +85,12 @@ export interface BlueprintRun {
   finished_at?: string
   node_statuses?: Record<string, string>
   error?: string
+  node_runs?: Array<{
+    node_id: string
+    status: string
+    output?: string
+    error?: string
+  }>
 }
 
 export interface InboxItem {
@@ -97,8 +143,8 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     loading.value = true
     error.value = ''
     try {
-      const bp = await agentPost('/v1/agent/blueprints/create', { name, description })
-      const created = bp?.data || bp
+      // Backend: POST /v1/agent/blueprints — returns BlueprintDefinition directly
+      const created = await agentPost('/v1/agent/blueprints', { name, description, nodes: [], edges: [] })
       blueprints.value.unshift(created)
       return created
     } catch (e: any) {
@@ -113,8 +159,13 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     loading.value = true
     error.value = ''
     try {
-      const result = await agentPost('/v1/agent/blueprints/update', { id, ...data })
-      const updated = result?.data || result
+      // Backend: PUT /v1/agent/blueprints/{id} — returns BlueprintDefinition directly
+      const r = await agentFetch(`/v1/agent/blueprints/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...data }),
+      })
+      const updated = await r.json()
       const idx = blueprints.value.findIndex(b => b.id === id)
       if (idx >= 0) blueprints.value[idx] = { ...blueprints.value[idx], ...updated }
       if (currentBlueprint.value?.id === id) {
@@ -133,7 +184,8 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     loading.value = true
     error.value = ''
     try {
-      await agentPost('/v1/agent/blueprints/delete', { id })
+      // Backend: DELETE /v1/agent/blueprints/{id}
+      await agentFetch(`/v1/agent/blueprints/${id}`, { method: 'DELETE' })
       blueprints.value = blueprints.value.filter(b => b.id !== id)
       if (currentBlueprint.value?.id === id) {
         currentBlueprint.value = null
@@ -176,8 +228,13 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     loading.value = true
     error.value = ''
     try {
-      const result = await agentPost('/v1/agent/blueprints/run', { id })
-      const run = result?.data || result
+      // Backend: POST /v1/agent/blueprints/{id}/runs — returns BlueprintRun directly
+      const r = await agentFetch(`/v1/agent/blueprints/${id}/runs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+      const run = await r.json()
       currentRun.value = run
       runs.value.unshift(run)
       return run
@@ -193,7 +250,12 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     loading.value = true
     error.value = ''
     try {
-      await agentPost('/v1/agent/blueprints/runs/cancel', { id })
+      // Backend: POST /v1/agent/runs/{id}/cancel
+      await agentFetch(`/v1/agent/runs/${id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
       const run = runs.value.find(r => r.id === id)
       if (run) run.status = 'cancelled'
       if (currentRun.value?.id === id) currentRun.value.status = 'cancelled'

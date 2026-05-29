@@ -121,12 +121,12 @@ export default defineConfig({
         secure: true,
       },
       '/proxy/agent': {
-        target: 'http://127.0.0.1:9800',
+        target: 'http://0.0.0.0:9800',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/proxy\/agent/, ''),
       },
       '/v1': {
-        target: 'http://127.0.0.1:9800',
+        target: 'http://0.0.0.0:9800',
         changeOrigin: true,
       },
     },

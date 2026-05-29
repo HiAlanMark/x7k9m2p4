@@ -98,19 +98,51 @@ func handleBlueprintsUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"blueprint id is required"}`, 400)
 		return
 	}
-	var bp BlueprintDefinition
-	if err := json.NewDecoder(r.Body).Decode(&bp); err != nil {
+
+	// First, load the existing blueprint to preserve fields not sent by the client.
+	existing, err := getBlueprint(id)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), 404)
+		return
+	}
+
+	// Decode the partial update from the request body.
+	var patch BlueprintDefinition
+	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
 		http.Error(w, `{"error":"invalid body"}`, 400)
 		return
 	}
-	bp.ID = id
-	bp.UpdatedAt = time.Now()
-	if err := saveBlueprint(bp); err != nil {
+
+	// Merge: keep existing metadata, apply nodes/edges/description from the patch.
+	if patch.Name != "" {
+		existing.Name = patch.Name
+	}
+	if patch.Description != "" {
+		existing.Description = patch.Description
+	}
+	if patch.Nodes != nil {
+		existing.Nodes = patch.Nodes
+	}
+	if patch.Edges != nil {
+		existing.Edges = patch.Edges
+	}
+	if patch.Variables != nil {
+		existing.Variables = patch.Variables
+	}
+	if patch.Display.Viewport.X != 0 || patch.Display.Viewport.Y != 0 || patch.Display.Viewport.Zoom != 0 {
+		existing.Display = patch.Display
+	}
+	existing.UpdatedAt = time.Now()
+	if patch.Version > 0 {
+		existing.Version = patch.Version
+	}
+
+	if err := saveBlueprint(existing); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), 500)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(bp)
+	json.NewEncoder(w).Encode(existing)
 }
 
 // handleBlueprintsDelete — DELETE /v1/agent/blueprints/{id}

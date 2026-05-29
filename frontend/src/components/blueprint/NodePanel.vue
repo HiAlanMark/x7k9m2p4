@@ -55,8 +55,8 @@
           <label class="bp-label">{{ t('blueprint.nodeConfig.model') }}</label>
           <input
             class="bp-input"
-            :value="node.data.model || ''"
-            @input="updateField('model', ($event.target as HTMLInputElement).value)"
+            :value="node.data.model_id || ''"
+            @input="updateField('model_id', ($event.target as HTMLInputElement).value)"
             placeholder="gpt-4o"
           />
         </div>
@@ -65,8 +65,8 @@
           <input
             class="bp-input"
             type="number"
-            :value="node.data.timeout || 60"
-            @input="updateField('timeout', Number(($event.target as HTMLInputElement).value))"
+            :value="node.data.timeout_ms ? Math.round(node.data.timeout_ms / 1000) : 60"
+            @input="updateField('timeout_ms', Number(($event.target as HTMLInputElement).value) * 1000)"
             min="1"
           />
         </div>
@@ -74,8 +74,8 @@
           <label class="bp-label">{{ t('blueprint.nodeConfig.approval') }}</label>
           <button
             class="bp-toggle"
-            :class="{ active: node.data.requiresApproval }"
-            @click="updateField('requiresApproval', !node.data.requiresApproval)"
+            :class="{ active: node.data.approval }"
+            @click="updateField('approval', !node.data.approval)"
           >
             <span class="bp-toggle-dot" />
           </button>
@@ -96,7 +96,7 @@
           <div v-if="selectedSkills.length > 0" class="bp-skills-selected">
             <span v-for="s in selectedSkills" :key="s" class="bp-skill-tag">
               {{ s }}
-              <button class="bp-skill-remove" @click.stop="toggleSkill(s)">×</button>
+              <button class="bp-skill-remove" @click.stop="toggleSkill(s)">×<</button>
             </span>
           </div>
         </div>
@@ -108,8 +108,8 @@
           <label class="bp-label">{{ t('blueprint.nodeConfig.conditionExpr') }}</label>
           <textarea
             class="bp-textarea"
-            :value="node.data.conditionExpr || ''"
-            @input="updateField('conditionExpr', ($event.target as HTMLTextAreaElement).value)"
+            :value="node.data.expression || ''"
+            @input="updateField('expression', ($event.target as HTMLTextAreaElement).value)"
             rows="2"
             :placeholder="t('blueprint.nodeConfig.conditionExpr')"
           />
@@ -123,8 +123,8 @@
           <input
             class="bp-input"
             type="number"
-            :value="node.data.maxIterations || 10"
-            @input="updateField('maxIterations', Number(($event.target as HTMLInputElement).value))"
+            :value="node.data.max_iterations || 3"
+            @input="updateField('max_iterations', Number(($event.target as HTMLInputElement).value))"
             min="1"
           />
         </div>
@@ -143,16 +143,14 @@
       <!-- Summary-specific fields -->
       <template v-if="node.type === 'summary'">
         <div class="bp-field">
-          <label class="bp-label">{{ t('blueprint.nodeConfig.summaryMode') }}</label>
-          <select
-            class="bp-select"
-            :value="node.data.summaryMode || 'concat'"
-            @change="updateField('summaryMode', ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="concat">Concat</option>
-            <option value="summarize">Summarize</option>
-            <option value="merge">Merge</option>
-          </select>
+          <label class="bp-label">{{ t('blueprint.nodeConfig.template') }}</label>
+          <textarea
+            class="bp-textarea"
+            :value="node.data.template || ''"
+            @input="updateField('template', ($event.target as HTMLTextAreaElement).value)"
+            rows="3"
+            placeholder="Use {{upstream}} to reference upstream output"
+          />
         </div>
       </template>
 
@@ -336,7 +334,7 @@ const blueprintStore = useBlueprintStore()
 
 const availableSkills = computed(() => blueprintStore.skills)
 const selectedSkills = computed(() => {
-  const skills = props.node?.data?.skills
+  const skills = props.node?.data?.skill_ids
   return Array.isArray(skills) ? skills as string[] : []
 })
 
@@ -350,7 +348,7 @@ function toggleSkill(name: string) {
   const next = current.includes(name)
     ? current.filter(s => s !== name)
     : [...current, name]
-  emit('update', props.node.id, 'skills', next)
+  emit('update', props.node.id, 'skill_ids', next)
 }
 
 // Fetch skills on mount if not loaded

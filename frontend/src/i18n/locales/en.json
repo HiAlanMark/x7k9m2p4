@@ -97,6 +97,7 @@
       "conditionExpr": "Condition Expression",
       "maxIterations": "Max Iterations",
       "summaryMode": "Summary Mode",
+      "template": "Template",
       "skills": "Skills",
       "noSkills": "No skills available",
       "instructions": "Instructions",

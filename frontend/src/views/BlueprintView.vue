@@ -412,16 +412,17 @@ function onDrop(event: DragEvent) {
   if (!type) return
 
   const { left, top } = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  const position = {
-    x: event.clientX - left - 80,
-    y: event.clientY - top - 40,
-  }
+  const position = project({
+    x: event.clientX - left,
+    y: event.clientY - top,
+  })
 
+  const nt = nodeTypes.value.find(n => n.type === type)
   const newNode: Node = {
     id: `${type}-${Date.now()}`,
     type,
-    position,
-    data: { label: nodeTypes.value.find(n => n.type === type)?.label || type },
+    position: { x: position.x - 80, y: position.y - 40 },
+    data: { label: nt?.label || type },
   }
 
   addNodes([newNode])
@@ -473,11 +474,12 @@ function onNodeContextMenu({ event, node }: NodeMouseEvent) {
 }
 
 function addNodeAtContextMenu(type: string) {
+  const nt = nodeTypes.value.find(n => n.type === type)
   const newNode: Node = {
     id: `${type}-${Date.now()}`,
     type,
     position: canvasContextMenu.value.flowPos,
-    data: { label: nodeTypes.value.find(n => n.type === type)?.label || type },
+    data: { label: nt?.label || type },
   }
   addNodes([newNode])
   closeContextMenu()
@@ -520,6 +522,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onGlobalClick)
+  stopRunPolling()
 })
 
 // ── Connection Validation (P0-3) ────────────
@@ -599,7 +602,11 @@ function restoreViewport(bpId: string) {
 function onNodeUpdate(nodeId: string, field: string, value: any) {
   const node = nodes.value.find(n => n.id === nodeId)
   if (node) {
-    node.data = { ...node.data, [field]: value }
+    if (field === 'label' || field === 'disabled') {
+      node.data = { ...node.data, [field]: value }
+    } else {
+      node.data = { ...node.data, [field]: value }
+    }
   }
   if (selectedNode.value?.id === nodeId) {
     selectedNode.value = { ...selectedNode.value, data: { ...selectedNode.value.data, [field]: value } }
@@ -624,19 +631,49 @@ async function onCreateBlueprint() {
   }
 }
 
+// ── Data transformation: backend BlueprintNode <-> VueFlow Node ─────
+// Backend has: { id, type, label, position:{x,y}, disabled, parent_id, config:{...} }
+// VueFlow has: { id, type, position:{x,y}, data:{ label, disabled, ...config fields } }
+
+function backendNodeToVueFlow(n: Record<string, any>) {
+  const { id, type, label, position, disabled, parent_id, config, ...rest } = n
+  return {
+    id,
+    type,
+    position: position || { x: 0, y: 0 },
+    data: {
+      label: label || type,
+      disabled: !!disabled,
+      ...(config || {}),
+    },
+    ...rest,
+  }
+}
+
+function vueFlowNodeToBackend(n: Record<string, any>) {
+  const { id, type, position, data, ...rest } = n
+  const d = data || {}
+  // Extract known top-level backend fields from data
+  const { label, disabled, ...configFields } = d as Record<string, any>
+  return {
+    id,
+    type,
+    label: label || type,
+    position: { x: position?.x ?? 0, y: position?.y ?? 0 },
+    disabled: !!disabled,
+    config: configFields,
+    ...rest,
+  }
+}
+
 function openEditor(bp: typeof bpStore.blueprints[0]) {
   currentBp.value = bp
   mode.value = 'editor'
   selectedNode.value = null
 
-  // Load nodes & edges from blueprint data
+  // Load nodes & edges from blueprint data with proper field mapping
   if (bp.nodes?.length) {
-    nodes.value = bp.nodes.map(n => ({
-      id: n.id,
-      type: n.type,
-      position: n.position,
-      data: { ...n.data },
-    }))
+    nodes.value = bp.nodes.map(n => backendNodeToVueFlow(n as any))
   } else {
     nodes.value = []
   }
@@ -647,6 +684,8 @@ function openEditor(bp: typeof bpStore.blueprints[0]) {
       target: e.target,
       sourceHandle: e.sourceHandle,
       targetHandle: e.targetHandle,
+      condition: (e as any).condition,
+      label: (e as any).label,
     }))
   } else {
     edges.value = []
@@ -661,23 +700,28 @@ function openEditor(bp: typeof bpStore.blueprints[0]) {
 async function onSaveBlueprint() {
   if (!currentBp.value) return
   saveViewport() // persist viewport on save
-  const bpNodes = nodes.value.map(n => ({
-    id: n.id,
-    type: n.type as any,
-    position: n.position,
-    data: { ...n.data },
-  }))
+
+  // Convert VueFlow nodes back to backend format
+  const bpNodes = nodes.value.map(n => vueFlowNodeToBackend(n as any))
   const bpEdges = edges.value.map(e => ({
     id: e.id,
     source: e.source,
     target: e.target,
-    sourceHandle: e.sourceHandle,
-    targetHandle: e.targetHandle,
+    sourceHandle: e.sourceHandle || null,
+    targetHandle: e.targetHandle || null,
+    condition: (e as any).condition || '',
+    label: (e as any).label || '',
   }))
+
   await bpStore.updateBlueprint(currentBp.value.id, {
     nodes: bpNodes,
     edges: bpEdges,
   } as any)
+  // Update currentBp with saved data so subsequent saves include everything
+  if (currentBp.value) {
+    currentBp.value.nodes = bpNodes
+    currentBp.value.edges = bpEdges
+  }
   toast.success(t('common.success'))
 }
 
@@ -691,13 +735,57 @@ async function onRunBlueprint(id: string) {
   const run = await bpStore.runBlueprint(id)
   if (run) {
     toast.success(t('blueprint.run.start'))
+    // Poll for run completion (simplified SSE alternative)
+    startRunPolling(id, run.id)
   } else if (bpStore.error) {
     toast.error(bpStore.error)
   }
 }
 
+// ── Run Status Polling ───────────────────────
+let runPollInterval: ReturnType<typeof setInterval> | null = null
+
+function startRunPolling(bpId: string, runId: string) {
+  stopRunPolling()
+  runPollInterval = setInterval(async () => {
+    try {
+      const runResp = await fetch(`/v1/agent/runs/${runId}`)
+    if (!runResp.ok) {
+      stopRunPolling()
+      toast.error('Failed to fetch run status')
+      return
+    }
+    const run = await runResp.json()
+    // Update the run in the store
+    const idx = bpStore.runs.findIndex(r => r.id === runId)
+    if (idx >= 0) {
+      bpStore.runs[idx] = { ...bpStore.runs[idx], ...run }
+    } else {
+      bpStore.runs.unshift(run)
+    }
+    // Stop polling when run is terminal
+    if (['succeeded', 'failed', 'cancelled'].includes(run.status)) {
+      stopRunPolling()
+      if (run.status === 'succeeded') toast.success('Blueprint run succeeded')
+      else if (run.status === 'failed') toast.error('Blueprint run failed')
+    }
+    } catch (e) {
+      // Network error — stop polling silently
+      stopRunPolling()
+    }
+  }, 2000)
+}
+
+function stopRunPolling() {
+  if (runPollInterval) {
+    clearInterval(runPollInterval)
+    runPollInterval = null
+  }
+}
+
 async function onCancelRun(id: string) {
   await bpStore.cancelRun(id)
+  stopRunPolling()
   toast.success(t('blueprint.run.stop'))
 }
 
@@ -728,6 +816,8 @@ async function onImportFile(event: Event) {
 function getLastRunStatus(bpId: string): string | null {
   const bpRuns = bpStore.runs.filter(r => r.blueprint_id === bpId)
   if (!bpRuns.length) return null
+  // Sort by started_at descending to get the most recent run
+  bpRuns.sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
   return bpRuns[0].status
 }
 
