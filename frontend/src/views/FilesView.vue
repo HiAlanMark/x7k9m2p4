@@ -248,7 +248,7 @@ const { t } = useI18n()
 const toast = useToast()
 
 // State
-const currentPath = ref('~')
+const currentPath = ref('.')
 const entries = ref<FileEntry[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -291,17 +291,34 @@ const homePath = ref('~')
 
 // Breadcrumbs
 const breadcrumbs = computed(() => {
+  // Project Root
+  if (currentPath.value === '.') {
+    return [{ name: 'Project', path: '.' }]
+  }
+  // Home Root
   if (currentPath.value === '~' || currentPath.value === homePath.value) {
     return [{ name: '~', path: '~' }]
   }
-  const base = homePath.value === '~' ? '~' : homePath.value
-  const segs: Array<{ name: string; path: string }> = [{ name: '~', path: '~' }]
-  // Get relative path from home
+  
+  const segs: Array<{ name: string; path: string }> = []
+  
+  // Handle Project sub-paths (e.g. ./src)
+  if (currentPath.value.startsWith('./')) {
+    segs.push({ name: 'Project', path: '.' })
+    const parts = currentPath.value.slice(2).split('/').filter(Boolean)
+    let buildPath = '.'
+    for (const part of parts) {
+      buildPath = `${buildPath}/${part}`
+      segs.push({ name: part, path: buildPath })
+    }
+    return segs
+  }
+  
+  // Handle Home sub-paths (e.g. ~/docs)
+  segs.push({ name: '~', path: '~' })
   let rel = currentPath.value
   if (rel.startsWith(homePath.value)) {
     rel = rel.slice(homePath.value.length)
-  } else if (rel.startsWith('/root')) {
-    // handle absolute
   }
   const parts = rel.split('/').filter(Boolean)
   let buildPath = homePath.value === '~' ? '~' : homePath.value
