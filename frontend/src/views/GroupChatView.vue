@@ -17,7 +17,7 @@
           @click="selectGroup(g.id)"
         >
           <div class="gc-group-name">{{ g.name }}</div>
-          <div class="gc-group-meta">{{ g.agentCount }} agent</div>
+          <div class="gc-group-meta">{{ g.agentCount }} {{ t('groupChat.agents') }}</div>
         </div>
         <HxEmpty v-if="store.groups.length === 0" :description="t('groupChat.noGroups')" />
       </div>
@@ -29,14 +29,20 @@
         <!-- Header -->
         <div class="gc-header">
           <span class="gc-header-name">{{ store.activeGroup.name }}</span>
-          <button class="gc-icon-btn gc-delete-btn" @click="onDeleteGroup" :title="t('groupChat.deleteGroup')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          </button>
+          <div class="gc-header-actions">
+            <button class="gc-icon-btn" @click="showAgentPanel = !showAgentPanel" :title="t('groupChat.manageAgents')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </button>
+            <button class="gc-icon-btn gc-delete-btn" @click="onDeleteGroup" :title="t('groupChat.deleteGroup')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
         </div>
 
         <!-- Messages -->
         <div class="gc-messages" ref="messagesRef">
           <div v-for="msg in store.messages" :key="msg.id" class="gc-msg" :class="{ human: !msg.agentId, agent: !!msg.agentId }">
+            <div v-if="msg.agentId" class="gc-msg-agent-bar" :style="{ background: agentColor(msg.agentId) }"></div>
             <div class="gc-msg-body">
               <div class="gc-msg-sender">
                 <span v-if="msg.agentId" class="gc-agent-badge" :style="{ background: agentColor(msg.agentId), color: '#fff' }">{{ agentName(msg.agentId) }}</span>
@@ -49,42 +55,128 @@
           <HxEmpty v-if="store.messages.length === 0" :description="t('groupChat.noMessages')" />
         </div>
 
+        <!-- Agent Panel -->
+        <div v-if="showAgentPanel" class="gc-agent-panel">
+          <div class="gc-agent-panel-header">
+            <span>{{ t('groupChat.agents') }}</span>
+            <button class="gc-icon-btn" @click="showAgentPanel = false">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div v-for="a in store.agents" :key="a.id" class="gc-agent-item">
+            <span class="gc-agent-color" :style="{ background: a.color }"></span>
+            <div class="gc-agent-info">
+              <span class="gc-agent-name">{{ a.name }}</span>
+              <span class="gc-agent-model">{{ a.model }}<template v-if="a.provider"> · {{ a.provider }}</template></span>
+            </div>
+            <button class="gc-agent-remove" @click="onRemoveAgent(a.id)" :title="t('groupChat.removeAgent')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <button class="gc-add-agent-btn" @click="showAddAgentModal = true">{{ t('groupChat.addAgent') }}</button>
+        </div>
+
         <!-- Input -->
-        <div class="gc-input-wrap">
-          <HxTextarea
-            ref="inputRef"
-            v-model="inputText"
-            :placeholder="t('groupChat.typePlaceholder')"
-            :rows="1"
-            @keydown.enter.exact.prevent="onSend"
-          />
-          <button class="gc-send-btn" @click="onSend" :disabled="!inputText.trim() || store.loading">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </button>
+        <div class="gc-input-area">
+          <div class="gc-mention-hint" v-if="mentionHint.visible">
+            <div
+              v-for="a in mentionHint.filtered"
+              :key="a.id"
+              class="gc-mention-item"
+              :class="{ active: mentionHint.index === mentionHint.filtered.indexOf(a) }"
+              @mousedown.prevent="insertMention(a)"
+            >
+              <span class="gc-agent-color" :style="{ background: a.color }"></span>
+              <span>{{ a.name }}</span>
+            </div>
+          </div>
+          <div class="gc-input-row">
+            <HxTextarea
+              ref="inputRef"
+              v-model="inputText"
+              :placeholder="t('groupChat.typePlaceholder')"
+              autoResize
+              :maxHeight="120"
+              inline
+              variant="chat"
+              @keydown="onInputKeydown"
+            />
+            <button class="gc-send-btn" @click="onSend" :disabled="!inputText.trim() || store.sending">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
         </div>
       </template>
-      <HxEmpty v-else :description="t('groupChat.selectOrCreate')" />
+      <div v-else class="gc-empty">
+        <HxEmpty :description="t('groupChat.selectOrCreate')" />
+      </div>
     </main>
 
     <!-- Create Group Modal -->
-    <HxModal v-model:visible="showCreateModal" :title="t('groupChat.createGroup')" size="sm">
+    <HxModal v-model:visible="showCreateModal" :title="t('groupChat.createGroup')" size="md">
       <div class="gc-modal-body">
         <label class="gc-field">
           <span class="gc-field-label">{{ t('groupChat.groupName') }}</span>
           <HxInput v-model="newGroupName" :placeholder="t('groupChat.groupNamePlaceholder')" />
         </label>
         <div class="gc-field">
-          <span class="gc-field-label">{{ t('groupChat.agent') }}</span>
-          <div class="gc-agent-def">
-            <HxInput v-model="newAgentName" :placeholder="t('groupChat.agentName')" style="flex:1" />
-            <HxInput v-model="newAgentModel" :placeholder="t('groupChat.agentModel')" style="flex:1" />
-            <HxInput v-model="newAgentProvider" placeholder="Provider" style="width:90px" />
+          <span class="gc-field-label">{{ t('groupChat.agents') }}</span>
+          <div v-for="(ad, i) in newAgents" :key="i" class="gc-agent-def">
+            <div class="gc-agent-def-colors">
+              <button
+                v-for="c in AGENT_COLORS"
+                :key="c"
+                class="gc-color-dot"
+                :class="{ selected: ad.color === c }"
+                :style="{ background: c }"
+                @click="ad.color = c"
+              ></button>
+            </div>
+            <HxInput v-model="ad.name" :placeholder="t('groupChat.agentName')" style="flex:1" />
+            <HxInput v-model="ad.model" :placeholder="t('groupChat.agentModel')" style="flex:1" />
+            <HxInput v-model="ad.provider" placeholder="Provider (optional)" style="width:90px" />
+            <button class="gc-agent-def-remove" @click="newAgents.splice(i, 1)" v-if="newAgents.length > 1">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
+          <button class="gc-add-agent-btn" @click="newAgents.push({ name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[newAgents.length % AGENT_COLORS.length] })">+ {{ t('groupChat.addAgent') }}</button>
         </div>
       </div>
       <template #footer>
         <HxButton variant="ghost" @click="showCreateModal = false">{{ t('common.cancel') }}</HxButton>
         <HxButton @click="onCreateGroup" :loading="store.loading" :disabled="!newGroupName.trim()">{{ t('groupChat.createGroup') }}</HxButton>
+      </template>
+    </HxModal>
+
+    <!-- Add Agent Modal -->
+    <HxModal v-model:visible="showAddAgentModal" :title="t('groupChat.addAgent')" size="sm">
+      <div class="gc-modal-body">
+        <label class="gc-field">
+          <span class="gc-field-label">{{ t('groupChat.agentName') }}</span>
+          <HxInput v-model="addAgentName" />
+        </label>
+        <label class="gc-field">
+          <span class="gc-field-label">{{ t('groupChat.agentModel') }}</span>
+          <HxInput v-model="addAgentModel" />
+        </label>
+        <label class="gc-field">
+          <span class="gc-field-label">Provider</span>
+          <HxInput v-model="addAgentProvider" placeholder="e.g. custom, openai (optional)" />
+        </label>
+        <label class="gc-field">
+          <span class="gc-field-label">{{ t('groupChat.systemPrompt') }}</span>
+          <HxTextarea v-model="addAgentPrompt" :placeholder="t('groupChat.systemPromptPlaceholder')" autoResize :maxHeight="100" />
+        </label>
+        <div class="gc-field">
+          <span class="gc-field-label">{{ t('groupChat.agentColor') }}</span>
+          <div class="gc-agent-def-colors">
+            <button v-for="c in AGENT_COLORS" :key="c" class="gc-color-dot" :class="{ selected: addAgentColor === c }" :style="{ background: c }" @click="addAgentColor = c"></button>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <HxButton variant="ghost" @click="showAddAgentModal = false">{{ t('common.cancel') }}</HxButton>
+        <HxButton @click="onAddAgent" :disabled="!addAgentName.trim()">{{ t('groupChat.addAgent') }}</HxButton>
       </template>
     </HxModal>
 
@@ -100,9 +192,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, watch } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGroupChatStore } from '@/stores/groupChat'
+import { AGENT_COLORS } from '@/types'
 import { HxButton, HxInput, HxTextarea, HxModal, HxEmpty } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 
@@ -114,13 +207,31 @@ const messagesRef = ref<HTMLElement | null>(null)
 const inputRef = ref<InstanceType<typeof HxTextarea> | null>(null)
 const inputText = ref('')
 const showCreateModal = ref(false)
+const showAddAgentModal = ref(false)
+const showAgentPanel = ref(false)
 const showDeleteConfirm = ref(false)
 
 // Create group form
 const newGroupName = ref('')
-const newAgentName = ref('')
-const newAgentModel = ref('')
-const newAgentProvider = ref('')
+const newAgents = reactive([
+  { name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[0] },
+  { name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[1] },
+])
+
+// Add agent form
+const addAgentName = ref('')
+const addAgentModel = ref('')
+const addAgentProvider = ref('')
+const addAgentPrompt = ref('')
+const addAgentColor = ref(AGENT_COLORS[2])
+
+// @mention autocomplete
+const mentionHint = reactive({
+  visible: false,
+  filtered: [] as any[],
+  index: -1,
+  startPos: -1,
+})
 
 function agentName(id: string): string {
   return store.agentMap.get(id)?.name ?? 'Agent'
@@ -137,6 +248,7 @@ function formatTime(ts: string): string {
 }
 
 function renderContent(content: string): string {
+  // Simple rendering: escape HTML, convert @mentions to colored spans
   const escaped = content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   return escaped.replace(/@(\w+)/g, (_, name) => {
     const agent = store.agents.find(a => a.name === name)
@@ -163,30 +275,130 @@ function scrollBottom() {
 async function onSend() {
   const text = inputText.value.trim()
   if (!text || store.sending) return
+  // Parse @mentions
+  const mentionRegex = /@(\w+)/g
+  const mentionedIds: string[] = []
+  let match
+  while ((match = mentionRegex.exec(text)) !== null) {
+    const agent = store.agents.find(a => a.name === match[1])
+    if (agent) mentionedIds.push(agent.id)
+  }
   inputText.value = ''
-  await store.sendMessage(text)
+  mentionHint.visible = false
+  await store.sendMessage(text, mentionedIds.length > 0 ? mentionedIds : undefined)
   await nextTick()
   scrollBottom()
 }
 
-async function onCreateGroup() {
-  if (!newGroupName.value.trim() || !newAgentName.value.trim()) return
-  const agent = {
-    name: newAgentName.value.trim(),
-    model: newAgentModel.value.trim() || 'glm-5.1',
-    provider: newAgentProvider.value.trim() || 'custom',
+function onInputKeydown(e: KeyboardEvent) {
+  // Enter to send (Shift+Enter for newline)
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    onSend()
+    return
   }
-  const result = await store.createGroup(newGroupName.value.trim(), [agent])
+  // @mention autocomplete navigation
+  if (mentionHint.visible) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      mentionHint.index = Math.min(mentionHint.index + 1, mentionHint.filtered.length - 1)
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      mentionHint.index = Math.max(mentionHint.index - 1, 0)
+      return
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault()
+      if (mentionHint.filtered[mentionHint.index]) {
+        insertMention(mentionHint.filtered[mentionHint.index])
+      }
+      return
+    }
+    if (e.key === 'Escape') {
+      mentionHint.visible = false
+      return
+    }
+  }
+  // Trigger @mention on typing @
+  const textarea = inputRef.value?.textarea
+  if (textarea) {
+    setTimeout(() => updateMentionHint(textarea), 0)
+  }
+}
+
+function updateMentionHint(textarea: HTMLTextAreaElement) {
+  const pos = textarea.selectionStart
+  const text = textarea.value
+  // Find @ before cursor
+  let start = pos - 1
+  while (start >= 0 && /\w/.test(text[start])) start--
+  if (start < 0 || text[start] !== '@') {
+    mentionHint.visible = false
+    return
+  }
+  const query = text.slice(start + 1, pos).toLowerCase()
+  const filtered = store.agents.filter(a => a.name.toLowerCase().includes(query))
+  if (filtered.length === 0) {
+    mentionHint.visible = false
+    return
+  }
+  mentionHint.visible = true
+  mentionHint.filtered = filtered
+  mentionHint.index = 0
+  mentionHint.startPos = start
+}
+
+function insertMention(agent: any) {
+  const textarea = inputRef.value?.textarea
+  if (!textarea) return
+  const before = inputText.value.slice(0, mentionHint.startPos)
+  const after = inputText.value.slice(textarea.selectionStart)
+  inputText.value = before + '@' + agent.name + ' ' + after
+  mentionHint.visible = false
+  textarea.focus()
+}
+
+async function onCreateGroup() {
+  const validAgents = newAgents.filter(a => a.name.trim())
+  if (!newGroupName.value.trim() || validAgents.length === 0) return
+  const result = await store.createGroup(newGroupName.value.trim(), validAgents)
   if (result) {
     showCreateModal.value = false
     newGroupName.value = ''
-    newAgentName.value = ''
-    newAgentModel.value = ''
-    newAgentProvider.value = ''
+    newAgents.splice(0, newAgents.length, ...[
+      { name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[0] },
+      { name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[1] },
+    ])
     toast.success(t('groupChat.created'))
   } else {
     toast.error(store.error || t('groupChat.error'))
   }
+}
+
+async function onAddAgent() {
+  if (!store.activeGroupId || !addAgentName.value.trim()) return
+  await store.addAgent({
+    name: addAgentName.value.trim(),
+    model: addAgentModel.value.trim() || 'default',
+    provider: addAgentProvider.value.trim(),
+    system_prompt: addAgentPrompt.value.trim(),
+    color: addAgentColor.value,
+  })
+  showAddAgentModal.value = false
+  addAgentName.value = ''
+  addAgentModel.value = ''
+  addAgentProvider.value = ''
+  addAgentPrompt.value = ''
+  addAgentColor.value = AGENT_COLORS[(store.agents.length) % AGENT_COLORS.length]
+  toast.success(t('groupChat.agentAdded'))
+}
+
+async function onRemoveAgent(agentId: string) {
+  if (!store.activeGroupId) return
+  await store.removeAgent(agentId)
+  toast.success(t('groupChat.agentRemoved'))
 }
 
 function onDeleteGroup() {
@@ -195,23 +407,13 @@ function onDeleteGroup() {
 
 async function confirmDeleteGroup() {
   if (!store.activeGroupId) return
-  const id = store.activeGroupId
-  await store.deleteGroup(id)
+  await store.deleteGroup(store.activeGroupId)
   showDeleteConfirm.value = false
   toast.success(t('groupChat.deleted'))
 }
 
-// Init
 onMounted(() => {
   store.fetchGroups()
-})
-
-watch(() => store.activeGroupId, async () => {
-  if (store.activeGroupId) {
-    await store.fetchMessages(store.activeGroupId)
-    await nextTick()
-    scrollBottom()
-  }
 })
 </script>
 
@@ -219,339 +421,353 @@ watch(() => store.activeGroupId, async () => {
 .gc-view {
   display: flex;
   height: 100%;
-  overflow: hidden;
-  background: var(--bg-base);
+  background: var(--glass-bg, rgba(20, 22, 28, 0.85));
+  backdrop-filter: blur(32px) saturate(1.5);
 }
 
-/* ─── Sidebar ─── */
+/* Sidebar */
 .gc-sidebar {
-  width: 240px;
-  border-right: 1px solid var(--border-base);
+  width: 220px;
+  border-right: 1px solid var(--border-base, rgba(255,255,255,.08));
   display: flex;
   flex-direction: column;
-  background: var(--glass-bg);
 }
-
 .gc-sidebar-header {
   padding: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border-base);
+  border-bottom: 1px solid var(--border-base, rgba(255,255,255,.08));
 }
-
 .gc-sidebar-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-primary, #e0e0e0);
 }
-
 .gc-create-btn {
-  width: 28px;
-  height: 28px;
+  background: rgba(90,200,250,.12);
+  border: 1px solid rgba(90,200,250,.22);
   border-radius: 8px;
-  border: 1px solid var(--border-base);
-  background: var(--glass-bg);
-  color: var(--text-secondary);
+  color: var(--accent, #5ac8fa);
+  cursor: pointer;
+  padding: 6px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
 }
-
 .gc-create-btn:hover {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
+  background: rgba(90,200,250,.22);
 }
-
 .gc-group-list {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
 }
-
 .gc-group-item {
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.15s;
+  margin-bottom: 4px;
+  transition: background .15s;
 }
-
 .gc-group-item:hover {
-  background: var(--glass-hover);
+  background: rgba(255,255,255,.05);
 }
-
 .gc-group-item.active {
-  background: var(--accent-alpha);
-  color: var(--accent);
+  background: rgba(90,200,250,.10);
+  border-left: 3px solid var(--accent, #5ac8fa);
 }
-
 .gc-group-name {
   font-size: 13px;
   font-weight: 500;
+  color: var(--text-primary, #e0e0e0);
 }
-
 .gc-group-meta {
   font-size: 11px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary, rgba(255,255,255,.45));
   margin-top: 2px;
 }
 
-/* ─── Main ─── */
+/* Main Area */
 .gc-main {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
-
 .gc-header {
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border-base);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--glass-bg);
+  border-bottom: 1px solid var(--border-base, rgba(255,255,255,.08));
 }
-
 .gc-header-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
+  color: var(--text-primary, #e0e0e0);
 }
-
 .gc-header-actions {
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
-
 .gc-icon-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  background: none;
   border: none;
-  background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-secondary, rgba(255,255,255,.5));
   cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s;
 }
-
 .gc-icon-btn:hover {
-  background: var(--glass-hover);
+  background: rgba(255,255,255,.08);
+  color: var(--text-primary, #e0e0e0);
 }
-
 .gc-delete-btn:hover {
-  background: rgba(235, 87, 87, 0.12);
-  color: var(--error);
+  color: #ff6b6b;
 }
 
-/* ─── Messages ─── */
+/* Messages */
 .gc-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding: 12px 16px;
 }
-
 .gc-msg {
-  max-width: 80%;
+  display: flex;
+  margin-bottom: 12px;
+  position: relative;
 }
-
 .gc-msg.human {
-  align-self: flex-end;
+  justify-content: flex-end;
 }
-
-.gc-msg.agent {
-  align-self: flex-start;
+.gc-msg-agent-bar {
+  width: 3px;
+  border-radius: 2px;
+  margin-right: 10px;
+  flex-shrink: 0;
+  align-self: stretch;
 }
-
 .gc-msg-body {
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: var(--glass-bg);
-  border: 1px solid var(--border-base);
+  max-width: 70%;
 }
-
-.gc-msg.human .gc-msg-body {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
-}
-
 .gc-msg-sender {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
-  font-size: 11px;
 }
-
-.gc-msg.human .gc-msg-sender {
-  color: rgba(255,255,255,0.7);
-}
-
 .gc-agent-badge {
-  padding: 1px 6px;
-  border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  line-height: 1.4;
 }
-
 .gc-human-badge {
-  color: var(--accent);
+  font-size: 11px;
   font-weight: 600;
+  color: var(--text-secondary, rgba(255,255,255,.5));
 }
-
 .gc-msg-time {
-  color: var(--text-tertiary);
   font-size: 10px;
+  color: var(--text-secondary, rgba(255,255,255,.35));
 }
-
 .gc-msg-content {
   font-size: 13px;
-  line-height: 1.5;
-  white-space: pre-wrap;
+  color: var(--text-primary, #e0e0e0);
+  line-height: 1.6;
   word-break: break-word;
 }
-
-/* ─── Input ─── */
-.gc-input-wrap {
-  padding: 12px 16px;
-  border-top: 1px solid var(--border-base);
-  display: flex;
-  gap: 8px;
-  background: var(--glass-bg);
+.gc-msg.human .gc-msg-content {
+  background: rgba(90,200,250,.10);
+  padding: 8px 12px;
+  border-radius: 12px 12px 4px 12px;
 }
 
-.gc-send-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: none;
-  background: var(--primary);
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.15s;
-  flex-shrink: 0;
-}
-
-.gc-send-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* ─── Modal ─── */
-.gc-modal-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.gc-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.gc-field-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.gc-agent-def {
-  display: flex;
-  gap: 8px;
-}
-
-/* ─── Agent Panel ─── */
+/* Agent Panel */
 .gc-agent-panel {
-  padding: 12px;
-  border-bottom: 1px solid var(--border-base);
-  background: var(--glass-bg);
+  border-top: 1px solid var(--border-base, rgba(255,255,255,.08));
+  padding: 12px 16px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(0,0,0,.15);
 }
-
 .gc-agent-panel-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-primary, #e0e0e0);
   margin-bottom: 8px;
 }
-
 .gc-agent-item {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 0;
 }
-
 .gc-agent-color {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-
 .gc-agent-info {
   flex: 1;
   min-width: 0;
 }
-
 .gc-agent-name {
   font-size: 12px;
   font-weight: 500;
+  color: var(--text-primary, #e0e0e0);
 }
-
 .gc-agent-model {
+  display: block;
   font-size: 10px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary, rgba(255,255,255,.45));
+}
+.gc-agent-remove {
+  background: none;
+  border: none;
+  color: var(--text-secondary, rgba(255,255,255,.4));
+  cursor: pointer;
+  padding: 2px;
+}
+.gc-agent-remove:hover {
+  color: #ff6b6b;
+}
+.gc-add-agent-btn {
+  background: none;
+  border: 1px dashed rgba(90,200,250,.3);
+  color: var(--accent, #5ac8fa);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 8px;
+}
+.gc-add-agent-btn:hover {
+  background: rgba(90,200,250,.08);
 }
 
-.gc-agent-remove {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  border: none;
-  background: transparent;
-  color: var(--text-tertiary);
+/* Input */
+.gc-input-area {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-base, rgba(255,255,255,.08));
+  position: relative;
+}
+.gc-mention-hint {
+  position: absolute;
+  bottom: 100%;
+  left: 16px;
+  right: 16px;
+  background: rgba(30,33,42,.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-base, rgba(255,255,255,.1));
+  border-radius: 10px;
+  padding: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+  z-index: 20;
+}
+.gc-mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
   cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary, #e0e0e0);
+}
+.gc-mention-item:hover,
+.gc-mention-item.active {
+  background: rgba(90,200,250,.12);
+}
+.gc-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.gc-input-row :deep(.hixns-textarea-wrap) {
+  flex: 1;
+}
+.gc-send-btn {
+  background: rgba(90,200,250,.15);
+  border: 1px solid rgba(90,200,250,.25);
+  color: var(--accent, #5ac8fa);
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 40px;
+}
+.gc-send-btn:hover:not(:disabled) {
+  background: rgba(90,200,250,.25);
+}
+.gc-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Empty State */
+.gc-empty {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.gc-agent-remove:hover {
-  background: rgba(235, 87, 87, 0.12);
-  color: var(--error);
+/* Modal */
+.gc-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
-
-.gc-add-agent-btn {
-  margin-top: 8px;
-  width: 100%;
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px dashed var(--border-base);
-  background: transparent;
-  color: var(--text-secondary);
+.gc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gc-field-label {
   font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
+  font-weight: 500;
+  color: var(--text-secondary, rgba(255,255,255,.6));
 }
-
-.gc-add-agent-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+.gc-agent-def {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.gc-agent-def-colors {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.gc-color-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.gc-color-dot.selected {
+  border-color: #fff;
+  box-shadow: 0 0 6px rgba(255,255,255,.3);
+}
+.gc-agent-def-remove {
+  background: none;
+  border: none;
+  color: var(--text-secondary, rgba(255,255,255,.4));
+  cursor: pointer;
+  padding: 2px;
 }
 </style>
