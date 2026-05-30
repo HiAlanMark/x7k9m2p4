@@ -248,7 +248,7 @@ const { t } = useI18n()
 const toast = useToast()
 
 // State
-const currentPath = ref('.')
+const currentPath = ref('~/.hermes')
 const entries = ref<FileEntry[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -631,7 +631,7 @@ function formatTime(iso: string): string {
 
 // Init
 onMounted(() => {
-  loadDir('~')
+  loadDir(currentPath.value)
 })
 </script>
 
