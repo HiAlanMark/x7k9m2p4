@@ -1003,6 +1003,24 @@
             </span>
           </div>
         </div>
+
+        <!-- Profiles -->
+        <div v-if="activeSection === 'profiles'" class="content-section">
+          <h2 class="section-title">配置管理</h2>
+          <ProfilesView />
+        </div>
+
+        <!-- Channels -->
+        <div v-if="activeSection === 'channels'" class="content-section">
+          <h2 class="section-title">频道配置</h2>
+          <ChannelsView />
+        </div>
+
+        <!-- Coding Agents -->
+        <div v-if="activeSection === 'coding-agents'" class="content-section">
+          <h2 class="section-title">编程代理</h2>
+          <CodingAgentsView />
+        </div>
       </div>
       <!-- GFW Create Key Modal -->
       <HxModal v-model="showGfwCreateKey" :icon="'key'" :title="t('settings.createApiKey')" width="480px">
@@ -1053,6 +1071,10 @@ import IconUser from '../components/icons/IconUser.vue'
 import IconSettings from '../components/icons/IconSettings.vue'
 import { HxButton, HxInput, HxTextarea, HxSelect, HxToggle, HxCard, HxBadge, HxModal } from '../components/ui'
 import { providerIconMap } from '../assets/provider-icons'
+import ChannelsView from './ChannelsView.vue'
+import ProfilesView from './ProfilesView.vue'
+import UsageView from './UsageView.vue'
+import CodingAgentsView from './CodingAgentsView.vue'
 import { useToast } from '../composables/useToast'
 import { useContextCompression } from '../composables/useContextCompression'
 
@@ -1177,7 +1199,10 @@ const navItems = [
   { key: 'voice', label: '语音', keywords: 'STT TTS 语音识别 语音合成 Whisper Edge ElevenLabs', icon: '' },
   { key: 'security', label: '安全', keywords: '密钥 PII 脱敏 屏蔽 站点黑名单 工具开关 redaction', icon: '' },
   { key: 'credentials', label: '凭据', keywords: 'API密钥 key secret token 凭证 credentials provider', icon: '' },
-  { key: 'usage', label: '用量统计', keywords: '统计 日报 消耗 调用次数 token 图表 模型', icon: '' },
+  { key: 'usage', label: '用量', keywords: 'usage 统计 消耗 调用次数 token 图表 模型 session', icon: '' },
+  { key: 'profiles', label: '配置', keywords: 'profile 用户档案 切换 导出 导入 运行状态', icon: '' },
+  { key: 'channels', label: '频道', keywords: 'channel 渠道 连接 telegram webhook', icon: '' },
+  { key: 'coding-agents', label: '编程代理', keywords: 'coding agent claude codex opencode', icon: '' },
 ]
 const filteredNavItems = computed(() => {
   if (!searchQuery.value.trim()) return navItems

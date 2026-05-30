@@ -120,27 +120,6 @@
           <span class="nav-label">{{ $t('nav.tasks') }}</span>
           <kbd class="nav-shortcut">6</kbd>
         </router-link>
-        <router-link to="/usage" class="nav-item" :class="{ active: $route.path === '/usage' }">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="8" width="4" height="13"/><rect x="17" y="4" width="4" height="17"/></svg>
-          </span>
-          <span class="nav-label">{{ $t('nav.usage') }}</span>
-          <kbd class="nav-shortcut">9</kbd>
-        </router-link>
-        <router-link to="/profiles" class="nav-item" :class="{ active: $route.path === '/profiles' }">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </span>
-          <span class="nav-label">{{ $t('nav.profiles') }}</span>
-          <kbd class="nav-shortcut">7</kbd>
-        </router-link>
-        <router-link to="/channels" class="nav-item" :class="{ active: $route.path === '/channels' }">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.4"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.4"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/><circle cx="12" cy="12" r="2"/></svg>
-          </span>
-          <span class="nav-label">{{ $t('nav.channels') }}</span>
-          <kbd class="nav-shortcut">8</kbd>
-        </router-link>
         <router-link to="/files" class="nav-item" :class="{ active: $route.path === '/files' }">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
@@ -152,12 +131,6 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </span>
           <span class="nav-label">{{ $t('nav.groupChat') }}</span>
-        </router-link>
-        <router-link to="/coding-agents" class="nav-item" :class="{ active: $route.path === '/coding-agents' }">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-          </span>
-          <span class="nav-label">{{ $t('nav.codingAgents') }}</span>
         </router-link>
         <router-link to="/settings" class="nav-item" :class="{ active: $route.path === '/settings' }">
           <span class="nav-icon"><IconSettings :size="18" /></span>
