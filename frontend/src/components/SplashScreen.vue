@@ -131,7 +131,7 @@ onMounted(() => {
 .splash-title {
   font-size: 28px;
   font-weight: 700;
-  color: var(--text-inverse);
+  color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.5);
   letter-spacing: 2px;
   font-family: var(--font-family, -apple-system, sans-serif);
 }
