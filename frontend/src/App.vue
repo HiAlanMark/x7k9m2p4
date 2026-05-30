@@ -143,12 +143,43 @@
       <div class="session-list">
         <div class="session-list-header">
           <span class="session-list-title">会话</span>
-          <button class="new-session-btn" @click="chatStore.newSession(); router.push('/')" title="新建会话">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </button>
+          <div class="session-list-actions">
+            <button v-if="!batchMode" class="new-session-btn" @click="chatStore.newSession(); router.push('/')" title="新建会话">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+            <button v-if="!batchMode" class="batch-mode-btn" @click="batchMode = true; batchSelected = new Set()" title="批量管理">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 11l3 3L22 4"></path>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path>
+              </svg>
+            </button>
+            <template v-if="batchMode">
+              <button class="batch-select-all-btn" @click="toggleSelectAll" :title="isAllSelected ? '取消全选' : '全选'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path v-if="isAllSelected" d="M9 11l3 3L22 4"></path>
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                </svg>
+                <span>{{ isAllSelected ? '取消' : '全选' }}</span>
+              </button>
+              <button class="batch-delete-btn" :disabled="batchSelected.size === 0" @click="batchDeleteSelected" title="删除选中">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 6h18"></path>
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                </svg>
+                <span v-if="batchSelected.size">{{ batchSelected.size }}</span>
+              </button>
+              <button class="batch-cancel-btn" @click="batchMode = false; batchSelected = new Set()" title="取消">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </template>
+          </div>
         </div>
         <div class="session-items">
           <transition-group name="session-anim" tag="div">
@@ -156,10 +187,14 @@
               v-for="s in chatStore.sortedSessions"
               :key="s.id"
               class="session-item"
-              :class="{ active: s.id === chatStore.activeSessionId }"
-              @click="chatStore.switchSession(s.id); router.push('/')"
-              @contextmenu.prevent="openContextMenu($event, s)"
+              :class="{ active: s.id === chatStore.activeSessionId, 'batch-selected': batchSelected.has(s.id) }"
+              @click="batchMode ? toggleBatchSelect(s.id) : (chatStore.switchSession(s.id), router.push('/'))"
+              @contextmenu.prevent="batchMode ? null : openContextMenu($event, s)"
             >
+              <label v-if="batchMode" class="batch-checkbox" @click.stop>
+                <input type="checkbox" :checked="batchSelected.has(s.id)" @change="toggleBatchSelect(s.id)" />
+                <span class="checkmark"></span>
+              </label>
               <span class="session-item-title">{{ truncateTitle(s.title) }}</span>
               <div class="session-item-actions">
                 <span class="session-item-count">{{ s.messages.filter(m => m.role === 'user').length }}</span>
@@ -309,7 +344,7 @@ import VueBitsBg from './components/fx/VueBitsBg.vue'
 import { HxToast } from './components/ui'
 import LoginModal from './components/auth/LoginModal.vue'
 import SessionSearchModal from './components/SessionSearchModal.vue'
-import { getAuthToken, setAuthToken, hermesAuthStatus, hermesAuthAutoLogin, sessionExport as apiSessionExport } from './api'
+import { getAuthToken, setAuthToken, hermesAuthStatus, hermesAuthAutoLogin, sessionExport as apiSessionExport, sessionBatchDelete } from './api'
 import HistoryView from './views/HistoryView.vue'
 import { useThemeVariant } from './composables/useThemeVariant'
 
@@ -415,6 +450,8 @@ function toggleLang() {
 }
 const showSplash = ref(true)
 const confirmDeleteId = ref('')
+const batchMode = ref(false)
+const batchSelected = ref<Set<string>>(new Set())
 const modelDropdownOpen = ref(false)
 
 // Context Menu & Rename
@@ -605,6 +642,51 @@ function deleteFromMenu() {
     chatStore.deleteSession(contextMenu.value.sessionId)
   }
   closeContextMenu()
+}
+
+// ── Batch Operations ──
+const isAllSelected = computed(() => chatStore.sessions.length > 0 && batchSelected.value.size === chatStore.sessions.length)
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    batchSelected.value = new Set()
+  } else {
+    batchSelected.value = new Set(chatStore.sessions.map(s => s.id))
+  }
+}
+
+function toggleBatchSelect(id: string) {
+  const next = new Set(batchSelected.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  batchSelected.value = next
+}
+
+async function batchDeleteSelected() {
+  if (batchSelected.value.size === 0) return
+  const ids = Array.from(batchSelected.value)
+  // Collect serverIds for batch API call
+  const serverIds = chatStore.sessions
+    .filter(s => ids.includes(s.id) && s.serverId)
+    .map(s => s.serverId as string)
+  // Delete locally first
+  for (const id of ids) {
+    if (chatStore.sessions.length <= 1) break // keep at least 1 session
+    chatStore.deleteSession(id)
+  }
+  // Batch delete on server
+  if (serverIds.length > 0) {
+    try {
+      await sessionBatchDelete(serverIds)
+    } catch (e) {
+      console.warn('[batch-delete] server batch delete failed:', e)
+    }
+  }
+  batchMode.value = false
+  batchSelected.value = new Set()
 }
 
 async function exportSession() {
@@ -828,6 +910,97 @@ async function exportSession() {
   background: var(--primary);
   border-color: var(--primary);
   color: white;
+}
+
+.session-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.batch-mode-btn,
+.batch-select-all-btn,
+.batch-delete-btn,
+.batch-cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background: var(--glass-base);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  transition: background var(--fast), border-color var(--fast), color var(--fast);
+}
+
+.batch-mode-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.batch-select-all-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.batch-delete-btn:not(:disabled):hover {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.batch-delete-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.batch-cancel-btn:hover {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.batch-checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-right: 2px;
+}
+
+.batch-checkbox input {
+  display: none;
+}
+
+.batch-checkbox .checkmark {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--border-base);
+  border-radius: 3px;
+  background: var(--glass-base);
+  transition: background var(--fast), border-color var(--fast);
+  position: relative;
+}
+
+.batch-checkbox input:checked + .checkmark {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.batch-checkbox input:checked + .checkmark::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.session-item.batch-selected {
+  background: rgba(90, 200, 250, 0.08);
+  border-color: rgba(90, 200, 250, 0.3);
 }
 
 .session-items {

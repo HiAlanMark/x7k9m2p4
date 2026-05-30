@@ -15,6 +15,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
           <span>{{ t('files.newFolder') }}</span>
         </button>
+        <button class="toolbar-btn" @click="showNewFileModal = true; newFileName = ''" title="新建文件">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+          <span>新建文件</span>
+        </button>
         <button v-if="selectedEntry" class="toolbar-btn" @click="downloadSelected" :title="t('files.download')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
@@ -27,6 +31,10 @@
         <button v-if="selectedEntry && selectedEntry.type !== 'dir'" class="toolbar-btn" @click="handleCopy" :title="'复制文件'">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           <span>复制</span>
+        </button>
+        <button v-if="selectedEntry" class="toolbar-btn" @click="showProperties" title="属性">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>属性</span>
         </button>
       </div>
     </div>
@@ -188,6 +196,39 @@
       </template>
     </HxModal>
 
+    <!-- New File Modal -->
+    <HxModal v-model="showNewFileModal" :title="'新建文件'" size="sm">
+      <div class="modal-form-group">
+        <label class="modal-label">文件名</label>
+        <input
+          v-model="newFileName"
+          class="modal-input"
+          placeholder="例如: script.py, notes.md"
+          @keydown.enter="createNewFile"
+        />
+      </div>
+      <template #footer>
+        <HxButton variant="ghost" @click="showNewFileModal = false">{{ t('common.cancel') }}</HxButton>
+        <HxButton variant="primary" @click="createNewFile" :disabled="!newFileName.trim()">创建</HxButton>
+      </template>
+    </HxModal>
+
+    <!-- Properties Modal -->
+    <HxModal v-model="showPropsModal" :title="'文件属性'" size="sm">
+      <div v-if="propsLoading" style="text-align:center;padding:16px;"><div class="spinner"></div></div>
+      <div v-else-if="propsData" class="props-grid">
+        <div class="props-row"><span class="props-label">名称</span><span class="props-value">{{ propsData.name }}</span></div>
+        <div class="props-row"><span class="props-label">路径</span><span class="props-value props-path">{{ propsData.path }}</span></div>
+        <div class="props-row"><span class="props-label">类型</span><span class="props-value">{{ propsData.type === 'dir' ? '文件夹' : '文件' }}</span></div>
+        <div class="props-row"><span class="props-label">大小</span><span class="props-value">{{ formatSize(propsData.size) }}</span></div>
+        <div class="props-row"><span class="props-label">修改时间</span><span class="props-value">{{ formatTime(propsData.modified) }}</span></div>
+        <div class="props-row"><span class="props-label">权限</span><span class="props-value">{{ propsData.permissions }}</span></div>
+      </div>
+      <template #footer>
+        <HxButton variant="ghost" @click="showPropsModal = false">关闭</HxButton>
+      </template>
+    </HxModal>
+
     <!-- Hidden file input -->
     <input ref="fileInputRef" type="file" multiple class="hidden-input" @change="onFileInput" />
   </div>
@@ -224,6 +265,15 @@ const previewError = ref('')
 // Mkdir
 const showMkdirModal = ref(false)
 const mkdirName = ref('')
+
+// New File
+const showNewFileModal = ref(false)
+const newFileName = ref('')
+
+// Properties
+const showPropsModal = ref(false)
+const propsLoading = ref(false)
+const propsData = ref<FileEntry & { path: string } | null>(null)
 
 // Rename
 const showRenameModal = ref(false)
@@ -393,6 +443,57 @@ async function createFolder() {
     refresh()
   } catch (e: any) {
     toast.show(t('files.createError') + ': ' + (e.message || String(e)), 'error')
+  }
+}
+
+// New File
+async function createNewFile() {
+  if (!newFileName.value.trim()) return
+  const path = currentPath.value === '~'
+    ? `~/${newFileName.value.trim()}`
+    : `${currentPath.value}/${newFileName.value.trim()}`
+  try {
+    await fileWrite(path, '')
+    toast.show('文件已创建', 'success')
+    showNewFileModal.value = false
+    newFileName.value = ''
+    refresh()
+  } catch (e: any) {
+    toast.show('创建文件失败: ' + (e.message || String(e)), 'error')
+  }
+}
+
+// Properties
+async function showProperties() {
+  if (!selectedEntry.value) return
+  const fullPath = currentPath.value === '~'
+    ? `~/${selectedEntry.value.name}`
+    : `${currentPath.value}/${selectedEntry.value.name}`
+  showPropsModal.value = true
+  propsLoading.value = true
+  propsData.value = null
+  try {
+    const stat = await fileStat(fullPath)
+    propsData.value = {
+      name: selectedEntry.value.name,
+      path: fullPath.replace(/^~/, homePath.value),
+      type: stat.is_dir ? 'dir' : selectedEntry.value.type,
+      size: stat.size ?? selectedEntry.value.size,
+      modified: stat.modified ?? selectedEntry.value.modified,
+      permissions: stat.permissions ?? selectedEntry.value.permissions,
+    }
+  } catch (e: any) {
+    // Fallback to entry data
+    propsData.value = {
+      name: selectedEntry.value.name,
+      path: fullPath.replace(/^~/, homePath.value),
+      type: selectedEntry.value.type,
+      size: selectedEntry.value.size,
+      modified: selectedEntry.value.modified,
+      permissions: selectedEntry.value.permissions,
+    }
+  } finally {
+    propsLoading.value = false
   }
 }
 
@@ -909,5 +1010,37 @@ onMounted(() => {
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
   border: 1px solid var(--border-base);
+}
+
+/* Properties Modal */
+.props-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.props-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.props-label {
+  min-width: 64px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.props-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.props-path {
+  font-family: var(--font-mono, 'Menlo, Monaco, Consolas, monospace');
+  font-size: 12px;
 }
 </style>
