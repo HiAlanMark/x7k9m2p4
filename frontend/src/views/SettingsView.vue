@@ -1518,10 +1518,9 @@ async function testTTS() {
   ttsAudioUrl.value = ''
   try {
     const data = await apiTextToSpeech(ttsTestText.value)
-    if (data.audio_url) {
-      ttsAudioUrl.value = data.audio_url
+    if (data.success && data.audio_url) {
+      ttsAudioUrl.value = `http://127.0.0.1:1420${data.audio_url}`
     } else if (data.message) {
-      // Not an error, just informational — TTS is handled by Hermes agent, not this proxy
       ttsError.value = 'ℹ️ ' + data.message
     } else if (data.error) {
       ttsError.value = '错误: ' + data.error
