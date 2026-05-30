@@ -1005,19 +1005,19 @@
         </div>
 
         <!-- Profiles -->
-        <div v-if="activeSection === 'profiles'" class="content-section">
+        <div v-if="activeSection === 'profiles'" class="content-section embedded-view-wrap">
           <h2 class="section-title">配置管理</h2>
           <ProfilesView />
         </div>
 
         <!-- Channels -->
-        <div v-if="activeSection === 'channels'" class="content-section">
+        <div v-if="activeSection === 'channels'" class="content-section embedded-view-wrap">
           <h2 class="section-title">频道配置</h2>
           <ChannelsView />
         </div>
 
         <!-- Coding Agents -->
-        <div v-if="activeSection === 'coding-agents'" class="content-section">
+        <div v-if="activeSection === 'coding-agents'" class="content-section embedded-view-wrap">
           <h2 class="section-title">编程代理</h2>
           <CodingAgentsView />
         </div>
@@ -1073,7 +1073,6 @@ import { HxButton, HxInput, HxTextarea, HxSelect, HxToggle, HxCard, HxBadge, HxM
 import { providerIconMap } from '../assets/provider-icons'
 import ChannelsView from './ChannelsView.vue'
 import ProfilesView from './ProfilesView.vue'
-import UsageView from './UsageView.vue'
 import CodingAgentsView from './CodingAgentsView.vue'
 import { useToast } from '../composables/useToast'
 import { useContextCompression } from '../composables/useContextCompression'
@@ -1522,7 +1521,10 @@ async function testTTS() {
     if (data.audio_url) {
       ttsAudioUrl.value = data.audio_url
     } else if (data.message) {
-      ttsError.value = data.message
+      // Not an error, just informational — TTS is handled by Hermes agent, not this proxy
+      ttsError.value = 'ℹ️ ' + data.message
+    } else if (data.error) {
+      ttsError.value = '错误: ' + data.error
     }
   } catch (e: any) {
     ttsError.value = 'TTS测试失败: ' + (e.message || String(e))
@@ -4381,5 +4383,39 @@ const pageNumbers = computed<(number | string)[]>(() => {
 .log-viewer::-webkit-scrollbar-thumb {
   background: var(--border-light, rgba(255,255,255,0.1));
   border-radius: 4px;
+}
+
+/* ═══ Embedded views (Profiles, Channels, CodingAgents) normalize styling ═══ */
+.embedded-view-wrap {
+  max-width: 100%;
+}
+.embedded-view-wrap :deep(.profiles-view),
+.embedded-view-wrap :deep(.channels-view),
+.embedded-view-wrap :deep(.coding-agents-view) {
+  padding: 0;
+  margin: 0;
+}
+/* Hide embedded views' own headers since SettingsView already provides section-title */
+.embedded-view-wrap :deep(.profiles-header),
+.embedded-view-wrap :deep(.channels-header),
+.embedded-view-wrap :deep(.ca-header) {
+  display: none !important;
+}
+/* Normalize cards inside embedded views to match settings card spacing */
+.embedded-view-wrap :deep(.glass-panel),
+.embedded-view-wrap :deep(.profiles-create),
+.embedded-view-wrap :deep(.channel-card),
+.embedded-view-wrap :deep(.ca-card) {
+  margin-bottom: 16px;
+  background: var(--glass-bg, rgba(255,255,255,0.04));
+  border: 1px solid var(--border-base, rgba(255,255,255,0.08));
+  border-radius: var(--radius-lg, 12px);
+  padding: 16px;
+}
+/* Ensure inputs/buttons inside embedded views use consistent sizing */
+.embedded-view-wrap :deep(.profiles-input),
+.embedded-view-wrap :deep(.channels-input) {
+  width: 100%;
+  max-width: 320px;
 }
 </style>
