@@ -1520,10 +1520,17 @@ async function testTTS() {
     const data = await apiTextToSpeech(ttsTestText.value)
     if (data.success && data.audio_url) {
       ttsAudioUrl.value = `http://127.0.0.1:1420${data.audio_url}`
+    } else if (data.error) {
+      const errMsg = data.error || ''
+      if (errMsg.includes('No audio was received')) {
+        ttsError.value = '⚠️ 语音生成失败：可能是网络问题或该语音不可用。建议尝试英文语音 (en-US-AriaNeural)'
+      } else if (errMsg.includes('not installed')) {
+        ttsError.value = '⚠️ edge-tts 未安装。运行: pip install edge-tts'
+      } else {
+        ttsError.value = '错误: ' + errMsg
+      }
     } else if (data.message) {
       ttsError.value = 'ℹ️ ' + data.message
-    } else if (data.error) {
-      ttsError.value = '错误: ' + data.error
     }
   } catch (e: any) {
     ttsError.value = 'TTS测试失败: ' + (e.message || String(e))
