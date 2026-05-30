@@ -174,15 +174,38 @@
               </div>
             </div>
             <div v-if="newProfile.provider === 'gfw'" class="form-row">
-              <label class="form-label">API Key</label>
-              <HxInput v-model="newProfile.apiKey" type="password" placeholder="gfw-..." />
+              <div v-if="!gfwStore.isLoggedIn" class="gfw-login-box">
+                <div class="gfw-login-tabs">
+                  <button :class="['gfw-tab', { active: gfwAuthMode === 'account' }]" @click="gfwAuthMode = 'account'">账号登录</button>
+                  <button :class="['gfw-tab', { active: gfwAuthMode === 'manual' }]" @click="gfwAuthMode = 'manual'">Token 登录</button>
+                </div>
+                <div v-if="gfwAuthMode === 'account'" class="gfw-form">
+                  <HxInput v-model="addModelGfwPhone" placeholder="手机号 / 邮箱" class="gfw-input" />
+                  <HxInput v-model="addModelGfwCode" placeholder="验证码" class="gfw-input" />
+                  <HxButton variant="secondary" size="sm" :loading="addModelGfwLogging" @click="handleGfwLogin">登录</HxButton>
+                </div>
+                <div v-else class="gfw-form">
+                  <HxInput v-model="addModelGfwToken" placeholder="gfw-..." type="password" class="gfw-input" />
+                  <HxButton variant="secondary" size="sm" :loading="addModelGfwLogging" @click="handleGfwTokenLogin">登录</HxButton>
+                </div>
+              </div>
+              <div v-else class="gfw-config">
+                <label class="form-label">API Key</label>
+                <HxSelect v-model="addModelSelectedGfwKey" :options="addModelGfwKeyOptions" placeholder="选择 Key" />
+                <label class="form-label" style="margin-top: 8px;">模型</label>
+                <HxSelect v-model="addModelSelectedGfwModel" :options="addModelGfwModelOptions" placeholder="选择模型" @update:modelValue="onGfwModelSelect" />
+              </div>
             </div>
             <div v-if="newProfile.provider === 'custom'" class="form-row">
-              <label class="form-label">{{ $t('settings.modelBaseUrl') }}</label>
-              <HxInput v-model="newProfile.baseUrl" placeholder="https://api.openai.com/v1" />
-            </div>
-            <div v-if="newProfile.provider === 'custom'" class="form-row">
-              <label class="form-label">{{ $t('settings.modelApiKey') }}</label>
+              <label class="form-label">{{ $t('settings.modelProvider') }}</label>
+              <div class="provider-presets">
+                <button v-for="p in addModelProviderPresets" :key="p.value" :class="['preset-btn', { active: newProfile.baseUrl === p.baseUrl }]" @click="selectAddModelPresetProvider(p)">
+                  {{ p.label }}
+                </button>
+              </div>
+              <label class="form-label" style="margin-top: 8px;">{{ $t('settings.modelBaseUrl') }}</label>
+              <HxInput v-model="newProfile.baseUrl" placeholder="https://..." />
+              <label class="form-label" style="margin-top: 8px;">{{ $t('settings.modelApiKey') }}</label>
               <HxInput v-model="newProfile.apiKey" type="password" placeholder="sk-..." />
             </div>
             <div class="form-row">
@@ -1293,26 +1316,108 @@ const apiVerified = ref(false)  // API Key 验证通过标志
 
 // 多模型配置
 const showAddProfile = ref(false)
-const newProfile = ref({
+
+// ── Add Model GFW State ──
+const addModelGfwPhone = ref('')
+const addModelGfwCode = ref('')
+const addModelGfwToken = ref('')
+const addModelGfwLogging = ref(false)
+const addModelSelectedGfwKey = ref('')
+const addModelSelectedGfwModel = ref('')
+
+// ── GFW Options ──
+const addModelGfwKeyOptions = computed(() => gfwStore.apiKeys.map(k => ({ value: k.key, label: `${k.name || 'Key'} (${(k.balance || 0).toFixed(2)} G)` })))
+const addModelGfwModelOptions = computed(() => gfwStore.models.filter(m => m.is_available).map(m => ({ value: m.id, label: m.name })))
+
+// ── Provider Presets ──
+const addModelProviderPresets = [
+  { label: 'OpenAI', value: 'openai', baseUrl: 'https://api.openai.com/v1' },
+  { label: 'Anthropic', value: 'anthropic', baseUrl: 'https://api.anthropic.com/v1' },
+  { label: 'Google', value: 'google', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai' },
+  { label: 'DeepSeek', value: 'deepseek', baseUrl: 'https://api.deepseek.com/v1' },
+  { label: '自定义', value: 'custom', baseUrl: '' },
+]
+
+function selectAddModelPresetProvider(preset: typeof addModelProviderPresets[number]) {
+  newProfile.provider = 'custom'
+  newProfile.baseUrl = preset.baseUrl
+  newProfile.name = preset.label
+}
+
+function onGfwModelSelect(modelId: string) {
+  const model = gfwStore.models.find(m => m.id === modelId)
+  if (model) {
+    newProfile.name = model.name
+    newProfile.model = model.id
+  }
+}
+
+async function handleGfwLogin() {
+  if (!addModelGfwPhone.value) return
+  addModelGfwLogging.value = true
+  try {
+    toast.show('请使用手机验证码登录', 'info')
+  } catch (e: any) {
+    toast.show(e.message || '登录失败', 'error')
+  } finally {
+    addModelGfwLogging.value = false
+  }
+}
+
+async function handleGfwTokenLogin() {
+  if (!addModelGfwToken.value) return
+  addModelGfwLogging.value = true
+  try {
+    await gfwStore.loginWithToken(addModelGfwToken.value)
+    await gfwStore.fetchApiKeys()
+    await gfwStore.fetchModels()
+    toast.show('登录成功', 'success')
+  } catch (e: any) {
+    toast.show(e.message || '登录失败', 'error')
+  } finally {
+    addModelGfwLogging.value = false
+  }
+}
+
+// ── Add Model ──
+const newProfile = reactive({
   name: '',
   provider: 'gfw' as 'gfw' | 'custom',
-  baseUrl: '',
   apiKey: '',
+  baseUrl: '',
   model: '',
   isDefault: false,
 })
+
+watch(showAddProfile, (val) => {
+  if (val) {
+    newProfile.name = ''
+    newProfile.provider = 'gfw'
+    newProfile.apiKey = ''
+    newProfile.baseUrl = ''
+    newProfile.model = ''
+    newProfile.isDefault = false
+    addModelSelectedGfwKey.value = ''
+    addModelSelectedGfwModel.value = ''
+  }
+})
+
 function addModelProfile() {
-  if (!newProfile.value.name || !newProfile.value.model) return
+  if (newProfile.provider === 'gfw') {
+    newProfile.apiKey = addModelSelectedGfwKey.value
+    if (!addModelSelectedGfwModel.value) {
+      toast.show('请选择模型', 'error')
+      return
+    }
+  }
   chatStore.addModelProfile({
-    name: newProfile.value.name,
-    provider: newProfile.value.provider,
-    baseUrl: newProfile.value.provider === 'gfw' ? 'https://api.gfw.net/v1' : newProfile.value.baseUrl,
-    apiKey: newProfile.value.apiKey,
-    model: newProfile.value.model,
-    isDefault: newProfile.value.isDefault,
+    name: newProfile.name,
+    provider: newProfile.provider,
+    model: newProfile.model,
+    baseUrl: newProfile.baseUrl,
+    apiKey: newProfile.apiKey,
+    isDefault: newProfile.isDefault,
   })
-  // Reset form
-  newProfile.value = { name: '', provider: 'gfw', baseUrl: '', apiKey: '', model: '', isDefault: false }
   showAddProfile.value = false
 }
 
@@ -4423,5 +4528,66 @@ const pageNumbers = computed<(number | string)[]>(() => {
 .embedded-view-wrap :deep(.channels-input) {
   width: 100%;
   max-width: 320px;
+}
+
+/* ── Model Add Modal ── */
+.gfw-login-box {
+  border: 1px solid var(--border-base);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--glass-weak);
+}
+.gfw-login-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.gfw-tab {
+  flex: 1;
+  padding: 6px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 12px;
+}
+.gfw-tab.active {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.gfw-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gfw-input {
+  width: 100%;
+}
+.gfw-config {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.provider-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.preset-btn {
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: var(--glass-base);
+  border: 1px solid var(--border-base);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+.preset-btn.active, .preset-btn:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--text-primary);
 }
 </style>
