@@ -677,6 +677,37 @@
               {{ t('settings.saved') }}
             </span>
           </div>
+
+          <!-- Context Compression -->
+          <HxCard style="margin-top: 16px;">
+            <template #header>
+              <span>上下文压缩</span>
+            </template>
+            <div class="form-row">
+              <label class="form-label">手动压缩当前对话</label>
+              <HxButton size="sm" variant="secondary" :loading="compressing" @click="doCompress">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                压缩上下文
+              </HxButton>
+              <p class="form-hint">将历史消息摘要合并到系统提示中，减少上下文长度</p>
+            </div>
+          </HxCard>
+
+          <!-- Log Viewer -->
+          <HxCard style="margin-top: 16px;">
+            <template #header>
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <span>日志查看器</span>
+                <div style="display: flex; gap: 8px;">
+                  <HxSelect v-model="selectedLog" :options="logOptions" size="sm" style="width: 140px;" />
+                  <HxButton size="sm" variant="ghost" @click="loadLog" :loading="logLoading">刷新</HxButton>
+                </div>
+              </div>
+            </template>
+            <div v-if="logLoading" style="text-align: center; padding: 24px; color: var(--text-tertiary);">加载中...</div>
+            <pre v-else-if="logContent" class="log-viewer">{{ logContent }}</pre>
+            <div v-else style="text-align: center; padding: 24px; color: var(--text-tertiary);">暂无日志内容</div>
+          </HxCard>
         </div>
 
         <!-- ===== 终端设置 ===== -->
@@ -833,6 +864,19 @@
             <div v-if="voiceSettings.ttsProvider !== 'edge'" class="form-row">
               <label class="form-label">{{ t('settings.modelApiKey') }}</label>
               <HxInput v-model="voiceSettings.ttsApiKey" type="password" placeholder="API Key" />
+            </div>
+            <!-- TTS Test button -->
+            <div class="form-row">
+              <label class="form-label">TTS 测试</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <HxInput v-model="ttsTestText" placeholder="输入要朗读的文字" size="sm" style="flex:1; min-width: 160px;" />
+                <HxButton size="sm" variant="secondary" :loading="ttsTesting" @click="testTTS">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                  朗读
+                </HxButton>
+              </div>
+              <audio v-if="ttsAudioUrl" :src="ttsAudioUrl" controls autoplay style="margin-top: 8px; width: 100%; max-width: 400px;"></audio>
+              <p v-if="ttsError" class="form-hint" style="color: var(--error);">{{ ttsError }}</p>
             </div>
           </HxCard>
 
@@ -1004,7 +1048,7 @@ import { useGfwStore } from '../stores/gfw'
 import { useChatStore } from '../stores/chat'
 import { useAppStore } from '../stores/app'
 import { storeToRefs } from 'pinia'
-import { hermesConfigGet, hermesConfigSet, hermesToolsList, hermesToolsEnable, hermesToolsDisable, hermesMemoryGet, hermesMemoryEdit, getCredentials, updateCredentials, availableModels, modelContext, sessionUsage as apiSessionUsage, type SessionUsage } from '../api'
+import { hermesConfigGet, hermesConfigSet, hermesToolsList, hermesToolsEnable, hermesToolsDisable, hermesMemoryGet, hermesMemoryEdit, getCredentials, updateCredentials, availableModels, modelContext, sessionUsage as apiSessionUsage, type SessionUsage, textToSpeech as apiTextToSpeech, updateConfigYaml, listLogs, readLog } from '../api'
 import IconUser from '../components/icons/IconUser.vue'
 import IconSettings from '../components/icons/IconSettings.vue'
 import { HxButton, HxInput, HxTextarea, HxSelect, HxToggle, HxCard, HxBadge, HxModal } from '../components/ui'
@@ -1434,6 +1478,86 @@ async function loadSessionUsage() {
     // ignore
   } finally {
     sessionUsageLoading.value = false
+  }
+}
+
+// ── TTS Test ──
+const ttsTestText = ref('你好，这是一个TTS测试')
+const ttsAudioUrl = ref('')
+const ttsTesting = ref(false)
+const ttsError = ref('')
+
+async function testTTS() {
+  if (!ttsTestText.value.trim()) return
+  ttsTesting.value = true
+  ttsError.value = ''
+  ttsAudioUrl.value = ''
+  try {
+    const data = await apiTextToSpeech(ttsTestText.value)
+    if (data.audio_url) {
+      ttsAudioUrl.value = data.audio_url
+    } else if (data.message) {
+      ttsError.value = data.message
+    }
+  } catch (e: any) {
+    ttsError.value = 'TTS测试失败: ' + (e.message || String(e))
+  } finally {
+    ttsTesting.value = false
+  }
+}
+
+// ── Context Compression ──
+const compressing = ref(false)
+
+async function doCompress() {
+  compressing.value = true
+  try {
+    const r = await agentFetch('/v1/agent/chat/compress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    if (r.ok) {
+      toast.show('上下文压缩完成', 'success')
+    } else {
+      toast.show('压缩失败', 'error')
+    }
+  } catch {
+    toast.show('压缩请求失败', 'error')
+  } finally {
+    compressing.value = false
+  }
+}
+
+// ── Log Viewer ──
+const selectedLog = ref('agent.log')
+const logOptions = ref<{ value: string; label: string }[]>([])
+const logContent = ref('')
+const logLoading = ref(false)
+
+async function loadLogsList() {
+  try {
+    const data = await listLogs()
+    logOptions.value = (data.logs || []).map(l => ({ value: l.name, label: l.name }))
+    if (logOptions.value.length > 0) {
+      selectedLog.value = logOptions.value[0].value
+    }
+  } catch {
+    // ignore
+  }
+}
+
+async function loadLog() {
+  if (!selectedLog.value) return
+  logLoading.value = true
+  logContent.value = ''
+  try {
+    const content = await readLog(selectedLog.value, 200)
+    logContent.value = content || '(空日志)'
+  } catch {
+    logContent.value = '加载失败'
+  } finally {
+    logLoading.value = false
   }
 }
 
@@ -2267,6 +2391,7 @@ onMounted(async () => {
   await loadConfigValues()
   await loadCredentials()
   await loadSessionUsage()
+  await loadLogsList()
   _initialLoadDone = true
 })
 
@@ -4205,5 +4330,31 @@ const pageNumbers = computed<(number | string)[]>(() => {
   gap: 8px;
   flex: 1;
   align-items: center;
+}
+
+/* Log Viewer */
+.log-viewer {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-base, rgba(255,255,255,0.08));
+  border-radius: var(--radius-md, 8px);
+  padding: 16px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary, #8b949e);
+  max-height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.log-viewer::-webkit-scrollbar {
+  width: 6px;
+}
+.log-viewer::-webkit-scrollbar-track {
+  background: transparent;
+}
+.log-viewer::-webkit-scrollbar-thumb {
+  background: var(--border-light, rgba(255,255,255,0.1));
+  border-radius: 4px;
 }
 </style>
