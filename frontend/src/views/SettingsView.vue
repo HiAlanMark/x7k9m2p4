@@ -72,155 +72,176 @@
           </div>
         </div>
 
-        <!-- Model settings section -->
+        <!-- ===== 模型 (合并: 设置 + 配置) ===== -->
         <div v-if="activeSection === 'model'" class="content-section">
           <h2 class="section-title">{{ t('settings.modelSettings') }}</h2>
 
-          <!-- Provider 选择 -->
-          <HxCard style="margin-bottom: 20px;">
-            <div class="provider-tabs">
+          <!-- 当前活跃模型 -->
+          <HxCard style="margin-bottom: 16px;">
+            <template #header>
+              <span>{{ t('settings.currentModel') }}</span>
+            </template>
+            <div v-if="chatStore.activeModelProfile" class="active-model-row">
+              <div class="active-model-indicator"></div>
+              <div class="active-model-info">
+                <div class="active-model-name">{{ chatStore.activeModelProfile.name }}</div>
+                <div class="active-model-meta">
+                  <span class="model-tag" :class="chatStore.activeModelProfile.provider">{{ chatStore.activeModelProfile.provider === 'gfw' ? 'GFW.NET' : t('settings.custom') }}</span>
+                  <span class="model-code">{{ chatStore.activeModelProfile.model }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="no-active-model">
+              <span>{{ t('settings.noModelSelected') }}</span>
+            </div>
+          </HxCard>
+
+          <!-- 模型配置列表 -->
+          <div class="profile-grid">
+            <div
+              v-for="profile in chatStore.modelProfiles"
+              :key="profile.id"
+              :class="['profile-card', { active: chatStore.activeModelId === profile.id, editing: editingProfileId === profile.id }]"
+              @click="editingProfileId = editingProfileId === profile.id ? '' : profile.id"
+            >
+              <div class="profile-card-header">
+                <div class="profile-card-indicator" :class="{ pulse: chatStore.activeModelId === profile.id }"></div>
+                <span class="profile-card-name">{{ profile.name }}</span>
+                <span v-if="profile.isDefault" class="profile-badge-default">{{ $t('settings.modelDefault') }}</span>
+              </div>
+              <div class="profile-card-body">
+                <div class="profile-card-row">
+                  <span class="profile-card-label">Provider</span>
+                  <span class="profile-card-value">
+                    <span class="model-tag" :class="profile.provider">{{ profile.provider === 'gfw' ? 'GFW.NET' : t('settings.custom') }}</span>
+                  </span>
+                </div>
+                <div class="profile-card-row">
+                  <span class="profile-card-label">{{ $t('settings.model') }}</span>
+                  <span class="profile-card-value model-code">{{ profile.model }}</span>
+                </div>
+                <div v-if="profile.provider === 'custom'" class="profile-card-row">
+                  <span class="profile-card-label">Base URL</span>
+                  <span class="profile-card-value model-code">{{ profile.baseUrl }}</span>
+                </div>
+              </div>
+              <div class="profile-card-actions">
+                <button
+                  v-if="chatStore.activeModelId !== profile.id"
+                  class="profile-action-btn profile-action-switch"
+                  @click.stop="chatStore.switchModel(profile.id)"
+                >{{ $t('settings.switchModel') }}</button>
+                <span v-else class="profile-action-active">{{ $t('settings.activeModel') }}</span>
+                <button
+                  v-if="!profile.isDefault"
+                  class="profile-action-btn profile-action-default"
+                  @click.stop="chatStore.updateModelProfile(profile.id, { isDefault: true })"
+                >{{ $t('settings.modelSetDefault') }}</button>
+                <button
+                  class="profile-action-btn profile-action-delete"
+                  @click.stop="chatStore.removeModelProfile(profile.id)"
+                >{{ $t('settings.removeModel') }}</button>
+              </div>
+            </div>
+
+            <!-- 添加新模型卡片 -->
+            <div class="profile-card profile-card-add" @click="showAddProfile = true">
+              <div class="profile-add-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </div>
+              <span class="profile-add-text">{{ $t('settings.addModel') }}</span>
+            </div>
+          </div>
+
+          <!-- 添加模型弹窗 -->
+          <HxModal v-model="showAddProfile" :icon="'plus'" :title="$t('settings.addModel')" @contextmenu.prevent>
+            <div class="form-row">
+              <label class="form-label">{{ $t('settings.modelName') }}</label>
+              <HxInput v-model="newProfile.name" placeholder="GPT-4o / Claude 3.5 / ..." />
+            </div>
+            <div class="form-row">
+              <label class="form-label">{{ $t('settings.modelProvider') }}</label>
+              <div class="provider-tabs">
+                <button :class="['provider-tab', { active: newProfile.provider === 'gfw' }]" @click="newProfile.provider = 'gfw'">
+                  <span>GFW.NET</span>
+                </button>
+                <button :class="['provider-tab', { active: newProfile.provider === 'custom' }]" @click="newProfile.provider = 'custom'">
+                  <span>{{ $t('settings.customProvider') }}</span>
+                </button>
+              </div>
+            </div>
+            <div v-if="newProfile.provider === 'gfw'" class="form-row">
+              <label class="form-label">API Key</label>
+              <HxInput v-model="newProfile.apiKey" type="password" placeholder="gfw-..." />
+            </div>
+            <div v-if="newProfile.provider === 'custom'" class="form-row">
+              <label class="form-label">{{ $t('settings.modelBaseUrl') }}</label>
+              <HxInput v-model="newProfile.baseUrl" placeholder="https://api.openai.com/v1" />
+            </div>
+            <div v-if="newProfile.provider === 'custom'" class="form-row">
+              <label class="form-label">{{ $t('settings.modelApiKey') }}</label>
+              <HxInput v-model="newProfile.apiKey" type="password" placeholder="sk-..." />
+            </div>
+            <div class="form-row">
+              <label class="form-label">{{ $t('settings.model') }}</label>
+              <HxInput v-model="newProfile.model" placeholder="gpt-4o / claude-3-5-sonnet / ..." />
+            </div>
+            <div class="form-row">
+              <label class="form-label">{{ $t('settings.modelDefault') }}</label>
+              <HxToggle :modelValue="newProfile.isDefault" @update:modelValue="newProfile.isDefault = $event" />
+            </div>
+            <template #footer>
+              <HxButton variant="ghost" @click="showAddProfile = false">{{ $t('common.cancel') }}</HxButton>
+              <HxButton variant="primary" :disabled="!newProfile.name || !newProfile.model" @click="addModelProfile">
+                {{ $t('common.create') }}
+              </HxButton>
+            </template>
+          </HxModal>
+
+          <!-- 编辑选中 Profile 的配置 -->
+          <HxCard v-if="editingProfile" style="margin-top: 16px;">
+            <template #header>
+              <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+                <span>{{ t('settings.editModelConfig') }} — {{ editingProfile.name }}</span>
+                <HxButton variant="ghost" size="sm" @click="editingProfileId = ''">{{ $t('common.cancel') }}</HxButton>
+              </div>
+            </template>
+
+            <!-- Provider 选择 -->
+            <div class="provider-tabs" style="margin-bottom: 16px;">
               <button
-                :class="['provider-tab', { active: providerMode === 'gfw' }]"
-                @click="providerMode = 'gfw'; chatStore.setProviderMode('gfw')"
+                :class="['provider-tab', { active: editingProfile.provider === 'gfw' }]"
+                @click="updateEditingProfile('provider', 'gfw')"
               >
                 <img class="provider-logo" src="../assets/gfw-logo.svg" alt="GFW.NET" />
                 <span>{{ t('settings.gfwProvider') }}</span>
               </button>
               <button
-                :class="['provider-tab', { active: providerMode === 'custom' }]"
-                @click="providerMode = 'custom'; chatStore.setProviderMode('custom')"
+                :class="['provider-tab', { active: editingProfile.provider === 'custom' }]"
+                @click="updateEditingProfile('provider', 'custom')"
               >
                 <svg class="provider-logo" viewBox="0 0 1024 1024"><path d="M0 0m256 0l512 0q256 0 256 256l0 512q0 256-256 256l-512 0q-256 0-256-256l0-512q0-256 256-256Z" fill="#176AF0"></path><path d="M837.76 639.808a112.512 112.512 0 0 1-14.592 55.36 109.696 109.696 0 0 1-39.744 40.512l-217.152 128a106.816 106.816 0 0 1-108.8 0l-217.088-128a109.632 109.632 0 0 1-39.744-40.512 112.512 112.512 0 0 1-14.592-55.36v-256a112.512 112.512 0 0 1 14.528-55.36 109.696 109.696 0 0 1 39.744-40.512l217.152-128a106.816 106.816 0 0 1 108.8 0l217.216 128a109.696 109.696 0 0 1 39.744 40.576 112.448 112.448 0 0 1 14.528 55.36v256z m-157.44-198.912a36.224 36.224 0 0 0-22.592-15.936 35.584 35.584 0 0 0-27.264 4.992l-125.76 82.56-124.992-82.432-3.712-2.112a35.52 35.52 0 0 0-26.624-2.24 36.352 36.352 0 0 0-20.864 17.088 37.568 37.568 0 0 0-3.648 27.008 36.928 36.928 0 0 0 15.552 22.208l144.512 95.296 4.096 2.304a35.584 35.584 0 0 0 35.136-2.304l145.344-95.424 3.456-2.496a37.504 37.504 0 0 0 7.424-48.512z" fill="#FFFFFF"></path></svg>
                 <span>{{ t('settings.customProvider') }}</span>
               </button>
             </div>
-          </HxCard>
 
-          <!-- GFW.NET 模式 -->
-          <HxCard v-if="providerMode === 'gfw'">
-            <template #header>
-              <span>{{ t('settings.builtInModelService') }}</span>
-            </template>
-
-            <!-- 认证方式选择 -->
-            <div class="form-row">
-              <label class="form-label">{{ t('settings.authMethod') }}</label>
-              <div class="gfw-auth-modes">
-                <button
-                  :class="['gfw-auth-mode', { active: gfwAuthMode === 'account' }]"
-                  @click="switchGfwAuthMode('account')"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg>
-                  <span>{{ t('settings.accountLogin') }}</span>
-                </button>
-                <button
-                  :class="['gfw-auth-mode', { active: gfwAuthMode === 'manual' }]"
-                  @click="switchGfwAuthMode('manual')"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                  </svg>
-                  <span>{{ t('settings.manualKeyInput') }}</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- 账户登录模式 -->
-            <template v-if="gfwAuthMode === 'account'">
-              <div v-if="!isLoggedIn">
-                <div class="form-row">
-                  <label class="form-label">{{ t('settings.email') }}</label>
-                  <HxInput v-model="gfwAccountEmail" type="email" :placeholder="t('settings.email')" />
-                </div>
-                <div class="form-row">
-                  <label class="form-label">{{ t('settings.password') }}</label>
-                  <HxInput v-model="gfwAccountPassword" type="password" :placeholder="t('settings.password')" @keydown.enter="handleGfwAccountLogin" />
-                </div>
-                <div class="form-actions">
-                  <HxButton variant="primary" :loading="gfwAccountLoggingIn" @click="handleGfwAccountLogin">
-                    {{ gfwAccountLoggingIn ? t('settings.loggingIn') : t('settings.login') }}
-                  </HxButton>
-                </div>
-              </div>
-
-              <div v-else>
-                <!-- 用户信息行 -->
-                <div class="form-row">
-                  <div class="gfw-user-info">
-                    <div class="gfw-user-avatar">
-                      <IconUser :size="20" />
-                    </div>
-                    <div class="gfw-user-detail">
-                      <div class="gfw-user-name">{{ user?.nickname || user?.email }}</div>
-                      <div class="gfw-user-balance">{{ balance?.toFixed(2) }} {{ t('settings.gcoinUnit') }}</div>
-                    </div>
-                    <HxButton variant="ghost" size="sm" @click="gfwStore.logout(); gfwAccountEmail=''; gfwAccountPassword=''; gfwSelectedKeyId=''">{{ t('settings.logout') }}</HxButton>
-                  </div>
-                </div>
-
-                <!-- API Key 选择 -->
-                <div class="form-row">
-                  <div class="gfw-api-key-header">
-                    <label class="form-label">API Key</label>
-                    <div class="gfw-api-key-actions" v-if="isLoggedIn">
-                      <button class="gfw-create-key-btn" @click="showGfwCreateKey = !showGfwCreateKey">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <line x1="12" y1="5" x2="12" y2="19"></line>
-                          <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                        {{ t('settings.createNewKey') }}
-                      </button>
-                      <HxButton variant="ghost" size="sm" :loading="gfwKeysLoading" @click="gfwStore.fetchApiKeys()">
-                        {{ gfwKeysLoading ? t('settings.refreshing') : t('settings.refresh') }}
-                      </HxButton>
-                    </div>
-                  </div>
-                  <div v-if="apiKeys.length > 0" class="gfw-key-list">
-                    <button
-                      v-for="key in apiKeys.slice(0, 5)"
-                      :key="key.id"
-                      :class="['gfw-key-item', { active: gfwSelectedKeyId === key.id }]"
-                      @click="gfwSelectedKeyId = key.id; gfwApiKey = key.full_key || key.key_prefix + '***'"
-                    >
-                      <div class="gfw-key-info">
-                        <span class="gfw-key-name">{{ key.name }}</span>
-                        <span class="gfw-key-prefix">{{ key.key_prefix }}****</span>
-                      </div>
-                      <span class="gfw-key-quota">{{ key.gcoin_limit ? key.gcoin_limit + 'G' : t('settings.noQuota') }}</span>
-                    </button>
-                  </div>
-                  <p v-else class="form-hint">{{ t('settings.noApiKey') }}</p>
-                </div>
-              </div>
-            </template>
-
-            <!-- 手动输入 Key 模式 -->
-            <template v-else>
+            <!-- GFW.NET 模式 -->
+            <template v-if="editingProfile.provider === 'gfw'">
               <div class="form-row">
-                <label class="form-label">GFW API Key</label>
-                <HxInput v-model="gfwApiKey" type="password" placeholder="gfw-..." />
-                <p class="form-hint">{{ t('settings.getApiKeyHint') }}</p>
+                <label class="form-label">API Key</label>
+                <HxInput v-model="editGfwApiKey" type="password" placeholder="gfw-..." />
               </div>
-            </template>
-
-            <!-- 模型设置 — 仅在手动模式或已登录时显示 -->
-            <template v-if="gfwAuthMode === 'manual' || isLoggedIn">
               <div class="form-row">
                 <label class="form-label">
-                  {{ t('settings.provider') }}
+                  {{ t('settings.model') }}
                   <HxButton variant="ghost" size="sm" :loading="gfwSyncing" @click="syncGfwModels" style="margin-left:8px;">
                     {{ gfwSyncing ? t('settings.syncing') : t('settings.sync') }}
                   </HxButton>
                 </label>
                 <div v-if="gfwProviders.length > 0" class="provider-chips">
-                  <button
-                    :class="['chip', { active: !selectedProvider }]"
-                    @click="selectedProvider = ''"
-                  >{{ t('settings.all') }}</button>
                   <button
                     v-for="p in gfwProviders"
                     :key="p"
@@ -228,104 +249,64 @@
                     @click="selectedProvider = p"
                   >{{ p }} <span class="chip-count">{{ providerModelCount(p) }}</span></button>
                 </div>
-                <p v-else class="form-hint">{{ t('settings.clickSyncHint') }}</p>
-              </div>
-
-              <div class="form-row">
-                <label class="form-label">{{ t('settings.model') }}</label>
                 <HxSelect
-                  v-model="selectedModel"
                   v-if="filteredGfwModels.length > 0"
+                  v-model="editModelName"
                   :options="gfwModelOptions"
                 />
-                <HxInput v-else v-model="selectedModel" :placeholder="t('settings.inputModelName')" />
-              </div>
-
-              <!-- 当前选中模型的详情 -->
-              <div v-if="selectedGfwModel" class="model-detail">
-                <div class="detail-row">
-                  <span class="detail-label">provider</span>
-                  <span class="detail-value">{{ selectedGfwModel.provider }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">model</span>
-                  <span class="detail-value">{{ selectedGfwModel.model_code }}</span>
-                </div>
-                <div class="detail-row" v-if="selectedGfwModel.input_price">
-                  <span class="detail-label">price</span>
-                  <span class="detail-value">¥{{ selectedGfwModel.input_price }}/M in · ¥{{ selectedGfwModel.output_price }}/M out</span>
-                </div>
-                <div class="detail-row" v-if="selectedGfwModel.context_length">
-                  <span class="detail-label">context</span>
-                  <span class="detail-value">{{ formatContext(selectedGfwModel.context_length) }}</span>
-                </div>
+                <HxInput v-else v-model="editModelName" :placeholder="t('settings.inputModelName')" />
               </div>
             </template>
-            <p v-else class="form-hint" style="text-align:center;padding:12px 0;">{{ t('settings.pleaseLoginFirst') }}</p>
-          </HxCard>
 
-          <!-- 自定义提供商模式 -->
-          <HxCard v-if="providerMode === 'custom'">
-            <template #header>
-              <span>{{ t('settings.customApiProvider') }}</span>
-            </template>
-            <!-- 上游选择 -->
-            <div class="form-row">
-              <label class="form-label">{{ t('settings.upstreamProvider') }}</label>
-              <div class="provider-chips">
-                <button
-                  v-for="preset in providerPresets"
-                  :key="preset.name"
-                  :class="['chip', { active: customUpstream === preset.name }]"
-                  @click="selectUpstream(preset)"
-                  :title="preset.name"
-                >
-                  <img class="chip-icon-img" :src="providerIconMap[preset.iconKey]" :alt="preset.name" />
-                  <span class="chip-name">{{ preset.name }}</span>
-                </button>
-                <button
-                  :class="['chip', { active: customUpstream === '__manual__' }]"
-                  @click="customUpstream = '__manual__'"
-                  :title="t('settings.manualInputCustomProvider')"
-                >
-                  <span class="chip-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                  </span>
-                  <span class="chip-name">{{ t('settings.manual') }}</span>
-                </button>
+            <!-- 自定义提供商模式 -->
+            <template v-if="editingProfile.provider === 'custom'">
+              <div class="form-row">
+                <label class="form-label">{{ t('settings.upstreamProvider') }}</label>
+                <div class="provider-chips">
+                  <button
+                    v-for="preset in providerPresets"
+                    :key="preset.name"
+                    :class="['chip', { active: editUpstream === preset.name }]"
+                    @click="selectEditUpstream(preset)"
+                    :title="preset.name"
+                  >
+                    <img v-if="providerIconMap[preset.iconKey]" class="chip-icon-img" :src="providerIconMap[preset.iconKey]" :alt="preset.name" />
+                    <span class="chip-name">{{ preset.name }}</span>
+                  </button>
+                  <button
+                    :class="['chip', { active: editUpstream === '__manual__' }]"
+                    @click="editUpstream = '__manual__'"
+                    :title="t('settings.manualInputCustomProvider')"
+                  >
+                    <span class="chip-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    </span>
+                    <span class="chip-name">{{ t('settings.manual') }}</span>
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <div class="form-row" v-if="customUpstream === '__manual__'">
-              <label class="form-label">{{ t('settings.providerName') }}</label>
-              <HxInput v-model="customName" placeholder="my-provider" />
-            </div>
-            <div class="form-row">
-              <label class="form-label">{{ t('settings.baseUrl') }}</label>
-              <HxInput v-model="customBaseUrl" placeholder="https://api.openai.com/v1" :disabled="customUpstream !== '__manual__' && !hasPlaceholder(customBaseUrl)" />
-              <p v-if="hasPlaceholder(customBaseUrl)" class="form-hint" style="color: var(--warning); margin-top: 4px;">
-                {{ t('settings.customUpstreamHint', { resource: '{resource-name}' }) }}
-              </p>
-            </div>
-            <div class="form-row">
-              <label class="form-label">{{ t('settings.modelApiKey') }}</label>
-              <div style="display: flex; gap: 8px;">
-                <HxInput v-model="customApiKey" type="password" placeholder="sk-..." style="flex: 1;" />
-                <HxButton variant="secondary" :loading="testing" @click="testConnection" style="white-space: nowrap;">
-                  {{ testing ? t('settings.testing') : t('settings.testConnection') }}
-                </HxButton>
+              <div class="form-row" v-if="editUpstream === '__manual__'">
+                <label class="form-label">{{ t('settings.providerName') }}</label>
+                <HxInput v-model="editName" placeholder="my-provider" />
               </div>
-            </div>
-
-            <!-- 测试结果显示在下方 -->
-            <div v-if="testResult" style="margin-top: 8px;">
-              <span :class="['test-result', testResult.ok ? 'success' : 'error']" style="display: block; text-align: center;">
-                {{ testResult.message }}
-              </span>
-            </div>
-
-            <!-- 测试通过后才显示模型和上下文设置 -->
-            <template v-if="apiVerified">
+              <div class="form-row">
+                <label class="form-label">{{ t('settings.baseUrl') }}</label>
+                <HxInput v-model="editBaseUrl" placeholder="https://api.openai.com/v1" />
+              </div>
+              <div class="form-row">
+                <label class="form-label">{{ t('settings.modelApiKey') }}</label>
+                <div style="display: flex; gap: 8px;">
+                  <HxInput v-model="editApiKey" type="password" placeholder="sk-..." style="flex: 1;" />
+                  <HxButton variant="secondary" :loading="testing" @click="testConnection" style="white-space: nowrap;">
+                    {{ testing ? t('settings.testing') : t('settings.testConnection') }}
+                  </HxButton>
+                </div>
+              </div>
+              <div v-if="testResult" style="margin-top: 8px;">
+                <span :class="['test-result', testResult.ok ? 'success' : 'error']" style="display: block; text-align: center;">
+                  {{ testResult.message }}
+                </span>
+              </div>
               <div class="form-row" style="margin-top: 16px; border-top: 1px solid var(--border-base); padding-top: 16px;">
                 <label class="form-label">
                   {{ t('settings.model') }}
@@ -333,38 +314,27 @@
                     {{ upstreamModelsSyncing ? t('settings.fetching') : t('settings.refresh') }}
                   </HxButton>
                 </label>
-                <HxSelect 
-                  v-if="upstreamModels.length > 0" 
-                  v-model="customModel" 
+                <HxSelect
+                  v-if="upstreamModels.length > 0"
+                  v-model="editModelName"
                   :options="upstreamModelOptions"
-                  @change="onModelChange" 
                 />
-                <HxInput v-else v-model="customModel" :placeholder="t('settings.inputModelName')" />
+                <HxInput v-else v-model="editModelName" :placeholder="t('settings.inputModelName')" />
                 <p v-if="upstreamModelsError" class="form-hint" style="color: var(--error);">{{ upstreamModelsError }}</p>
                 <p v-else-if="upstreamModels.length > 0" class="form-hint" style="color: var(--success); margin-top: 4px;">{{ t('settings.modelsFetched', { n: upstreamModels.length }) }}</p>
-                <p v-else-if="apiVerified" class="form-hint" style="color: var(--accent); margin-top: 4px;">{{ t('settings.apiVerified') }}</p>
-              </div>
-              <div class="form-row">
-                <label class="form-label">{{ t('settings.contextLength') }}</label>
-                <HxInput v-model.number="contextLength" type="number" style="max-width: 200px;" :min="512" :max="128000" :step="512" />
-                <p class="form-hint">{{ t('settings.contextLengthHint') }}</p>
               </div>
             </template>
+
+            <div class="form-actions" style="margin-top: 20px;">
+              <HxButton variant="primary" @click="saveEditingProfile">{{ t('settings.saveSettings') }}</HxButton>
+              <span v-if="saveSuccess" class="save-feedback">{{ t('settings.settingsSaved') }}</span>
+            </div>
           </HxCard>
 
-          <div class="form-actions" style="margin-top: 20px;">
-            <HxButton variant="primary" @click="saveModelSettings">{{ t('settings.saveSettings') }}</HxButton>
-            <span v-if="saveSuccess" class="save-feedback">{{ t('settings.settingsSaved') }}</span>
-            <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
-              <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
-            </span>
-            <span v-else-if="saveState === 'saving'" class="save-feedback save-saving">
-              <span class="save-dot green"></span> {{ t('settings.autoSaving') }}
-            </span>
-            <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              {{ t('settings.saved') }}
-            </span>
+          <!-- 未选中 Profile 提示 -->
+          <div v-if="!editingProfile && chatStore.modelProfiles.length > 0" style="text-align:center;padding:24px;color:var(--text-tertiary);font-size:14px;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:8px;opacity:0.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            <div>{{ t('settings.clickProfileToEdit') }}</div>
           </div>
         </div>
 
@@ -452,6 +422,46 @@
             </table>
           </HxCard>
 
+          <!-- Session-level usage from backend -->
+          <HxCard style="margin-top: 16px;">
+            <template #header>
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <span>会话级用量明细</span>
+                <HxButton size="sm" variant="ghost" @click="loadSessionUsage" :loading="sessionUsageLoading">刷新</HxButton>
+              </div>
+            </template>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>会话</th>
+                  <th>模型</th>
+                  <th>输入Token</th>
+                  <th>输出Token</th>
+                  <th>估算费用</th>
+                  <th>消息数</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="s in sessionUsageData" :key="s.id">
+                  <td class="cell-preview">{{ s.title || '(无标题)' }}</td>
+                  <td class="cell-mono">{{ s.model || '-' }}</td>
+                  <td>{{ formatNum(s.input_tokens) }}</td>
+                  <td>{{ formatNum(s.output_tokens) }}</td>
+                  <td class="cell-cost">${{ (s.estimated_cost_usd || 0).toFixed(4) }}</td>
+                  <td>{{ s.message_count }}</td>
+                </tr>
+                <tr v-if="sessionUsageData.length === 0">
+                  <td colspan="6" class="empty-cell">{{ sessionUsageLoading ? '加载中...' : '暂无会话用量数据' }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="sessionUsageTotal > 20" class="pagination" style="margin-top: 8px;">
+              <span style="font-size: 12px; color: var(--text-tertiary);">
+                共 {{ sessionUsageTotal }} 个会话（显示前 20）
+              </span>
+            </div>
+          </HxCard>
+
           <!-- Recent requests log -->
           <HxCard style="margin-top: 16px;">
             <template #header>
@@ -521,135 +531,6 @@
               <HxButton variant="primary" class="package-btn">{{ t('settings.rechargeNow') }}</HxButton>
             </div>
           </div>
-        </div>
-
-        <!-- ===== 模型配置 (多模型) ===== -->
-        <div v-if="activeSection === 'profiles'" class="content-section">
-          <h2 class="section-title">{{ $t('settings.modelProfiles') }}</h2>
-
-          <!-- 当前活跃模型 -->
-          <HxCard style="margin-bottom: 16px;">
-            <template #header>
-              <span>{{ t('settings.currentModel') }}</span>
-            </template>
-            <div v-if="chatStore.activeModelProfile" class="active-model-row">
-              <div class="active-model-indicator"></div>
-              <div class="active-model-info">
-                <div class="active-model-name">{{ chatStore.activeModelProfile.name }}</div>
-                <div class="active-model-meta">
-                  <span class="model-tag" :class="chatStore.activeModelProfile.provider">{{ chatStore.activeModelProfile.provider === 'gfw' ? 'GFW.NET' : t('settings.custom') }}</span>
-                  <span class="model-code">{{ chatStore.activeModelProfile.model }}</span>
-                </div>
-              </div>
-            </div>
-            <div v-else class="no-active-model">
-              <span>{{ t('settings.noModelSelected') }}</span>
-            </div>
-          </HxCard>
-
-          <!-- 模型配置列表 -->
-          <div class="profile-grid">
-            <div
-              v-for="profile in chatStore.modelProfiles"
-              :key="profile.id"
-              :class="['profile-card', { active: chatStore.activeModelId === profile.id }]"
-            >
-              <div class="profile-card-header">
-                <div class="profile-card-indicator" :class="{ pulse: chatStore.activeModelId === profile.id }"></div>
-                <span class="profile-card-name">{{ profile.name }}</span>
-                <span v-if="profile.isDefault" class="profile-badge-default">{{ $t('settings.modelDefault') }}</span>
-              </div>
-              <div class="profile-card-body">
-                <div class="profile-card-row">
-                  <span class="profile-card-label">Provider</span>
-                  <span class="profile-card-value">
-                    <span class="model-tag" :class="profile.provider">{{ profile.provider === 'gfw' ? 'GFW.NET' : t('settings.custom') }}</span>
-                  </span>
-                </div>
-                <div class="profile-card-row">
-                  <span class="profile-card-label">{{ $t('settings.model') }}</span>
-                  <span class="profile-card-value model-code">{{ profile.model }}</span>
-                </div>
-                <div v-if="profile.provider === 'custom'" class="profile-card-row">
-                  <span class="profile-card-label">Base URL</span>
-                  <span class="profile-card-value model-code">{{ profile.baseUrl }}</span>
-                </div>
-              </div>
-              <div class="profile-card-actions">
-                <button
-                  v-if="chatStore.activeModelId !== profile.id"
-                  class="profile-action-btn profile-action-switch"
-                  @click="chatStore.switchModel(profile.id)"
-                >{{ $t('settings.switchModel') }}</button>
-                <span v-else class="profile-action-active">{{ $t('settings.activeModel') }}</span>
-                <button
-                  v-if="!profile.isDefault"
-                  class="profile-action-btn profile-action-default"
-                  @click="chatStore.updateModelProfile(profile.id, { isDefault: true })"
-                >{{ $t('settings.modelSetDefault') }}</button>
-                <button
-                  class="profile-action-btn profile-action-delete"
-                  @click="chatStore.removeModelProfile(profile.id)"
-                >{{ $t('settings.removeModel') }}</button>
-              </div>
-            </div>
-
-            <!-- 添加新模型卡片 -->
-            <div class="profile-card profile-card-add" @click="showAddProfile = true">
-              <div class="profile-add-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-              </div>
-              <span class="profile-add-text">{{ $t('settings.addModel') }}</span>
-            </div>
-          </div>
-
-          <!-- 添加模型弹窗 -->
-          <HxModal v-model="showAddProfile" :icon="'plus'" :title="$t('settings.addModel')" @contextmenu.prevent>
-            <div class="form-row">
-              <label class="form-label">{{ $t('settings.modelName') }}</label>
-              <HxInput v-model="newProfile.name" placeholder="GPT-4o / Claude 3.5 / ..." />
-            </div>
-            <div class="form-row">
-              <label class="form-label">{{ $t('settings.modelProvider') }}</label>
-              <div class="provider-tabs">
-                <button :class="['provider-tab', { active: newProfile.provider === 'gfw' }]" @click="newProfile.provider = 'gfw'">
-                  <span>GFW.NET</span>
-                </button>
-                <button :class="['provider-tab', { active: newProfile.provider === 'custom' }]" @click="newProfile.provider = 'custom'">
-                  <span>{{ $t('settings.customProvider') }}</span>
-                </button>
-              </div>
-            </div>
-            <div v-if="newProfile.provider === 'gfw'" class="form-row">
-              <label class="form-label">API Key</label>
-              <HxInput v-model="newProfile.apiKey" type="password" placeholder="gfw-..." />
-            </div>
-            <div v-if="newProfile.provider === 'custom'" class="form-row">
-              <label class="form-label">{{ $t('settings.modelBaseUrl') }}</label>
-              <HxInput v-model="newProfile.baseUrl" placeholder="https://api.openai.com/v1" />
-            </div>
-            <div v-if="newProfile.provider === 'custom'" class="form-row">
-              <label class="form-label">{{ $t('settings.modelApiKey') }}</label>
-              <HxInput v-model="newProfile.apiKey" type="password" placeholder="sk-..." />
-            </div>
-            <div class="form-row">
-              <label class="form-label">{{ $t('settings.model') }}</label>
-              <HxInput v-model="newProfile.model" placeholder="gpt-4o / claude-3-5-sonnet / ..." />
-            </div>
-            <div class="form-row">
-              <label class="form-label">{{ $t('settings.modelDefault') }}</label>
-              <HxToggle :modelValue="newProfile.isDefault" @update:modelValue="newProfile.isDefault = $event" />
-            </div>
-            <template #footer>
-              <HxButton variant="ghost" @click="showAddProfile = false">{{ $t('common.cancel') }}</HxButton>
-              <HxButton variant="primary" :disabled="!newProfile.name || !newProfile.model" @click="addModelProfile">
-                {{ $t('common.create') }}
-              </HxButton>
-            </template>
-          </HxModal>
         </div>
 
         <!-- ===== Agent 设置 ===== -->
@@ -743,12 +624,26 @@
               </label>
               <label class="toolset-item">
                 <span class="toolset-label">{{ t('settings.compressionThreshold') }}</span>
-                <HxInput v-model.number="agentSettings.compressionThreshold" type="number" step="0.05" min="0.1" max="0.95" :showNumberControls="true" />
+                <HxInput v-model.number="agentSettings.compressionThreshold" type="number" :step="0.05" :min="0.1" :max="0.95" :showNumberControls="true" />
               </label>
               <label class="toolset-item">
                 <span class="toolset-label">{{ t('settings.compressionTarget') }}</span>
-                <HxInput v-model.number="agentSettings.compressionTarget" type="number" step="0.05" min="0.05" max="0.5" :showNumberControls="true" />
+                <HxInput v-model.number="agentSettings.compressionTarget" type="number" :step="0.05" :min="0.05" :max="0.5" :showNumberControls="true" />
               </label>
+            </div>
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-base);">
+              <div class="toolset-grid">
+                <label class="toolset-item" style="grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 12px;">
+                  <HxToggle v-model="autoCompress" />
+                  <span class="toolset-label">{{ t('compression.autoCompress') }}</span>
+                  <span style="font-size: 11px; color: var(--text-secondary); margin-left: 4px;">{{ t('compression.autoCompressHint') }}</span>
+                </label>
+                <label class="toolset-item">
+                  <span class="toolset-label">{{ t('compression.threshold') }}</span>
+                  <HxInput v-model.number="compressionThreshold" type="number" :min="10000" :max="500000" :step="5000" />
+                </label>
+              </div>
+              <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">{{ t('compression.thresholdHint') }}</div>
             </div>
           </HxCard>
 
@@ -769,7 +664,7 @@
           </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <HxButton variant="primary" @click="saveAgentSettings">{{ t('settings.saveSettings') }}</HxButton>
+            <HxButton variant="primary" @click="() => saveAgentSettings()">{{ t('settings.saveSettings') }}</HxButton>
             <span v-if="agentSaveOk" class="save-feedback">{{ t('settings.saved') }}</span>
             <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
               <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
@@ -844,7 +739,7 @@
           </HxCard>
 
           <div class="form-actions">
-            <HxButton variant="primary" @click="saveTerminalSettings">{{ t('settings.saveSettings') }}</HxButton>
+            <HxButton variant="primary" @click="() => saveTerminalSettings()">{{ t('settings.saveSettings') }}</HxButton>
             <span v-if="terminalSaveOk" class="save-feedback">{{ t('settings.saved') }}</span>
             <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
               <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
@@ -890,7 +785,7 @@
           </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <HxButton variant="primary" @click="saveDisplaySettings">{{ t('settings.saveSettings') }}</HxButton>
+            <HxButton variant="primary" @click="() => saveDisplaySettings()">{{ t('settings.saveSettings') }}</HxButton>
             <span v-if="displaySaveOk" class="save-feedback">{{ t('settings.saved') }}</span>
             <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
               <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
@@ -942,7 +837,7 @@
           </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <HxButton variant="primary" @click="saveVoiceSettings">{{ t('settings.saveSettings') }}</HxButton>
+            <HxButton variant="primary" @click="() => saveVoiceSettings()">{{ t('settings.saveSettings') }}</HxButton>
             <span v-if="voiceSaveOk" class="save-feedback">{{ t('settings.saved') }}</span>
             <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
               <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
@@ -998,7 +893,7 @@
           </HxCard>
 
           <div class="form-actions" style="margin-top: 16px;">
-            <HxButton variant="primary" @click="saveSecuritySettings">{{ t('settings.saveSettings') }}</HxButton>
+            <HxButton variant="primary" @click="() => saveSecuritySettings()">{{ t('settings.saveSettings') }}</HxButton>
             <span v-if="securitySaveOk" class="save-feedback">{{ t('settings.saved') }}</span>
             <span v-if="saveState === 'dirty'" class="save-feedback save-dirty">
               <span class="save-dot blue"></span> {{ t('settings.editedUnsaved') }}
@@ -1009,6 +904,58 @@
             <span v-else-if="saveState === 'saved'" class="save-feedback save-saved">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
               {{ t('settings.saved') }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Credentials section -->
+        <div v-if="activeSection === 'credentials'" class="content-section">
+          <h2 class="section-title">API 凭据</h2>
+          <p class="section-desc" style="margin-bottom: 16px; color: var(--text-secondary); font-size: var(--text-sm);">
+            管理所有 Provider 的 API 密钥和访问令牌。值已脱敏显示。
+          </p>
+
+          <HxCard style="margin-bottom: 16px;">
+            <template #header>
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <span>已配置凭据</span>
+                <HxButton size="sm" variant="ghost" @click="loadCredentials" :loading="credsLoading">
+                  刷新
+                </HxButton>
+              </div>
+            </template>
+            <div v-if="credsLoading" style="text-align: center; padding: 24px; color: var(--text-tertiary);">
+              加载中...
+            </div>
+            <div v-else-if="credsKeys.length === 0" style="text-align: center; padding: 24px; color: var(--text-tertiary);">
+              未检测到凭据配置
+            </div>
+            <div v-else class="cred-list">
+              <div v-for="key in credsKeys" :key="key" class="cred-row">
+                <div class="cred-key-info">
+                  <span class="cred-key-name">{{ key }}</span>
+                  <span class="cred-key-masked">{{ credsValues[key] || '••••••••' }}</span>
+                </div>
+                <div class="cred-key-actions">
+                  <HxInput
+                    v-model="credsEdits[key]"
+                    :placeholder="'输入新的 ' + key + ' 值'"
+                    type="password"
+                    size="sm"
+                    style="flex: 1; min-width: 180px;"
+                  />
+                </div>
+              </div>
+            </div>
+          </HxCard>
+
+          <div class="form-actions">
+            <HxButton variant="primary" :loading="credsSaving" @click="saveCredentials">
+              保存凭据
+            </HxButton>
+            <span v-if="credsSaveOk" class="save-feedback">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              已保存
             </span>
           </div>
         </div>
@@ -1057,15 +1004,17 @@ import { useGfwStore } from '../stores/gfw'
 import { useChatStore } from '../stores/chat'
 import { useAppStore } from '../stores/app'
 import { storeToRefs } from 'pinia'
-import { hermesConfigSet, hermesToolsList, hermesToolsEnable, hermesToolsDisable, hermesMemoryGet, hermesMemoryEdit } from '../api'
+import { hermesConfigGet, hermesConfigSet, hermesToolsList, hermesToolsEnable, hermesToolsDisable, hermesMemoryGet, hermesMemoryEdit, getCredentials, updateCredentials, availableModels, modelContext, sessionUsage as apiSessionUsage, type SessionUsage } from '../api'
 import IconUser from '../components/icons/IconUser.vue'
 import IconSettings from '../components/icons/IconSettings.vue'
 import { HxButton, HxInput, HxTextarea, HxSelect, HxToggle, HxCard, HxBadge, HxModal } from '../components/ui'
 import { providerIconMap } from '../assets/provider-icons'
 import { useToast } from '../composables/useToast'
+import { useContextCompression } from '../composables/useContextCompression'
 
 const { t } = useI18n()
 const toast = useToast()
+const { compressionThreshold, autoCompress } = useContextCompression()
 
 // Context menu
 const settingsCtx = reactive({ show: false, x: 0, y: 0, hasContent: false, hasSelection: false, target: null as HTMLInputElement | HTMLTextAreaElement | null })
@@ -1177,13 +1126,13 @@ const ttsProviderOptions = [
 // 设置导航搜索
 const searchQuery = ref('')
 const navItems = [
-  { key: 'model', label: '模型设置', keywords: 'API 提供商 模型 provider 同步 连接测试 自定义 GFW', icon: 'IconSettings' },
-  { key: 'profiles', label: '模型配置', keywords: '多模型 切换 配置 profile 添加 删除', icon: '' },
+  { key: 'model', label: '模型', keywords: 'API 提供商 模型 provider 同步 连接测试 自定义 GFW 多模型 切换 配置 profile 添加 删除', icon: 'IconSettings' },
   { key: 'agent', label: 'Agent', keywords: '轮次 系统提示 上下文压缩 记忆 用户档案 max turns', icon: '' },
   { key: 'terminal', label: '终端', keywords: '后端 超时 审批模式 SSH Docker 工作目录 timeout', icon: '' },
   { key: 'display', label: '显示', keywords: '工具进度 推理过程 费用 markdown 代码高亮 语法', icon: '' },
   { key: 'voice', label: '语音', keywords: 'STT TTS 语音识别 语音合成 Whisper Edge ElevenLabs', icon: '' },
   { key: 'security', label: '安全', keywords: '密钥 PII 脱敏 屏蔽 站点黑名单 工具开关 redaction', icon: '' },
+  { key: 'credentials', label: '凭据', keywords: 'API密钥 key secret token 凭证 credentials provider', icon: '' },
   { key: 'usage', label: '用量统计', keywords: '统计 日报 消耗 调用次数 token 图表 模型', icon: '' },
 ]
 const filteredNavItems = computed(() => {
@@ -1217,6 +1166,61 @@ const customModel = ref(customProvider.value.model)
 const testing = ref(false)
 const testResult = ref<{ ok: boolean; message: string } | null>(null)
 const saveSuccess = ref(false)
+
+// ── 编辑 Profile ──
+const editingProfileId = ref('')
+const editingProfile = computed(() => chatStore.modelProfiles.find(p => p.id === editingProfileId.value) || null)
+const editGfwApiKey = ref('')
+const editModelName = ref('')
+const editUpstream = ref('')
+const editName = ref('')
+const editBaseUrl = ref('')
+const editApiKey = ref('')
+
+watch(editingProfileId, (id) => {
+  const p = chatStore.modelProfiles.find(pr => pr.id === id)
+  if (p) {
+    editModelName.value = p.model
+    editGfwApiKey.value = p.provider === 'gfw' ? p.apiKey : ''
+    editUpstream.value = '__manual__'
+    editName.value = p.name
+    editBaseUrl.value = p.baseUrl || ''
+    editApiKey.value = p.apiKey || ''
+  }
+})
+
+function updateEditingProfile(field: string, value: string) {
+  if (!editingProfileId.value) return
+  chatStore.updateModelProfile(editingProfileId.value, { [field]: value })
+  if (field === 'provider') {
+    editingProfileId.value = editingProfileId.value // trigger reactivity
+  }
+}
+
+function selectEditUpstream(preset: { name: string; baseUrl: string; model: string; defaultModels?: string[] }) {
+  editUpstream.value = preset.name
+  editBaseUrl.value = preset.baseUrl
+  editModelName.value = preset.model || ''
+}
+
+function saveEditingProfile() {
+  if (!editingProfileId.value || !editingProfile.value) return
+  const updates: Record<string, any> = {
+    model: editModelName.value,
+    name: editName.value,
+  }
+  if (editingProfile.value.provider === 'gfw') {
+    updates.apiKey = editGfwApiKey.value
+  } else {
+    updates.baseUrl = editBaseUrl.value
+    updates.apiKey = editApiKey.value
+  }
+  chatStore.updateModelProfile(editingProfileId.value, updates)
+  // Also switch to this profile
+  chatStore.switchModel(editingProfileId.value)
+  saveSuccess.value = true
+  setTimeout(() => { saveSuccess.value = false }, 2000)
+}
 const apiVerified = ref(false)  // API Key 验证通过标志
 
 // 多模型配置
@@ -1349,10 +1353,89 @@ const gfwAccountEmail = ref(localStorage.getItem('gfw_saved_email') || '')
 const gfwAccountPassword = ref('')
 const gfwAccountLoggingIn = ref(false)
 const gfwKeysLoading = ref(false)
-const gfwSelectedKeyId = ref('')
+const gfwSelectedKeyId = ref<number | string>('')
 const showGfwCreateKey = ref(false)
 const gfwCreatingKey = ref(false)
 const newKeyUnlimited = ref(true)
+
+// ── Credentials management ──
+const credsKeys = ref<string[]>([])
+const credsValues = ref<Record<string, string>>({})
+const credsEdits = ref<Record<string, string>>({})
+const credsLoading = ref(false)
+const credsSaving = ref(false)
+const credsSaveOk = ref(false)
+
+async function loadCredentials() {
+  credsLoading.value = true
+  try {
+    const data = await getCredentials()
+    credsKeys.value = data.keys || []
+    credsValues.value = data.credentials || {}
+    credsEdits.value = {}
+  } catch {
+    // ignore
+  } finally {
+    credsLoading.value = false
+  }
+}
+
+async function saveCredentials() {
+  credsSaving.value = true
+  credsSaveOk.value = false
+  try {
+    const updates: Record<string, string> = {}
+    for (const key of credsKeys.value) {
+      if (credsEdits.value[key]?.trim()) {
+        updates[key] = credsEdits.value[key].trim()
+      }
+    }
+    if (Object.keys(updates).length === 0) return
+    await updateCredentials(updates)
+    credsSaveOk.value = true
+    // Refresh masked values
+    await loadCredentials()
+    setTimeout(() => { credsSaveOk.value = false }, 2000)
+  } catch {
+    // ignore
+  } finally {
+    credsSaving.value = false
+  }
+}
+
+// ── Available models discovery ──
+const discoveredModels = ref<any[]>([])
+const discovering = ref(false)
+
+async function discoverModels() {
+  discovering.value = true
+  try {
+    const data = await availableModels()
+    discoveredModels.value = data.models || []
+  } catch {
+    // ignore
+  } finally {
+    discovering.value = false
+  }
+}
+
+// ── Session-level usage ──
+const sessionUsageData = ref<SessionUsage[]>([])
+const sessionUsageLoading = ref(false)
+const sessionUsageTotal = ref(0)
+
+async function loadSessionUsage() {
+  sessionUsageLoading.value = true
+  try {
+    const data = await apiSessionUsage(20, 0)
+    sessionUsageData.value = data.sessions || []
+    sessionUsageTotal.value = data.total || 0
+  } catch {
+    // ignore
+  } finally {
+    sessionUsageLoading.value = false
+  }
+}
 
 function switchGfwAuthMode(mode: 'account' | 'manual') {
   gfwAuthMode.value = mode
@@ -1944,13 +2027,13 @@ async function createGfwKey() {
   }
   gfwCreatingKey.value = true
   try {
-    const limit = newKeyUnlimited.value ? null : newKeyLimit.value
+    const limit = newKeyUnlimited.value ? undefined : newKeyLimit.value
     const result = await gfwStore.createApiKey(newKeyName.value, limit)
     await gfwStore.fetchApiKeys()
     // 自动选中新创建的 key
     if (gfwStore.apiKeys.length > 0) {
       const latest = gfwStore.apiKeys[gfwStore.apiKeys.length - 1]
-      gfwSelectedKeyId.value = latest.id
+      gfwSelectedKeyId.value = String(latest.id)
       gfwApiKey.value = latest.full_key || latest.key_prefix + '***'
     }
     showGfwCreateKey.value = false
@@ -2182,6 +2265,8 @@ onMounted(async () => {
   }
   await loadToolsets()
   await loadConfigValues()
+  await loadCredentials()
+  await loadSessionUsage()
   _initialLoadDone = true
 })
 
@@ -2339,7 +2424,6 @@ const paginatedRequestLog = computed(() => {
 })
 
 // Watch: reset page when requestLog changes
-import { watch } from 'vue'
 watch(requestLog, () => { reqLogPage.value = 1 })
 
 // Smart page numbers for pagination (e.g. 1 2 3 ... 10 11)
@@ -4080,5 +4164,46 @@ const pageNumbers = computed<(number | string)[]>(() => {
 .profile-add-text {
   font-size: 13px;
   color: var(--text-secondary, #8b949e);
+}
+
+/* ── Credentials Section ── */
+.cred-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cred-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-base, rgba(255,255,255,0.08));
+}
+.cred-row:last-child {
+  border-bottom: none;
+}
+.cred-key-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+}
+.cred-key-name {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm, 14px);
+  color: var(--text-primary, #e6edf3);
+  font-weight: var(--font-medium, 500);
+}
+.cred-key-masked {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary, #6e7681);
+  letter-spacing: 0.5px;
+}
+.cred-key-actions {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  align-items: center;
 }
 </style>

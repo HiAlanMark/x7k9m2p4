@@ -294,6 +294,36 @@
         </div>
       </template>
 
+      <!-- Run Output (read-only, shown when node has run data) -->
+      <div v-if="runNodeData" class="bp-field bp-run-output-section">
+        <label class="bp-label">{{ t('blueprint.run.output') }}</label>
+        <div class="bp-run-status-badge" :class="`status-${runNodeData.status || 'idle'}`">
+          {{ t(`blueprint.run.status.${runNodeData.status || 'queued'}`) }}
+        </div>
+        <div v-if="runNodeData.error" class="bp-run-error">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span>{{ runNodeData.error }}</span>
+        </div>
+        <!-- Approval buttons for waiting_approval status -->
+        <div v-if="runNodeData.status === 'waiting_approval'" class="bp-approval-actions">
+          <button class="bp-approval-btn bp-approve" @click="onApprove" :disabled="approvalBusy">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>{{ t('blueprint.run.approve') }}</span>
+          </button>
+          <button class="bp-approval-btn bp-reject" @click="onReject" :disabled="approvalBusy">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>{{ t('blueprint.run.reject') }}</span>
+          </button>
+        </div>
+        <div v-if="runNodeData.output" class="bp-run-output">
+          <pre>{{ runNodeData.output }}</pre>
+        </div>
+        <div v-if="!runNodeData.output && !runNodeData.error && runNodeData.status === 'running'" class="bp-run-spinner">
+          <div class="bp-spinner" />
+          <span>{{ t('blueprint.run.status.running') }}</span>
+        </div>
+      </div>
+
       <!-- Delete Button -->
       <div class="bp-field bp-field-actions">
         <button class="bp-btn bp-btn-danger" @click="$emit('delete', node.id)">
@@ -309,9 +339,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useBlueprintStore } from '@/stores/blueprint'
+import { useBlueprintStore, type BlueprintRunNodeData } from '@/stores/blueprint'
+import { agentJson, agentPost } from '@/api'
 
 export interface NodeData {
   id: string
@@ -321,6 +352,7 @@ export interface NodeData {
 
 const props = defineProps<{
   node: NodeData | null
+  runNodeData?: BlueprintRunNodeData
 }>()
 
 const emit = defineEmits<{
@@ -361,6 +393,63 @@ onMounted(() => {
 function updateField(field: string, value: any) {
   if (!props.node) return
   emit('update', props.node.id, field, value)
+}
+
+// ── Approval actions ──
+const approvalBusy = ref(false)
+
+async function findPendingInboxItem(): Promise<string | null> {
+  try {
+    const data = await agentJson('/v1/agent/inbox') as any
+    const items = Array.isArray(data) ? data : (data?.items || data?.data || [])
+    const bpId = props.node?.data?.blueprint_id
+    const nodeId = props.node?.id
+    const match = items.find((it: any) =>
+      it.status === 'pending' &&
+      it.type === 'approval' &&
+      (it.node_id === nodeId || it.blueprint_id === bpId)
+    )
+    return match?.id || null
+  } catch {
+    return null
+  }
+}
+
+async function onApprove() {
+  if (approvalBusy.value) return
+  approvalBusy.value = true
+  try {
+    const itemId = await findPendingInboxItem()
+    if (itemId) {
+      await agentPost(`/v1/agent/inbox/${itemId}/approve`, {})
+    }
+    if (props.runNodeData) {
+      (props.runNodeData as any).status = 'succeeded'
+    }
+  } catch (e) {
+    console.error('Approval failed:', e)
+  } finally {
+    approvalBusy.value = false
+  }
+}
+
+async function onReject() {
+  if (approvalBusy.value) return
+  approvalBusy.value = true
+  try {
+    const itemId = await findPendingInboxItem()
+    if (itemId) {
+      await agentPost(`/v1/agent/inbox/${itemId}/reject`, {})
+    }
+    if (props.runNodeData) {
+      (props.runNodeData as any).status = 'failed'
+      ;(props.runNodeData as any).error = 'Rejected by user'
+    }
+  } catch (e) {
+    console.error('Reject failed:', e)
+  } finally {
+    approvalBusy.value = false
+  }
 }
 </script>
 
@@ -662,5 +751,144 @@ function updateField(field: string, value: any) {
 
 .bp-skill-remove:hover {
   color: var(--error);
+}
+
+/* ── Run Output Section ── */
+.bp-run-output-section {
+  border-top: 1px solid var(--border-base, rgba(255,255,255,.08));
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+.bp-run-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  background: color-mix(in srgb, var(--text-secondary) 12%, transparent);
+  color: var(--text-secondary);
+}
+.bp-run-status-badge.status-running {
+  background: color-mix(in srgb, var(--info, #60a5fa) 15%, transparent);
+  color: var(--info, #60a5fa);
+}
+.bp-run-status-badge.status-succeeded {
+  background: color-mix(in srgb, var(--success, #4ade80) 15%, transparent);
+  color: var(--success, #4ade80);
+}
+.bp-run-status-badge.status-failed {
+  background: color-mix(in srgb, var(--error, #f87171) 15%, transparent);
+  color: var(--error, #f87171);
+}
+.bp-run-status-badge.status-waiting_approval {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+}
+.bp-run-status-badge.status-skipped {
+  background: color-mix(in srgb, var(--text-secondary) 8%, transparent);
+  color: var(--text-secondary);
+  opacity: .7;
+}
+
+.bp-run-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--error, #f87171) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--error, #f87171) 20%, transparent);
+  color: var(--error, #f87171);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+.bp-run-error svg { flex-shrink: 0; margin-top: 1px; }
+
+.bp-run-output {
+  max-height: 240px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--glass-bg, rgba(255,255,255,.03));
+  border: 1px solid var(--border-base, rgba(255,255,255,.08));
+  margin-bottom: 8px;
+}
+.bp-run-output pre {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-primary, #e0e0e0);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bp-run-spinner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 12px;
+  color: var(--info, #60a5fa);
+}
+.bp-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid color-mix(in srgb, var(--info, #60a5fa) 30%, transparent);
+  border-top-color: var(--info, #60a5fa);
+  border-radius: 50%;
+  animation: bp-spin 0.8s linear infinite;
+}
+@keyframes bp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Approval Actions ── */
+.bp-approval-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.bp-approval-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bp-approval-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bp-approval-btn.bp-approve {
+  background: color-mix(in srgb, var(--success, #4ade80) 15%, transparent);
+  border-color: color-mix(in srgb, var(--success, #4ade80) 30%, transparent);
+  color: var(--success, #4ade80);
+}
+.bp-approval-btn.bp-approve:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--success, #4ade80) 25%, transparent);
+}
+
+.bp-approval-btn.bp-reject {
+  background: color-mix(in srgb, var(--error, #f87171) 12%, transparent);
+  border-color: color-mix(in srgb, var(--error, #f87171) 25%, transparent);
+  color: var(--error, #f87171);
+}
+.bp-approval-btn.bp-reject:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error, #f87171) 22%, transparent);
 }
 </style>

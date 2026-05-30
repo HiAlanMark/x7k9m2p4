@@ -456,11 +456,38 @@ export async function configGetAll() {
 
 const AGENT_BASE = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
 
+// ── Auth Token ──
+const HERMES_AUTH_KEY = 'hermes_auth_token'
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(HERMES_AUTH_KEY)
+}
+
+export function setAuthToken(token: string) {
+  localStorage.setItem(HERMES_AUTH_KEY, token)
+}
+
+export function clearAuthToken() {
+  localStorage.removeItem(HERMES_AUTH_KEY)
+}
+
 export async function agentFetch(path: string, opts?: RequestInit) {
+  const token = getAuthToken()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(opts?.headers as Record<string, string> || {}),
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
   const r = await fetch(`${AGENT_BASE}${path}`, {
     ...opts,
-    headers: { 'Content-Type': 'application/json', ...(opts?.headers as Record<string, string> || {}) },
+    headers,
   })
+  // If we get 401, clear the stored token so the login modal reappears
+  if (r.status === 401 && token) {
+    clearAuthToken()
+  }
   if (!r.ok) {
     const errBody = await r.text().catch(() => '')
     throw new Error(`Agent 请求失败 (${r.status}): ${errBody || r.statusText}`)
@@ -475,6 +502,126 @@ export async function agentJson(path: string, opts?: RequestInit) {
 
 export async function agentPost(path: string, body: Record<string, unknown>) {
   return agentJson(path, { method: 'POST', body: JSON.stringify(body) })
+}
+
+// --- File Browser ---
+export interface FileEntry {
+  name: string
+  type: 'file' | 'dir' | 'unknown'
+  size: number
+  modified: string
+  permissions: string
+}
+
+export interface FileListResult {
+  path: string
+  entries: FileEntry[]
+}
+
+export interface FileReadResult {
+  path: string
+  content: string
+  language: string
+}
+
+export interface FileUploadResult {
+  uploaded: Array<{ path: string; name: string; size: number }>
+}
+
+export async function filesList(dirPath: string = '~'): Promise<FileListResult> {
+  return agentJson(`/v1/agent/files?path=${encodeURIComponent(dirPath)}`)
+}
+
+export async function filesRead(filePath: string): Promise<FileReadResult> {
+  return agentJson(`/v1/agent/files/read?path=${encodeURIComponent(filePath)}`)
+}
+
+export async function filesUpload(dirPath: string, file: File): Promise<FileUploadResult> {
+  const token = getAuthToken()
+  const formData = new FormData()
+  formData.append('path', dirPath)
+  formData.append('file', file)
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  const r = await fetch(`${AGENT_BASE}/v1/agent/files/upload`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  })
+  if (!r.ok) {
+    const errBody = await r.text().catch(() => '')
+    throw new Error(`Upload failed (${r.status}): ${errBody || r.statusText}`)
+  }
+  return r.json()
+}
+
+export async function filesDownload(filePath: string): Promise<void> {
+  const token = getAuthToken()
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  const r = await fetch(`${AGENT_BASE}/v1/agent/files/download?path=${encodeURIComponent(filePath)}`, { headers })
+  if (!r.ok) {
+    throw new Error(`Download failed (${r.status})`)
+  }
+  const blob = await r.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filePath.split('/').pop() || 'download'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+export async function filesMkdir(dirPath: string): Promise<{ path: string; created: boolean }> {
+  return agentPost('/v1/agent/files/mkdir', { path: dirPath })
+}
+
+export async function filesRename(filePath: string, newName: string): Promise<{ path: string; old_path: string }> {
+  return agentPost('/v1/agent/files/rename', { path: filePath, new_name: newName })
+}
+
+export async function filesMove(filePath: string, dest: string): Promise<{ path: string; old_path: string }> {
+  return agentPost('/v1/agent/files/move', { path: filePath, dest })
+}
+
+export async function filesDelete(filePath: string): Promise<{ deleted: string }> {
+  return agentJson(`/v1/agent/files?path=${encodeURIComponent(filePath)}`, { method: 'DELETE' })
+}
+
+// --- Auth ---
+export async function hermesAuthLogin(token: string): Promise<{ success: boolean; token?: string }> {
+  const r = await fetch(`${AGENT_BASE}/v1/agent/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  if (!r.ok) {
+    if (r.status === 401) return { success: false }
+    throw new Error(`Auth login failed (${r.status})`)
+  }
+  return r.json()
+}
+
+export async function hermesAuthStatus(): Promise<{ authenticated: boolean; has_token: boolean }> {
+  const r = await fetch(`${AGENT_BASE}/v1/agent/auth/status`)
+  if (!r.ok) throw new Error(`Auth status failed (${r.status})`)
+  return r.json()
+}
+
+export async function hermesAuthAutoLogin(): Promise<{ success: boolean; token?: string; error?: string }> {
+  try {
+    const r = await fetch(`${AGENT_BASE}/v1/agent/auth/auto-login`, { signal: AbortSignal.timeout(2000) })
+    if (!r.ok) return { success: false, error: `HTTP ${r.status}` }
+    return r.json()
+  } catch (e: any) {
+    return { success: false, error: e?.message || 'auto-login unavailable' }
+  }
 }
 
 // --- Config ---
@@ -546,6 +693,30 @@ export async function hermesToolsDisable(name: string) {
 // --- Cancel ---
 export async function hermesCancel() {
   return agentPost('/v1/agent/cancel', {})
+}
+
+// --- Usage Analytics ---
+export async function hermesUsageSummary(period: string = '30d') {
+  return agentJson(`/v1/agent/usage/summary?period=${period}`)
+}
+
+export async function hermesUsageModels() {
+  return agentJson('/v1/agent/usage/models')
+}
+
+// --- Channels ---
+export interface ChannelConfig {
+  platform: string
+  enabled: boolean
+  config: Record<string, string>
+}
+
+export async function hermesChannelsList(): Promise<{ channels: ChannelConfig[] }> {
+  return agentJson('/v1/agent/channels')
+}
+
+export async function hermesChannelsUpdate(platform: string, config: Record<string, string>, enabled: boolean) {
+  return agentPost('/v1/agent/channels/update', { platform, config, enabled })
 }
 
 // --- Generate Title ---
@@ -653,9 +824,11 @@ export interface AgentStatus {
   }
 }
 
-export async function getAgentStatus(agentUrl: string): Promise<AgentStatus | null> {
+export async function getAgentStatus(): Promise<AgentStatus | null> {
   try {
-    const r = await fetch(`${agentUrl}/v1/agent/status`, { signal: AbortSignal.timeout(3000) })
+    const r = await agentFetch('/v1/agent/status', {
+      signal: AbortSignal.timeout(3000),
+    })
     if (!r.ok) return null
     return await r.json()
   } catch (e) {
@@ -698,9 +871,14 @@ async function agentChat(
   const url = agentUrl || AGENT_BASE
 
   try {
+    const authToken = getAuthToken()
+    const chatHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (authToken) {
+      chatHeaders['Authorization'] = `Bearer ${authToken}`
+    }
     const r = await fetch(`${url}/v1/agent/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: chatHeaders,
       body: JSON.stringify({
         content,
         api_base: llmBase,
@@ -914,4 +1092,459 @@ async function directChat(
   } catch (e: unknown) {
     onError(e instanceof Error ? e.message : String(e))
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Group Chat API
+// ═══════════════════════════════════════════════════════════
+
+export interface GroupChatListResult {
+  groups: Array<{
+    id: string
+    name: string
+    created_at: string
+    updated_at: string
+    agent_count: number
+  }>
+}
+
+export interface GroupChatDetailResult {
+  group: {
+    id: string
+    name: string
+    created_at: string
+    updated_at: string
+    agents: Array<{
+      id: string
+      name: string
+      model: string
+      system_prompt: string
+      color: string
+      created_at: string
+    }>
+    messages: Array<{
+      id: string
+      group_id: string
+      agent_id: string | null
+      role: string
+      content: string
+      timestamp: string
+      mentions: string
+    }>
+  }
+}
+
+export interface GroupChatCreateResult {
+  group: {
+    id: string
+    name: string
+    created_at: string
+    updated_at: string
+    agents: Array<{
+      id: string
+      name: string
+      model: string
+      system_prompt: string
+      color: string
+      created_at: string
+    }>
+  }
+}
+
+export interface GroupMessagesResult {
+  messages: Array<{
+    id: string
+    group_id: string
+    agent_id: string | null
+    role: string
+    content: string
+    timestamp: string
+    mentions: string
+  }>
+  total: number
+  limit: number
+  offset: number
+}
+
+export async function groupChatsList(): Promise<GroupChatListResult> {
+  return agentJson('/v1/agent/group-chats')
+}
+
+export async function groupChatsCreate(name: string, agents: Array<{
+  name: string
+  model: string
+  system_prompt: string
+  color?: string
+}>): Promise<GroupChatCreateResult> {
+  return agentPost('/v1/agent/group-chats', { name, agents })
+}
+
+export async function groupChatDetail(id: string): Promise<GroupChatDetailResult> {
+  return agentJson(`/v1/agent/group-chats/${id}`)
+}
+
+export async function groupChatDelete(id: string): Promise<{ deleted: string }> {
+  return agentJson(`/v1/agent/group-chats/${id}`, { method: 'DELETE' })
+}
+
+export async function groupChatAddAgent(
+  groupId: string,
+  agent: { name: string; model: string; system_prompt: string; color?: string },
+): Promise<{ agent: { id: string; name: string; model: string; system_prompt: string; color: string; created_at: string } }> {
+  return agentPost(`/v1/agent/group-chats/${groupId}/agents`, agent as unknown as Record<string, unknown>)
+}
+
+export async function groupChatRemoveAgent(
+  groupId: string,
+  agentId: string,
+): Promise<{ removed: string }> {
+  return agentJson(`/v1/agent/group-chats/${groupId}/agents/${agentId}`, { method: 'DELETE' })
+}
+
+export async function groupChatMessages(
+  groupId: string,
+  limit = 50,
+  offset = 0,
+): Promise<GroupMessagesResult> {
+  return agentJson(`/v1/agent/group-chats/${groupId}/messages?limit=${limit}&offset=${offset}`)
+}
+
+export async function groupChatSendMessage(
+  groupId: string,
+  content: string,
+  mentions: string[] = [],
+): Promise<Response> {
+  // Returns SSE stream — use agentFetch to get raw Response
+  return agentFetch(`/v1/agent/group-chats/${groupId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ content, mentions }),
+  })
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Coding Agents API
+// ═══════════════════════════════════════════════════════════
+
+export interface CodingAgent {
+  id: string
+  name: string
+  installed: boolean
+  version: string | null
+  running: boolean
+  config: Record<string, unknown>
+}
+
+export interface CodingAgentsListResult {
+  agents: CodingAgent[]
+}
+
+export interface CodingAgentLaunchResult {
+  pid: number
+  started_at: string
+}
+
+export interface CodingAgentLogsResult {
+  logs: string[]
+  lines: number
+}
+
+export interface CodingAgentConfigResult {
+  config: Record<string, unknown>
+}
+
+export async function codingAgentsList(): Promise<CodingAgentsListResult> {
+  return agentJson('/v1/agent/coding-agents')
+}
+
+export async function codingAgentLaunch(
+  id: string,
+  opts?: { workdir?: string; prompt?: string; model?: string },
+): Promise<CodingAgentLaunchResult> {
+  return agentPost(`/v1/agent/coding-agents/${id}/launch`, {
+    workdir: opts?.workdir,
+    prompt: opts?.prompt,
+    model: opts?.model,
+  })
+}
+
+export async function codingAgentStop(id: string): Promise<{ stopped: boolean }> {
+  return agentPost(`/v1/agent/coding-agents/${id}/stop`, {})
+}
+
+export async function codingAgentLogs(id: string): Promise<CodingAgentLogsResult> {
+  return agentJson(`/v1/agent/coding-agents/${id}/logs`)
+}
+
+export async function codingAgentGetConfig(id: string): Promise<CodingAgentConfigResult> {
+  return agentJson(`/v1/agent/coding-agents/${id}/config`)
+}
+
+export async function codingAgentSetConfig(id: string, config: Record<string, unknown>): Promise<{ success: boolean }> {
+  return agentPost(`/v1/agent/coding-agents/${id}/config`, { config })
+}
+
+// ══════════════════════════════════════════════════════════════════
+// P0+P1 New API Functions
+// ══════════════════════════════════════════════════════════════════
+
+// ── Session Search (FTS5) ──
+
+export interface SessionSearchResult {
+  id: string
+  title: string
+  model: string
+  source: string
+  started_at: string
+  message_count: number
+  snippet?: string
+}
+
+export interface SessionSearchResponse {
+  total: number
+  sessions: SessionSearchResult[]
+  query: string
+  limit: number
+  offset: number
+}
+
+export async function sessionSearch(query: string, limit = 20, offset = 0): Promise<SessionSearchResponse> {
+  return agentJson(`/v1/agent/sessions/search?q=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`)
+}
+
+// ── Session Export ──
+
+export async function sessionExport(sessionId: string, format: 'json' | 'markdown' = 'json'): Promise<Blob> {
+  const r = await agentFetch(`/v1/agent/sessions/export?session_id=${encodeURIComponent(sessionId)}&format=${format}`)
+  return r.blob()
+}
+
+// ── Session Usage ──
+
+export interface SessionUsage {
+  id: string
+  title: string
+  model: string
+  started_at: string
+  input_tokens: number
+  output_tokens: number
+  cache_read_tokens: number
+  cache_write_tokens: number
+  reasoning_tokens: number
+  estimated_cost_usd: number
+  actual_cost_usd: number
+  message_count: number
+}
+
+export interface SessionUsageResponse {
+  total: number
+  sessions: SessionUsage[]
+}
+
+export async function sessionUsage(limit = 50, offset = 0): Promise<SessionUsageResponse> {
+  return agentJson(`/v1/agent/sessions/usage?limit=${limit}&offset=${offset}`)
+}
+
+// ── Session Batch Delete ──
+
+export async function sessionBatchDelete(sessionIds: string[]): Promise<{ deleted: number; errors: string[] }> {
+  return agentPost('/v1/agent/sessions/batch-delete', { session_ids: sessionIds })
+}
+
+// ── Available Models ──
+
+export interface AvailableModel {
+  id: string
+  provider: string
+  base_url?: string
+  api_key_set?: boolean
+}
+
+export interface AvailableModelsResponse {
+  models: AvailableModel[]
+  default_model: string
+  total: number
+}
+
+export async function availableModels(): Promise<AvailableModelsResponse> {
+  return agentJson('/v1/agent/available-models')
+}
+
+// ── Model Context ──
+
+export interface ModelContextResponse {
+  model: string
+  context_length: number
+  known_models: Record<string, number>
+}
+
+export async function modelContext(): Promise<ModelContextResponse> {
+  return agentJson('/v1/agent/model-context')
+}
+
+// ── Profile Runtime Status ──
+
+export interface ProfileRuntimeStatus {
+  name: string
+  running: boolean
+  pids: number[]
+  config_exists: boolean
+  status: string
+}
+
+export interface ProfilesRuntimeResponse {
+  profiles: ProfileRuntimeStatus[]
+}
+
+export async function profilesRuntimeStatuses(): Promise<ProfilesRuntimeResponse> {
+  return agentJson('/v1/agent/profiles/runtime-statuses')
+}
+
+export async function profileRuntimeStatus(name: string): Promise<ProfileRuntimeStatus> {
+  return agentJson(`/v1/agent/profiles/${encodeURIComponent(name)}/runtime-status`)
+}
+
+export async function profileRestart(name: string): Promise<{ name: string; restarted: boolean; error?: string }> {
+  return agentPost(`/v1/agent/profiles/${encodeURIComponent(name)}/restart`, {})
+}
+
+// ── Cron History ──
+
+export interface CronHistoryEntry {
+  id: string
+  name: string
+  schedule: string
+  last_run: string | null
+  next_run: string | null
+  last_status: string | null
+  last_output: string | null
+}
+
+export interface CronHistoryResponse {
+  total: number
+  history: CronHistoryEntry[]
+}
+
+export async function cronHistory(): Promise<CronHistoryResponse> {
+  return agentJson('/v1/agent/cron-history')
+}
+
+// ── Config PUT ──
+
+export async function updateConfigYaml(yamlContent: string): Promise<{ success: boolean }> {
+  const r = await agentFetch('/v1/agent/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'text/yaml' },
+    body: yamlContent,
+  })
+  return r.json()
+}
+
+// ── Config Credentials ──
+
+export interface CredentialsResponse {
+  credentials: Record<string, string>
+  keys: string[]
+}
+
+export async function getCredentials(): Promise<CredentialsResponse> {
+  const r = await agentFetch('/v1/agent/config/credentials', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+  return r.json()
+}
+
+export async function updateCredentials(credentials: Record<string, string>): Promise<{ success: boolean; updated: string[] }> {
+  return agentPost('/v1/agent/config/credentials', credentials)
+}
+
+// ── Logs ──
+
+export interface LogFile {
+  name: string
+  size: number
+  modified: string
+}
+
+export interface LogsResponse {
+  logs: LogFile[]
+  directory: string
+}
+
+export async function listLogs(): Promise<LogsResponse> {
+  return agentJson('/v1/agent/logs')
+}
+
+export async function readLog(name: string, lines = 100): Promise<string> {
+  const r = await agentFetch(`/v1/agent/logs/${encodeURIComponent(name)}?lines=${lines}`)
+  const data = await r.json()
+  return data.content || ''
+}
+
+// ── Skills Toggle/Pin/Usage ──
+
+export async function toggleSkill(name: string): Promise<{ name: string; enabled: boolean }> {
+  return agentPost('/v1/agent/skills/toggle', { name })
+}
+
+export async function pinSkill(name: string): Promise<{ name: string; pinned: boolean }> {
+  return agentPost('/v1/agent/skills/pin', { name })
+}
+
+export interface SkillUsageStat {
+  tool_name: string
+  count: number
+  last_used: string | null
+}
+
+export interface SkillUsageResponse {
+  stats: SkillUsageStat[]
+  total_tools: number
+}
+
+export async function skillsUsageStats(): Promise<SkillUsageResponse> {
+  return agentJson('/v1/agent/skills/usage/stats')
+}
+
+// ── File Copy/Write/Stat ──
+
+export async function fileCopy(src: string, dst: string): Promise<{ success: boolean; src: string; dst: string }> {
+  return agentPost('/v1/agent/files/copy', { src, dst })
+}
+
+export async function fileWrite(path: string, content: string): Promise<{ success: boolean; path: string; bytes: number }> {
+  const r = await agentFetch('/v1/agent/files/write', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, content }),
+  })
+  return r.json()
+}
+
+export interface FileStat {
+  path: string
+  name: string
+  size: number
+  is_dir: boolean
+  modified: string
+  created: string
+  permissions: string
+}
+
+export async function fileStat(path: string): Promise<FileStat> {
+  return agentJson(`/v1/agent/files/stat?path=${encodeURIComponent(path)}`)
+}
+
+// ── TTS ──
+
+export interface TTSResponse {
+  provider: string
+  status: string
+  audio_url?: string
+  message?: string
+}
+
+export async function textToSpeech(text: string, voice?: string): Promise<TTSResponse> {
+  return agentPost('/v1/agent/tts', { text, voice })
 }

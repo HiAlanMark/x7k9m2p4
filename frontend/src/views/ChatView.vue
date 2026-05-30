@@ -1,212 +1,237 @@
 <template>
   <div class="chat-view">
-    <div class="messages" ref="messagesRef" @scroll="onMessagesScroll" @click="onMessagesClick" @contextmenu.prevent="showBodyContextMenu">
-      <!-- Empty state -->
-      <div v-if="messages.length === 0" class="empty-state">
-        <div class="empty-inner animate-spring-in">
-          <!-- Status Panel (replaces old terminal) -->
-          <div class="status-panel">
-            <div class="status-panel-header">
-              <span class="status-panel-dot" :class="appStore.connectionState"></span>
-              <span class="status-panel-title">Hi!XNS Agent</span>
-              <span class="status-panel-version">v{{ appVersion }}</span>
+    <!-- Empty state -->
+    <div v-if="messages.length === 0 && !isStreaming && !isConnecting" class="messages messages-empty">
+      <div class="empty-inner animate-spring-in">
+        <!-- Status Panel (replaces old terminal) -->
+        <div class="status-panel">
+          <div class="status-panel-header">
+            <span class="status-panel-dot" :class="appStore.connectionState"></span>
+            <span class="status-panel-title">Hi!XNS Agent</span>
+            <span class="status-panel-version">v{{ appVersion }}</span>
+          </div>
+          <div class="status-panel-body">
+            <div v-if="appStore.connectionState === 'connected'" class="status-panel-ready">
+              <span class="status-panel-ready-text">{{ t('chatView.ready') }} · {{ appStore.hermesStatus?.version?.split(' ')[0] || t('chatView.hermesIntegrated') }}</span>
             </div>
-            <div class="status-panel-body">
-              <div v-if="appStore.connectionState === 'connected'" class="status-panel-ready">
-                <span class="status-panel-ready-text">{{ t('chatView.ready') }} · {{ appStore.hermesStatus?.version?.split(' ')[0] || t('chatView.hermesIntegrated') }}</span>
-              </div>
-              <div v-else-if="appStore.connectionState === 'connecting'" class="status-panel-ready">
-                <div class="status-panel-spinner"></div>
-                <span class="status-panel-ready-text">{{ t('chatView.connecting') }}</span>
-              </div>
-              <div v-else class="status-panel-ready">
-                <span class="status-panel-ready-text error">{{ t('chatView.backendDisconnected') }}</span>
-              </div>
+            <div v-else-if="appStore.connectionState === 'connecting'" class="status-panel-ready">
+              <div class="status-panel-spinner"></div>
+              <span class="status-panel-ready-text">{{ t('chatView.connecting') }}</span>
+            </div>
+            <div v-else class="status-panel-ready">
+              <span class="status-panel-ready-text error">{{ t('chatView.backendDisconnected') }}</span>
             </div>
           </div>
-          <div class="quick-actions stagger-children">
-            <div class="quick-item hover-lift" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
-              <span class="qa-icon">></span>
-              <span class="qa-text">{{ t('chatView.quickSort') }}</span>
-            </div>
-            <div class="quick-item hover-lift" @click="quickAsk('解释 TCP 三次握手的工作原理')">
-              <span class="qa-icon">></span>
-              <span class="qa-text">{{ t('chatView.tcpHandshake') }}</span>
-            </div>
-            <div class="quick-item hover-lift" @click="quickAsk('审查这段代码的性能问题: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
-              <span class="qa-icon">></span>
-              <span class="qa-text">{{ t('chatView.codeReview') }}</span>
-            </div>
-            <div class="quick-item hover-lift" @click="quickAsk('生成一个 Node.js 应用的多阶段构建 Dockerfile')">
-              <span class="qa-icon">></span>
-              <span class="qa-text">{{ t('chatView.dockerfile') }}</span>
-            </div>
+        </div>
+        <div class="quick-actions stagger-children">
+          <div class="quick-item hover-lift" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
+            <span class="qa-icon">></span>
+            <span class="qa-text">{{ t('chatView.quickSort') }}</span>
+          </div>
+          <div class="quick-item hover-lift" @click="quickAsk('解释 TCP 三次握手的工作原理')">
+            <span class="qa-icon">></span>
+            <span class="qa-text">{{ t('chatView.tcpHandshake') }}</span>
+          </div>
+          <div class="quick-item hover-lift" @click="quickAsk('审查这段代码的性能问题: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
+            <span class="qa-icon">></span>
+            <span class="qa-text">{{ t('chatView.codeReview') }}</span>
+          </div>
+          <div class="quick-item hover-lift" @click="quickAsk('生成一个 Node.js 应用的多阶段构建 Dockerfile')">
+            <span class="qa-icon">></span>
+            <span class="qa-text">{{ t('chatView.dockerfile') }}</span>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Messages -->
-      <template v-for="(msg, idx) in messages" :key="msg.id">
-        <div v-if="msg.role === 'system'" class="sys-line">
-          <span class="sys-badge">
-            <svg class="sys-icon" width="12" height="12" viewBox="0 0 1024 1024" fill="currentColor"><path d="M511.914667 85.333333c-235.52 0-426.666667 191.146667-426.666667 426.666667s191.146667 426.666667 426.666667 426.666667 426.666667-191.146667 426.666666-426.666667-191.146667-426.666667-426.666666-426.666667z m0 768c-188.586667 0-341.333333-152.746667-341.333334-341.333333s152.746667-341.333333 341.333334-341.333333 341.333333 152.746667 341.333333 341.333333-152.746667 341.333333-341.333333 341.333333z"/><path d="M512 640c-35.2 0-64 28.8-64 64S476.8 768 512 768s64-28.8 64-64S547.2 640 512 640z"/><path d="M512 256c-36.906667 0-66.176 29.269333-63.872 63.872l15.616 234.88c1.621333 23.936 22.741333 42.581333 48.256 42.581333s46.634667-18.645333 48.213333-42.581333l15.658667-234.88C578.176 285.269333 548.906667 256 512 256z"/></svg>
-            <span class="sys-text">{{ msg.content }}</span>
-          </span>
-        </div>
-
-        <div v-else-if="msg.role === 'user' || msg.role === 'assistant' || (msg.content && msg.content.trim())" class="msg-wrapper" :class="msg.role">
-          
-          <!-- User Message: Right-aligned Glass Bubble -->
-          <div v-if="msg.role === 'user'" class="msg-bubble user-bubble">
-            <div class="msg-content user-content">{{ msg.content }}</div>
-            <div class="msg-time user-time">{{ formatTime(msg.timestamp) }}</div>
-          </div>
-
-          <!-- AI Message: Left-aligned Glass Card -->
-          <div v-else class="msg-card ai-card">
-            <div class="card-header">
-              <span class="author-badge"><span class="ai-dot"></span> Hi!XNS</span>
-              <span class="meta-info">
-                <span v-if="msg.model" class="meta-tag">{{ msg.model }}</span>
-                <template v-if="msg.duration_ms">
-                  <span class="meta-dot"></span>
-                  <span class="timing-badge" :title="timingTooltip(msg)">
-                    <span v-if="msg.ttft_ms" class="timing-ttft">TTFT {{ msg.ttft_ms }}ms</span>
-                    <span v-if="msg.ttft_ms" class="timing-sep">→</span>
-                    <span v-if="msg.tool_time_ms" class="timing-tool">🔧{{ (msg.tool_time_ms / 1000).toFixed(1) }}s</span>
-                    <span v-if="msg.tool_time_ms" class="timing-sep">→</span>
-                    <span>{{ (msg.duration_ms / 1000).toFixed(1) }}s</span>
-                  </span>
-                </template>
-              </span>
-            </div>
-
-            <div class="card-content markdown-body" v-html="renderMarkdown(msg.content)"></div>
-
-            <!-- Tool calls: Accordion -->
-            <div v-if="msg.tool_calls && msg.tool_calls.length" class="tool-accordion">
-              <div v-for="(tc, i) in msg.tool_calls" :key="i" class="tool-item">
-                <div class="tool-header" @click="(tc as any)._open = !(tc as any)._open">
-                  <span class="tool-tri">{{ (tc as any)._open ? '▾' : '▸' }}</span>
-                  <span :class="['tool-status', tc.status]"></span>
-                  <span class="tool-name">{{ tc.tool }}</span>
-                  <span class="tool-label">{{ tc.status === 'completed' ? t('chatView.completed') : tc.status === 'failed' ? t('chatView.failed') : t('chatView.running') }}</span>
-                </div>
-                <div v-if="(tc as any)._open" class="tool-body">
-                  <div v-if="tc.input" class="tool-section">
-                    <div class="tool-label-sm">{{ t('chatView.inputLabel') }}</div>
-                    <pre class="tool-json">{{ formatJson(tc.input) }}</pre>
-                  </div>
-                  <div v-if="tc.output" class="tool-section">
-                    <div class="tool-label-sm">{{ t('chatView.outputLabel') }}</div>
-                    <pre class="tool-json">{{ tc.output }}</pre>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card-footer">
-              <span v-if="msg.token_usage" class="footer-tokens">
-                <span class="token-item">{{ t('chatView.inputLabel') }} {{ (msg.token_usage.prompt_tokens || 0).toLocaleString() }}</span>
-                <span class="token-item">{{ t('chatView.outputLabel') }} {{ (msg.token_usage.completion_tokens || 0).toLocaleString() }}</span>
-              </span>
-              <div class="action-group">
-                <button class="action-icon" @click="copyMessage(msg.content)" :title="t('chatView.copy')">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                </button>
-                <button class="action-icon" @click="regenerateMessage(idx)" :disabled="isStreaming" :title="t('chatView.regenerate')">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <!-- Streaming: AI Card Structure -->
-      <div v-if="isStreaming" class="msg-wrapper assistant streaming">
-        <div class="msg-card ai-card glass-glow">
-          <div class="card-header">
-            <span class="author-badge"><span class="ai-dot pulsing"></span> Hi!XNS</span>
-            <span class="meta-info">
-              <span v-if="agentIteration > 0" class="meta-tag">Iter {{ agentIteration }}/{{ agentMaxIter }}</span>
-              <span class="meta-dot"></span>
-              <span>Thinking...</span>
+    <!-- Messages with virtual scrolling -->
+    <DynamicScroller
+      v-show="messages.length > 0 || isStreaming || isConnecting"
+      ref="scrollerRef"
+      :items="scrollerItems"
+      :min-item-size="54"
+      key-field="id"
+      class="messages"
+      @click="onMessagesClick"
+      @contextmenu.prevent="showBodyContextMenu"
+    >
+      <template #default="{ item: msg, index: idx, active }">
+        <DynamicScrollerItem
+          :item="msg"
+          :active="active"
+          :size-dependencies="[
+            msg.content,
+            msg.tool_calls,
+            msg.role === 'streaming' ? currentResponse : null,
+            msg.role === 'streaming' ? currentToolCalls : null,
+            msg.role === 'streaming' ? agentStatus : null,
+            msg.role === 'streaming' ? pendingApproval : null
+          ]"
+          :data-index="idx"
+        >
+          <!-- System message -->
+          <div v-if="msg.role === 'system'" class="sys-line">
+            <span class="sys-badge">
+              <svg class="sys-icon" width="12" height="12" viewBox="0 0 1024 1024" fill="currentColor"><path d="M511.914667 85.333333c-235.52 0-426.666667 191.146667-426.666667 426.666667s191.146667 426.666667 426.666667 426.666667 426.666667-191.146667 426.666666-426.666667-191.146667-426.666667-426.666666-426.666667z m0 768c-188.586667 0-341.333333-152.746667-341.333334-341.333333s152.746667-341.333333 341.333334-341.333333 341.333333 152.746667 341.333333 341.333333-152.746667 341.333333-341.333333 341.333333z"/><path d="M512 640c-35.2 0-64 28.8-64 64S476.8 768 512 768s64-28.8 64-64S547.2 640 512 640z"/><path d="M512 256c-36.906667 0-66.176 29.269333-63.872 63.872l15.616 234.88c1.621333 23.936 22.741333 42.581333 48.256 42.581333s46.634667-18.645333 48.213333-42.581333l15.658667-234.88C578.176 285.269333 548.906667 256 512 256z"/></svg>
+              <span class="sys-text">{{ msg.content }}</span>
             </span>
           </div>
 
-          <!-- Thinking State -->
-          <div v-if="agentStatus && !currentResponse && !currentToolCalls.length" class="thinking-state">
-            <div class="thinking-dots">
-              <span></span><span></span><span></span>
-            </div>
-            <span class="status-text">{{ agentStatus }}</span>
-          </div>
-
-          <div v-if="!currentResponse && !currentToolCalls.length && !agentStatus" class="thinking-state">
-            <div class="thinking-dots">
-              <span></span><span></span><span></span>
-            </div>
-            <span class="status-text">{{ t('chatView.thinking') }}</span>
-          </div>
-
-          <!-- Approval -->
-          <div v-if="pendingApproval" class="approval-card">
-            <div class="approval-header">
-              <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/><path d="M512 298.666667a42.666667 42.666667 0 0 0-42.666667 42.666666v170.666667a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V341.333333a42.666667 42.666667 0 0 0-42.666667-42.666666zM512 640a42.666667 42.666667 0 0 0-42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667 42.666666h0.426667a42.666667 42.666667 0 0 0 42.666666-42.666666 42.666667 42.666667 0 0 0-42.666666-42.666667z"/></svg>
-              <span>{{ t('chatView.authorizationRequired') }}</span>
-            </div>
-            <div class="approval-body">
-              <div class="approval-cmd">
-                <span class="approval-label">{{ t('chatView.command') }}</span>
-                <code>{{ pendingApproval.command }}</code>
+          <!-- Streaming: AI Card Structure -->
+          <div v-else-if="msg.role === 'streaming'" class="msg-wrapper assistant streaming">
+            <div class="msg-card ai-card glass-glow">
+              <div class="card-header">
+                <span class="author-badge"><span class="ai-dot pulsing"></span> Hi!XNS</span>
+                <span class="meta-info">
+                  <span v-if="agentIteration > 0" class="meta-tag">Iter {{ agentIteration }}/{{ agentMaxIter }}</span>
+                  <span class="meta-dot"></span>
+                  <span>Thinking...</span>
+                </span>
               </div>
-              <div class="approval-reason">{{ pendingApproval.reason }}</div>
-            </div>
-            <textarea v-model="approvalReply" class="approval-reply-input" :placeholder="t('chatView.replyFeedbackPlaceholder')" rows="2"></textarea>
-            <div class="approval-actions">
-              <button class="approve-btn" @click="approveCommand">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>{{ t('chatView.allowExecution') }}</span>
-              </button>
-              <button class="reply-btn" @click="replyApproval">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                <span>{{ t('chatView.replyBtn') }}</span>
-              </button>
-              <button class="deny-btn" @click="denyCommand">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                <span>{{ t('chatView.deny') }}</span>
-              </button>
-            </div>
-          </div>
 
-          <!-- Response Content -->
-          <template v-if="currentResponse">
-            <div class="card-content markdown-body" :class="{ streaming: isStreaming }" v-html="renderMarkdown(currentResponse)"></div>
-          </template>
+              <!-- Thinking State -->
+              <div v-if="agentStatus && !currentResponse && !currentToolCalls.length" class="thinking-state">
+                <div class="thinking-dots">
+                  <span></span><span></span><span></span>
+                </div>
+                <span class="status-text">{{ agentStatus }}</span>
+              </div>
 
-          <!-- Streaming Tools -->
-          <div v-if="currentToolCalls.length" class="tool-streaming">
-            <div v-for="(tc, i) in currentToolCalls" :key="i" class="tool-item active">
-              <div class="tool-header">
-                <span v-if="tc.status === 'running'" class="tool-spinner-sm"></span>
-                <span v-else :class="['tool-status', tc.status]"></span>
-                <span class="tool-name">{{ tc.tool }}</span>
-                <span class="tool-label">{{ tc.status === 'completed' ? t('chatView.completed') : tc.status === 'failed' ? t('chatView.failed') : tc.status === 'denied' ? t('chatView.denied') : tc.status === 'timeout' ? t('chatView.approvalTimeout') : t('chatView.executing') }}</span>
+              <div v-if="!currentResponse && !currentToolCalls.length && !agentStatus" class="thinking-state">
+                <div class="thinking-dots">
+                  <span></span><span></span><span></span>
+                </div>
+                <span class="status-text">{{ t('chatView.thinking') }}</span>
+              </div>
+
+              <!-- Approval -->
+              <div v-if="pendingApproval" class="approval-card">
+                <div class="approval-header">
+                  <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 42.666667C253.312 42.666667 42.666667 253.312 42.666667 512s210.645333 469.333333 469.333333 469.333333 469.333333-210.645333 469.333333-469.333333S770.688 42.666667 512 42.666667z m0 85.333333c212.565333 0 384 171.434667 384 384s-171.434667 384-384 384-384-171.434667-384-384 171.434667-384 384-384z"/><path d="M512 298.666667a42.666667 42.666667 0 0 0-42.666667 42.666666v170.666667a42.666667 42.666667 0 0 0 42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667-42.666667V341.333333a42.666667 42.666667 0 0 0-42.666667-42.666666zM512 640a42.666667 42.666667 0 0 0-42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667 42.666666h0.426667a42.666667 42.666667 0 0 0 42.666666-42.666666 42.666667 42.666667 0 0 0-42.666666-42.666667z"/></svg>
+                  <span>{{ t('chatView.authorizationRequired') }}</span>
+                </div>
+                <div class="approval-body">
+                  <div class="approval-cmd">
+                    <span class="approval-label">{{ t('chatView.command') }}</span>
+                    <code>{{ pendingApproval.command }}</code>
+                  </div>
+                  <div class="approval-reason">{{ pendingApproval.reason }}</div>
+                </div>
+                <HxTextarea v-model="approvalReply" :placeholder="t('chatView.replyFeedbackPlaceholder')" :rows="2" variant="default" />
+                <div class="approval-actions">
+                  <button class="approve-btn" @click="approveCommand">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>{{ t('chatView.allowExecution') }}</span>
+                  </button>
+                  <button class="reply-btn" @click="replyApproval">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span>{{ t('chatView.replyBtn') }}</span>
+                  </button>
+                  <button class="deny-btn" @click="denyCommand">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span>{{ t('chatView.deny') }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Response Content -->
+              <template v-if="currentResponse">
+                <div class="card-content markdown-body" :class="{ streaming: isStreaming }" v-html="renderMarkdown(currentResponse)"></div>
+              </template>
+
+              <!-- Streaming Tools -->
+              <div v-if="currentToolCalls.length" class="tool-streaming">
+                <div v-for="(tc, i) in currentToolCalls" :key="i" class="tool-item active">
+                  <div class="tool-header">
+                    <span v-if="tc.status === 'running'" class="tool-spinner-sm"></span>
+                    <span v-else :class="['tool-status', tc.status]"></span>
+                    <span class="tool-name">{{ tc.tool }}</span>
+                    <span class="tool-label">{{ tc.status === 'completed' ? t('chatView.completed') : tc.status === 'failed' ? t('chatView.failed') : tc.status === 'denied' ? t('chatView.denied') : tc.status === 'timeout' ? t('chatView.approvalTimeout') : t('chatView.executing') }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Connecting -->
-      <div v-if="isConnecting" class="connecting">
-        <div class="connecting-dots">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        </div>
-        <span>{{ t('chatView.connectingLabel') }}</span>
-      </div>
-    </div>
+          <!-- Connecting -->
+          <div v-else-if="msg.role === 'connecting'" class="connecting">
+            <div class="connecting-dots">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+            <span>{{ t('chatView.connectingLabel') }}</span>
+          </div>
+
+          <!-- User/Assistant message -->
+          <div v-else-if="msg.role === 'user' || msg.role === 'assistant' || (msg.content && msg.content.trim())" class="msg-wrapper" :class="msg.role">
+            
+            <!-- User Message: Right-aligned Glass Bubble -->
+            <div v-if="msg.role === 'user'" class="msg-bubble user-bubble">
+              <div class="msg-content user-content">{{ msg.content }}</div>
+              <div class="msg-time user-time">{{ formatTime(msg.timestamp) }}</div>
+            </div>
+
+            <!-- AI Message: Left-aligned Glass Card -->
+            <div v-else class="msg-card ai-card">
+              <div class="card-header">
+                <span class="author-badge"><span class="ai-dot"></span> Hi!XNS</span>
+                <span class="meta-info">
+                  <span v-if="msg.model" class="meta-tag">{{ msg.model }}</span>
+                  <template v-if="msg.duration_ms">
+                    <span class="meta-dot"></span>
+                    <span class="timing-badge" :title="timingTooltip(msg)">
+                      <span v-if="msg.ttft_ms" class="timing-ttft">TTFT {{ msg.ttft_ms }}ms</span>
+                      <span v-if="msg.ttft_ms" class="timing-sep">→</span>
+                      <span v-if="msg.tool_time_ms" class="timing-tool">🔧{{ (msg.tool_time_ms / 1000).toFixed(1) }}s</span>
+                      <span v-if="msg.tool_time_ms" class="timing-sep">→</span>
+                      <span>{{ (msg.duration_ms / 1000).toFixed(1) }}s</span>
+                    </span>
+                  </template>
+                </span>
+              </div>
+
+              <div class="card-content markdown-body" v-html="renderMarkdown(msg.content)"></div>
+
+              <!-- Tool calls: Accordion -->
+              <div v-if="msg.tool_calls && msg.tool_calls.length" class="tool-accordion">
+                <div v-for="(tc, i) in msg.tool_calls" :key="i" class="tool-item">
+                  <div class="tool-header" @click="(tc as any)._open = !(tc as any)._open">
+                    <span class="tool-tri">{{ ((tc as any)._open != null ? (tc as any)._open : toolTraceVisible) ? '▾' : '▸' }}</span>
+                    <span :class="['tool-status', tc.status]"></span>
+                    <span class="tool-name">{{ tc.tool }}</span>
+                    <span class="tool-label">{{ tc.status === 'completed' ? t('chatView.completed') : tc.status === 'failed' ? t('chatView.failed') : t('chatView.running') }}</span>
+                  </div>
+                  <div v-if="((tc as any)._open != null ? (tc as any)._open : toolTraceVisible)" class="tool-body">
+                    <div v-if="tc.input" class="tool-section">
+                      <div class="tool-label-sm">{{ t('chatView.inputLabel') }}</div>
+                      <pre class="tool-json">{{ formatJson(tc.input) }}</pre>
+                    </div>
+                    <div v-if="tc.output" class="tool-section">
+                      <div class="tool-label-sm">{{ t('chatView.outputLabel') }}</div>
+                      <pre class="tool-json">{{ tc.output }}</pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-footer">
+                <span v-if="msg.token_usage" class="footer-tokens">
+                  <span class="token-item">{{ t('chatView.inputLabel') }} {{ (msg.token_usage.prompt_tokens || 0).toLocaleString() }}</span>
+                  <span class="token-item">{{ t('chatView.outputLabel') }} {{ (msg.token_usage.completion_tokens || 0).toLocaleString() }}</span>
+                </span>
+                <div class="action-group">
+                  <button class="action-icon" @click="copyMessage(msg.content)" :title="t('chatView.copy')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  </button>
+                  <button class="action-icon" @click="regenerateMessage(idx)" :disabled="isStreaming" :title="t('chatView.regenerate')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DynamicScrollerItem>
+      </template>
+    </DynamicScroller>
 
     <div class="input-area">
       <!-- Upload bar floating above input -->
@@ -218,6 +243,9 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
           </svg>
+        </button>
+        <button class="toolbar-btn tool-trace-btn" :class="{ active: toolTraceVisible }" @click="toggleToolTrace" :title="t('chat.toolTraceHint')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
         </button>
         <input 
           type="file" 
@@ -278,16 +306,20 @@
         <div class="input-capsule" :class="{ focused: inputFocused }">
         <span class="prompt-symbol">❯</span>
         
-        <textarea
+        <HxTextarea
+          ref="chatInputRef"
           v-model="inputText"
-          @keydown.enter.exact.prevent="sendMessage"
+          variant="chat"
+          inline
+          autoResize
+          :maxHeight="120"
+          :placeholder="t('chatView.inputPlaceholder')"
+          :rows="1"
+          @keydown="onChatKeydown"
           @focus="inputFocused = true"
           @blur="inputFocused = false"
           @contextmenu.prevent="showContextMenu"
-          :placeholder="t('chatView.inputPlaceholder')"
-          rows="1"
-          ref="textareaRef"
-        ></textarea>
+        />
         
         <button @click="sendMessage" :disabled="!inputText.trim() && attachedFiles.length === 0" class="send-btn">
           <svg class="send-arrow" width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M853.333333 128a42.666667 42.666667 0 0 0-42.666666 42.666667v298.666666c0 71.210667-56.789333 128-128 128H170.666667a42.666667 42.666667 0 0 0-42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667 42.666667h512c117.632 0 213.333333-95.701333 213.333333-213.333334V170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M384 384a42.666667 42.666667 0 0 0-30.165333 12.501333l-213.333334 213.333334a42.666667 42.666667 0 0 0 0 60.330666l213.333334 213.333334a42.666667 42.666667 0 0 0 60.330666 0 42.666667 42.666667 0 0 0 0-60.330667L231.168 640l182.997333-182.997333a42.666667 42.666667 0 0 0 0-60.330667A42.666667 42.666667 0 0 0 384 384z"/></svg>
@@ -304,6 +336,8 @@
         <span class="status-pill" :class="chatStore.providerMode === 'custom' ? 'warning' : 'success'">{{ chatStore.providerMode === 'custom' ? 'Custom API' : 'gfw.net' }}</span>
         <span class="status-dot-sep">·</span>
         <span class="status-pill" :class="{ streaming: isStreaming }">{{ isStreaming ? `${t('chatView.generating')} ${streamElapsed}s` : t('chatView.ready') }}</span>
+        <span v-if="tokenEstimate > 0" class="status-dot-sep">·</span>
+        <span v-if="tokenEstimate > 0" class="status-pill" :class="{ warning: tokenEstimate > compressionThreshold }" :title="t('compression.thresholdHint')">{{ formatTokenCount(tokenEstimate) }} / {{ formatTokenCount(compressionThreshold) }}</span>
         <span v-if="messages.length > 0" class="status-dot-sep">·</span>
         <button v-if="messages.length > 0" class="export-btn" @click="exportChat" :title="t('chatView.exportMarkdown')">{{ t('chatView.exportMarkdown') }}</button>
       </div>
@@ -355,23 +389,45 @@ const hljsLanguages: Record<string, typeof javascript> = {
   md: markdown, Dockerfile: dockerfile,
 }
 Object.entries(hljsLanguages).forEach(([name, lang]) => hljs.registerLanguage(name, lang))
-import * as api from '../api'
-import { isBrowserMode, browserChat, hermesCancel, generateTitle } from '../api'
+// api imports moved to useChatStream composable
 import IconSend from '../components/icons/IconSend.vue'
 import IconStar from '../components/icons/IconStar.vue'
 import IconChat from '../components/icons/IconChat.vue'
 import IconSearch from '../components/icons/IconSearch.vue'
 import IconStore from '../components/icons/IconStore.vue'
 import IconUser from '../components/icons/IconUser.vue'
+import { HxTextarea } from '../components/ui'
 import IconSettings from '../components/icons/IconSettings.vue'
 import IconChevronDown from '../components/icons/IconChevronDown.vue'
 import { SpotlightCard, FadeIn, ShinyText } from '../components/fx'
 import { HxBadge } from '../components/ui'
 import { useToast } from '../composables/useToast'
 import { useI18n } from 'vue-i18n'
+import { useChatStream } from '../composables/useChatStream'
+import { useToolTrace } from '../composables/useToolTrace'
+import { useContextCompression } from '../composables/useContextCompression'
 
 const toast = useToast()
 const { t } = useI18n()
+const chatStream = useChatStream()
+const {
+  isConnecting, agentStatus, agentIteration, agentMaxIter,
+  pendingApproval, approvalReply, streamElapsed,
+  startStreaming, stopStreaming, approveCommand, denyCommand,
+  replyApproval, cancelExecution, autoGenerateTitle,
+} = chatStream
+const { toolTraceVisible, toggleToolTrace } = useToolTrace()
+const { compressionThreshold, autoCompress, estimateTokens, compressSession } = useContextCompression()
+
+const tokenEstimate = computed(() => {
+  const allText = messages.value.map(m => m.content || '').join('')
+  return estimateTokens(allText)
+})
+
+function formatTokenCount(n: number): string {
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K'
+  return String(n)
+}
 
 const chatStore = useChatStore()
 const appStore = useAppStore()
@@ -379,6 +435,18 @@ const gfwStore = useGfwStore()
 const blueprintStore = useBlueprintStore()
 const appVersion = __APP_VERSION__
 const { messages, isStreaming, currentResponse, currentToolCalls, selectedModel } = storeToRefs(chatStore)
+
+// Virtual scroller items: regular messages + synthetic streaming/connecting items
+const scrollerItems = computed(() => {
+  const items: any[] = messages.value.map(msg => ({ ...msg }))
+  if (isStreaming.value) {
+    items.push({ id: '__streaming__', role: 'streaming', content: '', timestamp: new Date().toISOString() })
+  }
+  if (isConnecting.value) {
+    items.push({ id: '__connecting__', role: 'connecting', content: '', timestamp: new Date().toISOString() })
+  }
+  return items
+})
 
 // Blueprint context association
 const showBlueprintPicker = ref(false)
@@ -398,26 +466,15 @@ function selectBlueprintRun(run: any) {
 }
 
 const inputText = ref('')
-const messagesRef = ref<HTMLElement | null>(null)
-const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const scrollerRef = ref<any>(null)
+const chatInputRef = ref<InstanceType<typeof HxTextarea> | null>(null)
+
+// Access the underlying <textarea> DOM element from HxTextarea
+const nativeTextarea = computed(() => chatInputRef.value?.textarea?.value ?? null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-// Streaming timing: live elapsed counter
-const streamElapsed = ref('0.0')
-let streamTimer: ReturnType<typeof setInterval> | null = null
-
-watch(() => chatStore.isStreaming, (streaming) => {
-  if (streaming) {
-    streamTimer = setInterval(() => {
-      if (chatStore.streamStartTime) {
-        streamElapsed.value = ((Date.now() - chatStore.streamStartTime) / 1000).toFixed(1)
-      }
-    }, 100)
-  } else {
-    if (streamTimer) { clearInterval(streamTimer); streamTimer = null }
-    streamElapsed.value = '0.0'
-  }
-})
+// streamElapsed is now provided by useChatStream composable
+// The streaming timer is managed inside the composable
 
 function timingTooltip(msg: any): string {
   const parts: string[] = []
@@ -430,8 +487,15 @@ function timingTooltip(msg: any): string {
 // Context menu state
 const ctxMenu = reactive({ show: false, x: 0, y: 0, hasContent: false, hasSelection: false, source: '' as 'input' | 'body' | '' })
 
+function onChatKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault()
+    sendMessage()
+  }
+}
+
 function showContextMenu(e: MouseEvent) {
-  const ta = textareaRef.value
+  const ta = nativeTextarea.value
   ctxMenu.hasContent = !!ta?.value.length
   ctxMenu.hasSelection = ta ? ta.selectionStart !== ta.selectionEnd : false
   ctxMenu.source = 'input'
@@ -463,7 +527,7 @@ function hideContextMenu() {
 }
 
 function ctxCopy() {
-  const ta = textareaRef.value
+  const ta = nativeTextarea.value
   if (!ta) return
   ta.focus()
   try { document.execCommand('copy') } catch {}
@@ -476,7 +540,7 @@ function ctxBodyCopy() {
 }
 
 function ctxCut() {
-  const ta = textareaRef.value
+  const ta = nativeTextarea.value
   if (!ta) return
   ta.focus()
   try { document.execCommand('cut') } catch {}
@@ -485,7 +549,7 @@ function ctxCut() {
 }
 
 function ctxPaste() {
-  const ta = textareaRef.value
+  const ta = nativeTextarea.value
   if (!ta) return
   hideContextMenu()
   if (navigator.clipboard?.readText) {
@@ -502,16 +566,12 @@ function ctxPaste() {
 }
 
 function ctxSelectAll() {
-  textareaRef.value?.select()
+  nativeTextarea.value?.select()
   hideContextMenu()
 }
 const attachedFiles = ref<Array<{ id: string; file: File; type: string; name: string; size: number; extractedText?: string }>>([])
-const agentStatus = ref('')
-const agentIteration = ref(0)
-const agentMaxIter = ref(0)
-const pendingApproval = ref<{ id: string; tool: string; command: string; reason: string } | null>(null)
-const approvalReply = ref('')
-const isConnecting = ref(false)
+// agentStatus, agentIteration, agentMaxIter, pendingApproval, approvalReply, isConnecting
+// are now provided by useChatStream composable
 const inputFocused = ref(false)
 const showScrollBtn = ref(false)
 
@@ -666,13 +726,7 @@ const getFilePreviewUrl = (file: File): string => {
   return URL.createObjectURL(file)
 }
 
-watch(inputText, async () => {
-  await nextTick()
-  if (textareaRef.value) {
-    textareaRef.value.style.height = 'auto'
-    textareaRef.value.style.height = Math.min(textareaRef.value.scrollHeight, 200) + 'px'
-  }
-})
+// Auto-resize handled by HxTextarea autoResize prop
 
 function renderMarkdown(content: string) {
   const html = marked(content) as string
@@ -716,8 +770,7 @@ async function sendMessage() {
   
   // 如果正在生成，先取消当前任务再发送新消息（支持中途打断/补充）
   if (isStreaming.value) {
-    try { await hermesCancel() } catch { /* ignore */ }
-    chatStore.finishResponse()
+    await stopStreaming()
   }
   
   inputText.value = ''
@@ -728,92 +781,41 @@ async function sendMessage() {
   const filesToSend = [...attachedFiles.value]
   attachedFiles.value = []
 
-  if (!isBrowserMode() && !appStore.agentRunning) {
-    isConnecting.value = true
-    try {
-      await api.agentStart('')
-      appStore.agentRunning = true
-    } catch (e: unknown) {
-      chatStore.addSystemMessage(t('chatView.agentStartFailed') + e)
-      isConnecting.value = false
-      return
-    }
-    isConnecting.value = false
-  }
+  // 构造对话历史（不含当前消息，当前消息通过 content 参数传递）
+  const history = messages.value
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .slice(0, -1)  // 排除刚添加的当前用户消息
+    .map(m => ({ role: m.role, content: m.content }))
 
-  chatStore.startAssistantResponse()
-
-  if (isBrowserMode()) {
-    const config = chatStore.getActiveConfig()
-    // 构造对话历史（不含当前消息，当前消息通过 content 参数传递）
-    const history = messages.value
-      .filter(m => m.role === 'user' || m.role === 'assistant')
-      .slice(0, -1)  // 排除刚添加的当前用户消息
-      .map(m => ({ role: m.role, content: m.content }))
-    await browserChat(
-      text, selectedModel.value,
-      (chunk) => chatStore.appendToResponse(chunk),
-      (fullText, usage) => {
-        agentStatus.value = ''
-        agentIteration.value = 0
-        // 注意：pendingApproval 只在 approveCommand/denyCommand 中清除，
-        // 不在 onDone 时清除——否则用户还没来得及审批就被移除了
-        chatStore.finishResponse(usage, config.model, undefined, fullText)
-        // 首轮对话自动生成智能标题
-        autoGenerateTitle(text, fullText, config)
-      },
-      (err) => {
-        agentStatus.value = ''
-        // 同上：错误时也保留审批卡片，让用户可以操作
-        chatStore.finishResponse()
-        chatStore.addSystemMessage(`错误：${err}`)
-      },
-      config,
-      // onToolCall
-      (tool, args) => { chatStore.addToolCall(tool, args) },
-      // onToolResult
-      (tool, result, duration) => {
-        const idx = chatStore.currentToolCalls.findIndex(tc => tc.tool === tool && tc.status === 'running')
-        if (idx >= 0) chatStore.completeToolCall(idx, result.substring(0, 500), 'completed')
-      },
-      history,
-      // onStatus
-      (message, iteration, maxIterations) => {
-        agentStatus.value = message
-        agentIteration.value = iteration
-        agentMaxIter.value = maxIterations
-      },
-      // onApproval
-      (id, tool, command, reason) => {
-        pendingApproval.value = { id, tool, command, reason }
-      },
-      // sessionId — 续接 hermes 会话
-      chatStore.getHermesSessionId(),
-      // onSessionId — 保存 hermes 返回的 session_id
-      (sid) => { chatStore.setHermesSessionId(sid) },
-    )
-  } else {
-    try { await api.agentSendMessage(text, selectedModel.value) }
-    catch (e) { console.warn('[ChatView] agentSendMessage failed:', e); chatStore.finishResponse() }
-  }
+  await startStreaming(text, selectedModel.value, {
+    history,
+    onAutoTitle: autoGenerateTitle,
+  })
 }
 
 watch(() => messages.value.length, async () => { await nextTick(); scrollToBottom() })
 watch(() => currentResponse.value, async () => { await nextTick(); scrollToBottom() })
+watch(() => isStreaming.value, async () => { await nextTick(); scrollToBottom() })
+watch(() => isConnecting.value, async () => { await nextTick(); scrollToBottom() })
 
 function scrollToBottom(smooth = false) {
-  if (messagesRef.value) {
-    if (smooth) {
-      messagesRef.value.scrollTo({ top: messagesRef.value.scrollHeight, behavior: 'smooth' })
-    } else {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+  if (scrollerRef.value) {
+    const el = scrollerRef.value.$el as HTMLElement | undefined
+    if (el) {
+      if (smooth) {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+      } else {
+        el.scrollTop = el.scrollHeight
+      }
     }
   }
 }
 
-function onMessagesScroll() {
-  if (!messagesRef.value) return
-  const { scrollTop, scrollHeight, clientHeight } = messagesRef.value
+function onScrollerScroll() {
+  if (!scrollerRef.value) return
+  const el = scrollerRef.value.$el as HTMLElement | undefined
+  if (!el) return
+  const { scrollTop, scrollHeight, clientHeight } = el
   showScrollBtn.value = scrollHeight - scrollTop - clientHeight > 200
 }
 
@@ -883,108 +885,25 @@ async function regenerateMessage(idx: number) {
   sendMessage()
 }
 
-async function approveCommand() {
-  if (!pendingApproval.value) return
-  const { id } = pendingApproval.value
-  pendingApproval.value = null
-  // 发送批准到后端
-  try {
-    const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''
-    await fetch(`${agentUrl}/v1/agent/approve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, approved: true }),
-    })
-  } catch (e) { console.warn('[ChatView] approveCommand failed:', e) }
-}
-
-async function denyCommand() {
-  if (!pendingApproval.value) return
-  const { id } = pendingApproval.value
-  const reason = approvalReply.value.trim() || t('chatView.userDenied')
-  pendingApproval.value = null
-  approvalReply.value = ''
-  // 发送拒绝到后端
-  try {
-    const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''
-    await fetch(`${agentUrl}/v1/agent/approve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, approved: false, reason }),
-    })
-  } catch (e) { console.warn('[ChatView] denyCommand failed:', e) }
-  chatStore.addSystemMessage(reason)
-}
-
-async function replyApproval() {
-  if (!pendingApproval.value || !approvalReply.value.trim()) return
-  const { id } = pendingApproval.value
-  const reason = approvalReply.value.trim()
-  approvalReply.value = ''
-  // 发送反馈到后端，不清除 pendingApproval 以支持多轮迭代
-  try {
-    const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''
-    await fetch(`${agentUrl}/v1/agent/approve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, approved: false, reason }),
-    })
-  } catch (e) { console.warn('[ChatView] replyApproval failed:', e) }
-  chatStore.addSystemMessage(t('chatView.replyFeedback') + ': ' + reason)
-}
-
-async function cancelExecution() {
-  try {
-    // 取消时也拒绝待审批的命令
-    if (pendingApproval.value) {
-      const { id } = pendingApproval.value
-      pendingApproval.value = null
-      const isDev = import.meta.env?.DEV ?? false
-      const agentUrl = isDev ? '/proxy/agent' : ''
-      fetch(`${agentUrl}/v1/agent/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, approved: false, reason: t('chatView.userCancelled') }),
-      }).catch(() => {})
-    }
-    await hermesCancel()
-    agentStatus.value = ''
-    chatStore.finishResponse()
-    chatStore.addSystemMessage(t('chatView.executionStopped'))
-  } catch (e) { console.warn('[ChatView] cancelExecution failed:', e) }
-}
-
-async function autoGenerateTitle(userText: string, aiReply: string, config: { baseUrl: string; apiKey: string; model: string }) {
-  // 只在首轮对话时生成标题（只有 1 条 user + 1 条 assistant）
-  const session = chatStore.currentSession
-  if (!session) return
-  const userCount = session.messages.filter(m => m.role === 'user').length
-  if (userCount !== 1) return
-  // 如果标题已经不是默认截断标题就跳过
-  const firstUser = session.messages.find(m => m.role === 'user')
-  if (!firstUser) return
-  const defaultTitle = firstUser.content.trim().length > 30
-    ? firstUser.content.trim().substring(0, 30) + '...'
-    : firstUser.content.trim()
-  if (session.title !== defaultTitle && session.title !== t('chatView.newSession')) return
-  // 后台异步生成标题，不阻塞 UI
-  try {
-    const title = await generateTitle(userText, aiReply, config)
-    if (title && title.length >= 2) {
-      chatStore.renameSession(session.id, title)
-    }
-  } catch (e) { console.warn('[ChatView] autoGenerateTitle failed:', e) }
-}
+// approveCommand, denyCommand, replyApproval, cancelExecution, autoGenerateTitle
+// are now provided by useChatStream composable
 
 onMounted(async () => {
   if (gfwStore.models.length === 0) await gfwStore.fetchModels()
+  // Attach scroll listener to DynamicScroller's internal scroll container
+  await nextTick()
+  const scrollerEl = scrollerRef.value?.$el as HTMLElement | undefined
+  if (scrollerEl) {
+    scrollerEl.addEventListener('scroll', onScrollerScroll, { passive: true })
+  }
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', hideContextMenu)
+  const scrollerEl = scrollerRef.value?.$el as HTMLElement | undefined
+  if (scrollerEl) {
+    scrollerEl.removeEventListener('scroll', onScrollerScroll)
+  }
 })
 
 function exportChat() {
@@ -1977,17 +1896,7 @@ function exportChat() {
 .deny-btn:hover { opacity: 0.75; }
 
 .approval-reply-input {
-  width: 100%;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-base);
-  background: var(--glass-weak);
-  color: var(--text-primary);
-  font-size: 13px;
-  resize: vertical;
-  min-height: 36px;
   margin: 8px 0;
-  font-family: inherit;
 }
 .reply-btn {
   display: flex;
@@ -2122,6 +2031,22 @@ function exportChat() {
   animation: pulse 2s ease-in-out infinite;
 }
 
+/* HxTextarea inside input-capsule: no wrapper decoration */
+.input-capsule .hixns-textarea-wrap {
+  flex: 1;
+  min-width: 0;
+}
+.input-capsule .hixns-textarea-wrap .hixns-textarea-inner.inline-inner {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+.input-capsule .hixns-textarea-wrap .hixns-textarea {
+  resize: none;
+}
+
 /* ===== Upload bar (floating above input) ===== */
 .upload-bar {
   display: flex;
@@ -2157,23 +2082,8 @@ function exportChat() {
 
 .file-input-hidden { display: none; }
 
-textarea {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text-primary);
-  resize: none;
-  font-size: 14px;
-  padding: 4px 0;
-  line-height: 1.5;
-  min-height: 22px;
-  max-height: 120px;
-  font-family: 'Noto Sans SC', var(--font-sans), sans-serif;
-}
+/* Chat textarea styling handled by HxTextarea variant="chat" inline */
 
-textarea:focus { outline: none; }
-textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC', var(--font-sans), sans-serif; }
 
 .send-btn {
   display: flex;
@@ -2413,6 +2323,12 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
+/* Tool trace toggle active state */
+.toolbar-btn.tool-trace-btn.active {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
 /* ===== Blueprint Picker Dropdown ===== */
 .blueprint-picker-dropdown {
   position: absolute;
@@ -2480,5 +2396,70 @@ textarea::placeholder { color: var(--text-tertiary); font-family: 'Noto Sans SC'
 .bp-picker-status.status-running {
   background: color-mix(in srgb, var(--info) 12%, transparent);
   color: var(--info);
+}
+
+/* ===== Vue Virtual Scroller Overrides ===== */
+.vue-recycle-scroller {
+  background: transparent !important;
+}
+.vue-recycle-scroller__item-wrapper {
+  background: transparent !important;
+}
+.vue-recycle-scroller__item-view {
+  background: transparent !important;
+}
+
+/* DynamicScroller inherits from RecycleScroller */
+.messages.vue-recycle-scroller {
+  flex: 1;
+  overflow-y: auto;
+  padding: 45px 45px;
+  padding-bottom: 140px;
+  scroll-behavior: smooth;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    black 60px,
+    black calc(100% - 150px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    black 60px,
+    black calc(100% - 150px),
+    transparent 100%
+  );
+}
+
+.messages.vue-recycle-scroller::-webkit-scrollbar { width: 6px; }
+.messages.vue-recycle-scroller::-webkit-scrollbar-track { background: transparent; }
+.messages.vue-recycle-scroller::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 10px;
+}
+.messages.vue-recycle-scroller::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+/* Empty state overrides when no messages */
+.messages-empty {
+  flex: 1;
+  overflow-y: auto;
+  padding: 45px 45px;
+  padding-bottom: 140px;
+  scroll-behavior: smooth;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    black 60px,
+    black calc(100% - 150px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    black 60px,
+    black calc(100% - 150px),
+    transparent 100%
+  );
 }
 </style>

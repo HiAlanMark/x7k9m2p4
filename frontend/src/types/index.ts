@@ -52,6 +52,7 @@ export interface PricingTier {
 export interface ApiKeyInfo {
   id: number
   key_prefix: string
+  full_key?: string
   can_retrieve: boolean
   name: string
   rate_limit: number
@@ -265,3 +266,42 @@ export interface ChatSession {
   hermesSessionId?: string  // hermes agent 会话 ID，用于上下文续接
   serverId?: string         // server-side session ID for persistence
 }
+
+// ═══════════════════════════════════════════════════════════
+//  Group Chat — multi-agent chat room with @mention routing
+// ═══════════════════════════════════════════════════════════
+
+export interface GroupChat {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+  agentCount?: number
+  agents?: GroupAgent[]
+  messages?: GroupMessage[]
+}
+
+export interface GroupAgent {
+  id: string
+  groupId: string
+  name: string
+  model: string
+  systemPrompt: string
+  color: string
+  createdAt: string
+}
+
+export interface GroupMessage {
+  id: string
+  groupId: string
+  agentId: string | null  // null = human user
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  timestamp: string
+  mentions: string  // comma-separated agent_ids
+}
+
+export const AGENT_COLORS = [
+  '#5ac8fa', '#ff6b6b', '#51cf66', '#ffd43b',
+  '#cc5de8', '#ff922b', '#20c997', '#748ffc',
+] as const

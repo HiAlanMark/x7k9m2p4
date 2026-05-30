@@ -106,6 +106,12 @@
           {{ t('tasks.executionHistory') }}
           <span class="tab-count">{{ historyTasks.length }}</span>
         </button>
+        <button :class="['main-tab', { active: activeTab === 'stats' }]" @click="activeTab = 'stats'; loadSkillsStats()">
+          工具统计
+        </button>
+        <button :class="['main-tab', { active: activeTab === 'cron-history' }]" @click="activeTab = 'cron-history'; loadCronHistory()">
+          运行历史
+        </button>
       </div>
       <HxButton variant="primary" size="sm" @click="toggleCreate">
         + {{ t('tasks.createNew') }}
@@ -222,13 +228,79 @@
         </div>
       </div>
     </template>
+
+    <!-- Tool usage stats -->
+    <template v-if="activeTab === 'stats'">
+      <HxCard>
+        <template #header>
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <span>工具调用统计</span>
+            <HxButton size="sm" variant="ghost" @click="loadSkillsStats" :loading="statsLoading">刷新</HxButton>
+          </div>
+        </template>
+        <div v-if="statsLoading" style="text-align: center; padding: 24px; color: var(--text-tertiary);">加载中...</div>
+        <div v-else-if="skillsStats.length === 0" style="text-align: center; padding: 24px; color: var(--text-tertiary);">暂无工具调用数据</div>
+        <table v-else class="data-table" style="margin-top: 8px;">
+          <thead>
+            <tr>
+              <th>工具名</th>
+              <th>调用次数</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="s in skillsStats" :key="s.tool_name">
+              <td class="cell-mono">{{ s.tool_name }}</td>
+              <td>{{ s.count }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </HxCard>
+    </template>
+
+    <!-- Cron run history from backend -->
+    <template v-if="activeTab === 'cron-history'">
+      <HxCard>
+        <template #header>
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <span>Cron 运行历史</span>
+            <HxButton size="sm" variant="ghost" @click="loadCronHistory" :loading="cronHistoryLoading">刷新</HxButton>
+          </div>
+        </template>
+        <div v-if="cronHistoryLoading" style="text-align: center; padding: 24px; color: var(--text-tertiary);">加载中...</div>
+        <div v-else-if="cronHistoryList.length === 0" style="text-align: center; padding: 24px; color: var(--text-tertiary);">暂无 Cron 运行记录</div>
+        <table v-else class="data-table" style="margin-top: 8px;">
+          <thead>
+            <tr>
+              <th>任务名</th>
+              <th>调度</th>
+              <th>上次运行</th>
+              <th>下次运行</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="h in cronHistoryList" :key="h.id">
+              <td class="cell-mono">{{ h.name }}</td>
+              <td><code>{{ h.schedule }}</code></td>
+              <td>{{ h.last_run ? formatDate(h.last_run) : '—' }}</td>
+              <td>{{ h.next_run ? formatDate(h.next_run) : '—' }}</td>
+              <td>
+                <HxBadge :variant="h.last_status === 'success' ? 'success' : h.last_status === 'error' ? 'error' : 'info'" size="sm">
+                  {{ h.last_status || 'pending' }}
+                </HxBadge>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </HxCard>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { hermesCronList, hermesCronCreate, hermesCronPause, hermesCronResume, hermesCronRemove, hermesCronRun, hermesCronUpdate } from '../api'
+import { hermesCronList, hermesCronCreate, hermesCronPause, hermesCronResume, hermesCronRemove, hermesCronRun, hermesCronUpdate, agentFetch, cronHistory as apiCronHistory, skillsUsageStats as apiSkillsUsageStats, type SkillUsageStat } from '../api'
 import { HxButton, HxInput, HxTextarea, HxCard, HxBadge, HxSpinner, HxEmpty, HxModal } from '../components/ui'
 import { useToast } from '../composables/useToast'
 
@@ -272,7 +344,7 @@ interface HistoryTask {
   trigger?: string
 }
 
-const activeTab = ref<'cron' | 'running' | 'history'>('cron')
+const activeTab = ref<'cron' | 'running' | 'history' | 'stats' | 'cron-history'>('cron')
 const showCreate = ref(false)
 function toggleCreate() { showCreate.value = !showCreate.value }
 const newTask = ref({ name: '', schedule: '', prompt: '', skills: '' })
@@ -290,9 +362,7 @@ const skillsSearch = ref('')
 
 async function fetchAvailableSkills() {
   try {
-    const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
-    const r = await fetch(`${agentUrl}/v1/agent/skills`)
+    const r = await agentFetch('/v1/agent/skills')
     const data = await r.json()
     availableSkills.value = (data.skills || []).map((s: any) => ({
       slug: s.slug,
@@ -350,8 +420,49 @@ function isEditSkillSelected(slug: string): boolean {
 
 // 从真实 Hermes cron API 加载任务
 const cronTasks = ref<CronTask[]>([])
+
+// ── Skills usage stats ──
+const skillsStats = ref<SkillUsageStat[]>([])
+const statsLoading = ref(false)
+
+async function loadSkillsStats() {
+  statsLoading.value = true
+  try {
+    const data = await apiSkillsUsageStats()
+    skillsStats.value = data.stats || []
+  } catch {
+    // ignore
+  } finally {
+    statsLoading.value = false
+  }
+}
 const runningTasks = computed(() => cronTasks.value.filter(t => t.status === 'active'))
 const historyTasks = ref<HistoryTask[]>(loadHistory())
+
+// ── Cron history from backend ──
+interface CronHistoryEntry {
+  id: string
+  name: string
+  schedule: string
+  last_run: string | null
+  next_run: string | null
+  last_status: string | null
+  last_output: string | null
+}
+const cronHistoryList = ref<CronHistoryEntry[]>([])
+const cronHistoryLoading = ref(false)
+
+async function loadCronHistory() {
+  cronHistoryLoading.value = true
+  try {
+    const data = await apiCronHistory()
+    cronHistoryList.value = data.history || []
+  } catch {
+    // ignore
+  } finally {
+    cronHistoryLoading.value = false
+  }
+}
 
 function loadHistory(): HistoryTask[] {
   try {

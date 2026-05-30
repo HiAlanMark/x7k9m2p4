@@ -252,6 +252,7 @@
         <NodePanel
           v-if="selectedNode"
           :node="selectedNode"
+          :run-node-data="selectedRun?.nodes?.[selectedNode.id]"
           @close="selectedNode = null"
           @update="onNodeUpdate"
           @delete="onNodeDelete"
@@ -316,8 +317,10 @@ import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
 
-import { useBlueprintStore } from '@/stores/blueprint'
+import { useBlueprintStore, type BlueprintRun } from '@/stores/blueprint'
 import { useToast } from '@/composables/useToast'
+import { useBlueprintRun } from '@/composables/useBlueprintRun'
+import { useToolTrace } from '@/composables/useToolTrace'
 import AgentNode from '@/components/blueprint/AgentNode.vue'
 import ConditionNode from '@/components/blueprint/ConditionNode.vue'
 import LoopNode from '@/components/blueprint/LoopNode.vue'
@@ -348,6 +351,15 @@ const { addNodes, addEdges, onConnect, project, getViewport, setViewport, getSel
 
 const nodes = ref<Node[]>([])
 const edges = ref<Edge[]>([])
+
+// ── Blueprint Run composable ───────────────
+const {
+  selectedRun, syncNodeRunStatuses,
+  startRunSSE, stopRunSSE,
+  onRunBlueprint, onCancelRun, fetchRunsForBlueprint,
+} = useBlueprintRun(nodes)
+const { toolTraceVisible, toggleToolTrace } = useToolTrace()
+
 onConnect((params) => {
   addEdges([params])
 })
@@ -356,6 +368,7 @@ onConnect((params) => {
 const mode = ref<'list' | 'editor'>('list')
 const currentBp = ref<typeof bpStore.blueprints[0] | null>(null)
 const selectedNode = ref<{ id: string; type: string; data: Record<string, any> } | null>(null)
+// selectedRun is now provided by useBlueprintRun composable
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
 // ── Multi-select batch operations ────────────
@@ -522,7 +535,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onGlobalClick)
-  stopRunPolling()
+  // stopRunSSE is auto-handled by useBlueprintRun composable's onBeforeUnmount
 })
 
 // ── Connection Validation (P0-3) ────────────
@@ -670,6 +683,7 @@ function openEditor(bp: typeof bpStore.blueprints[0]) {
   currentBp.value = bp
   mode.value = 'editor'
   selectedNode.value = null
+  selectedRun.value = null
 
   // Load nodes & edges from blueprint data with proper field mapping
   if (bp.nodes?.length) {
@@ -691,7 +705,7 @@ function openEditor(bp: typeof bpStore.blueprints[0]) {
     edges.value = []
   }
 
-  bpStore.fetchRuns(bp.id)
+  fetchRunsForBlueprint(bp.id)
 
   // Restore saved viewport position
   nextTick(() => restoreViewport(bp.id))
@@ -730,64 +744,8 @@ async function onDeleteBlueprint(id: string) {
   toast.success(t('common.success'))
 }
 
-async function onRunBlueprint(id: string) {
-  if (!id) return
-  const run = await bpStore.runBlueprint(id)
-  if (run) {
-    toast.success(t('blueprint.run.start'))
-    // Poll for run completion (simplified SSE alternative)
-    startRunPolling(id, run.id)
-  } else if (bpStore.error) {
-    toast.error(bpStore.error)
-  }
-}
-
-// ── Run Status Polling ───────────────────────
-let runPollInterval: ReturnType<typeof setInterval> | null = null
-
-function startRunPolling(bpId: string, runId: string) {
-  stopRunPolling()
-  runPollInterval = setInterval(async () => {
-    try {
-      const runResp = await fetch(`/v1/agent/runs/${runId}`)
-    if (!runResp.ok) {
-      stopRunPolling()
-      toast.error('Failed to fetch run status')
-      return
-    }
-    const run = await runResp.json()
-    // Update the run in the store
-    const idx = bpStore.runs.findIndex(r => r.id === runId)
-    if (idx >= 0) {
-      bpStore.runs[idx] = { ...bpStore.runs[idx], ...run }
-    } else {
-      bpStore.runs.unshift(run)
-    }
-    // Stop polling when run is terminal
-    if (['succeeded', 'failed', 'cancelled'].includes(run.status)) {
-      stopRunPolling()
-      if (run.status === 'succeeded') toast.success('Blueprint run succeeded')
-      else if (run.status === 'failed') toast.error('Blueprint run failed')
-    }
-    } catch (e) {
-      // Network error — stop polling silently
-      stopRunPolling()
-    }
-  }, 2000)
-}
-
-function stopRunPolling() {
-  if (runPollInterval) {
-    clearInterval(runPollInterval)
-    runPollInterval = null
-  }
-}
-
-async function onCancelRun(id: string) {
-  await bpStore.cancelRun(id)
-  stopRunPolling()
-  toast.success(t('blueprint.run.stop'))
-}
+// onRunBlueprint, syncNodeRunStatuses, startRunSSE, stopRunSSE, onCancelRun
+// are now provided by useBlueprintRun composable
 
 async function onExportBlueprint(id: string) {
   if (!id) return

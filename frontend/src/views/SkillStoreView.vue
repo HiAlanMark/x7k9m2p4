@@ -563,9 +563,7 @@ async function installSkill(skill: TwoXSkill) {
   installState[slug] = 'installing'
   installError[slug] = ''
   try {
-    const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
-    const r = await fetch(`${agentUrl}/v1/store/install`, {
+    const r = await api.agentFetch('/v1/store/install', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -596,9 +594,7 @@ async function installSkill(skill: TwoXSkill) {
 async function loadInstalled() {
   installedLoading.value = true
   try {
-    const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
-    const r = await fetch(`${agentUrl}/v1/agent/skills`)
+    const r = await api.agentFetch('/v1/agent/skills')
     const data = await r.json()
     installedSkills.value = (data.skills || []).sort((a: any, b: any) => {
       // 商店安装的排前面，然后按分类/名称排序
@@ -632,9 +628,7 @@ async function checkUpdates() {
 
 async function updateSkill(sk: InstalledSkill) {
   try {
-    const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
-    const r = await fetch(`${agentUrl}/v1/agent/install-skill`, {
+    const r = await api.agentFetch('/v1/agent/install-skill', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug: sk.slug, category: sk.category }),
@@ -663,9 +657,7 @@ async function confirmUninstall() {
   const sk = uninstallTarget.value
   if (!sk) return
   try {
-    const isDev = import.meta.env?.DEV ?? false
-    const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
-    const r = await fetch(`${agentUrl}/v1/agent/uninstall-skill`, {
+    const r = await api.agentFetch('/v1/agent/uninstall-skill', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug: sk.slug, category: sk.category }),

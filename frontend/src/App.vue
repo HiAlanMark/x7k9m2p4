@@ -2,6 +2,12 @@
   <!-- Splash Screen -->
   <SplashScreen v-if="showSplash" @done="showSplash = false" />
 
+  <!-- Auth Login Modal -->
+  <LoginModal ref="loginModalRef" @connected="onAuthConnected" />
+
+  <!-- Session Search Modal (Ctrl+K) -->
+  <SessionSearchModal />
+
   <div v-show="!showSplash" class="app">
     <!-- 窗口拖拽区域 (顶部 32px) -->
     <div class="window-drag-area"></div>
@@ -22,6 +28,14 @@
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
         </svg>
         <span>{{ t('app.rename') }}</span>
+      </div>
+      <div class="context-menu-item" @click="exportSession">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span>导出</span>
       </div>
       <div class="context-menu-item danger" @click="deleteFromMenu">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -106,10 +120,49 @@
           <span class="nav-label">{{ $t('nav.tasks') }}</span>
           <kbd class="nav-shortcut">6</kbd>
         </router-link>
+        <router-link to="/usage" class="nav-item" :class="{ active: $route.path === '/usage' }">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="8" width="4" height="13"/><rect x="17" y="4" width="4" height="17"/></svg>
+          </span>
+          <span class="nav-label">{{ $t('nav.usage') }}</span>
+          <kbd class="nav-shortcut">9</kbd>
+        </router-link>
+        <router-link to="/profiles" class="nav-item" :class="{ active: $route.path === '/profiles' }">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          <span class="nav-label">{{ $t('nav.profiles') }}</span>
+          <kbd class="nav-shortcut">7</kbd>
+        </router-link>
+        <router-link to="/channels" class="nav-item" :class="{ active: $route.path === '/channels' }">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.4"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.4"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/><circle cx="12" cy="12" r="2"/></svg>
+          </span>
+          <span class="nav-label">{{ $t('nav.channels') }}</span>
+          <kbd class="nav-shortcut">8</kbd>
+        </router-link>
+        <router-link to="/files" class="nav-item" :class="{ active: $route.path === '/files' }">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <span class="nav-label">{{ $t('nav.files') }}</span>
+        </router-link>
+        <router-link to="/group-chat" class="nav-item" :class="{ active: $route.path === '/group-chat' }">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <span class="nav-label">{{ $t('nav.groupChat') }}</span>
+        </router-link>
+        <router-link to="/coding-agents" class="nav-item" :class="{ active: $route.path === '/coding-agents' }">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </span>
+          <span class="nav-label">{{ $t('nav.codingAgents') }}</span>
+        </router-link>
         <router-link to="/settings" class="nav-item" :class="{ active: $route.path === '/settings' }">
           <span class="nav-icon"><IconSettings :size="18" /></span>
           <span class="nav-label">{{ $t('nav.settings') }}</span>
-          <kbd class="nav-shortcut">7</kbd>
+          <kbd class="nav-shortcut">9</kbd>
         </router-link>
       </nav>
 
@@ -204,7 +257,7 @@
           </div>
         </div>
 
-        <!-- Theme & Lang -->
+        <!-- Theme & Lang & Variant -->
         <div class="theme-row">
           <button class="theme-btn" @click="appStore.toggleTheme" :title="appStore.isDark ? $t('settings.light') : $t('settings.dark')">
             <IconSun v-if="appStore.isDark" :size="14" />
@@ -281,7 +334,11 @@ import SplashScreen from './components/SplashScreen.vue'
 import TitleBar from './components/TitleBar.vue'
 import VueBitsBg from './components/fx/VueBitsBg.vue'
 import { HxToast } from './components/ui'
+import LoginModal from './components/auth/LoginModal.vue'
+import SessionSearchModal from './components/SessionSearchModal.vue'
+import { getAuthToken, setAuthToken, hermesAuthStatus, hermesAuthAutoLogin, sessionExport as apiSessionExport } from './api'
 import HistoryView from './views/HistoryView.vue'
+import { useThemeVariant } from './composables/useThemeVariant'
 
 const router = useRouter()
 const gfwStore = useGfwStore()
@@ -290,6 +347,7 @@ const appStore = useAppStore()
 const blueprintStore = useBlueprintStore()
 const { t, locale } = useI18n()
 const { balance } = storeToRefs(gfwStore)
+const { themeVariant, toggleThemeVariant } = useThemeVariant()
 
 // Inbox pending badge for sidebar
 const inboxBadge = computed(() =>
@@ -312,12 +370,58 @@ async function fetchHistoryBadge() {
   }
 }
 
+// ── Auth check ──
+const loginModalRef = ref<InstanceType<typeof LoginModal> | null>(null)
+
+function onAuthConnected() {
+  // After successful login, retry fetching data
+  chatStore.fetchServerSessions()
+  fetchHistoryBadge()
+}
+
+async function checkAuth() {
+  // 1. Try auto-login first (localhost → Vite proxy → same machine → zero-config)
+  const autoResult = await hermesAuthAutoLogin()
+  if (autoResult.success && autoResult.token) {
+    setAuthToken(autoResult.token)
+    console.log('[App] Auto-login success')
+    return
+  }
+
+  // 2. Already have a stored token? Verify it still works
+  const storedToken = getAuthToken()
+  if (storedToken) {
+    try {
+      const status = await hermesAuthStatus()
+      if (status.has_token) {
+        const { agentJson } = await import('./api')
+        await agentJson('/v1/agent/health')
+        return // Stored token valid
+      }
+    } catch (e) {
+      // Stored token invalid — fall through
+    }
+  }
+
+  // 3. Server requires auth but we have no valid token — show manual login
+  try {
+    const status = await hermesAuthStatus()
+    if (status.has_token) {
+      loginModalRef.value?.show()
+    }
+    // If server has no token configured, no auth needed — proceed freely
+  } catch (e) {
+    console.warn('[App] Auth status check failed:', e)
+  }
+}
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('click', closeContextMenu)
   gfwStore.fetchBalance()
   gfwStore.fetchModels()
   appStore.checkConnection()
+  checkAuth()
   fetchHistoryBadge()
   historyPollTimer.value = setInterval(fetchHistoryBadge, 5000)
   chatStore.fetchServerSessions()
@@ -528,6 +632,25 @@ function deleteFromMenu() {
     chatStore.deleteSession(contextMenu.value.sessionId)
   }
   closeContextMenu()
+}
+
+async function exportSession() {
+  const sid = contextMenu.value.sessionId
+  if (!sid) return
+  try {
+    const blob = await apiSessionExport(sid, 'markdown')
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `session_${sid}.md`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    closeContextMenu()
+  } catch (e: any) {
+    alert('导出失败: ' + (e.message || String(e)))
+  }
 }
 </script>
 
@@ -1084,6 +1207,12 @@ function deleteFromMenu() {
   background: var(--glass-bg-hover);
   border-color: var(--border-light);
   color: var(--text-primary);
+}
+
+/* Variant toggle active indicator */
+.variant-btn.active {
+  border-color: var(--primary-border);
+  color: var(--accent);
 }
 
 /* ════════════════════════════════════════════════════════════

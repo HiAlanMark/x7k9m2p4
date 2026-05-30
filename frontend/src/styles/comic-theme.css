@@ -1,0 +1,171 @@
+/* ════════════════════════════════════════════════════════════
+   Comic Theme Variant — Comic Neue, heavy borders, playful style
+   Overrides glass theme with comic-book aesthetics while
+   preserving dark/light background colors from the base theme.
+   ════════════════════════════════════════════════════════════ */
+
+/* ───── Font import is handled in main.ts via @fontsource/comic-neue ───── */
+
+/* ───── Base body overrides ───── */
+.theme-comic body {
+  font-family: 'Comic Neue', cursive, var(--font-sans);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* ───── Message bubbles ───── */
+.theme-comic .msg-bubble {
+  border: 3px solid var(--text-primary) !important;
+  border-radius: 20px !important;
+}
+
+.theme-comic .user-bubble {
+  border-radius: 20px 20px 4px 20px !important;
+}
+
+.theme-comic .ai-card {
+  border: 3px solid var(--border-strong) !important;
+  border-radius: 20px !important;
+}
+
+/* ───── Buttons (HxButton & native) ───── */
+.theme-comic .hx-button,
+.theme-comic button.btn-primary,
+.theme-comic button.btn-secondary {
+  border: 3px solid !important;
+  border-radius: 12px !important;
+  transform: rotate(-0.5deg);
+  font-weight: 700 !important;
+  transition: transform 0.15s var(--ease-back) !important;
+}
+
+.theme-comic .hx-button:hover,
+.theme-comic button.btn-primary:hover,
+.theme-comic button.btn-secondary:hover {
+  transform: rotate(0.5deg) scale(1.03);
+}
+
+.theme-comic .hx-button:active,
+.theme-comic button.btn-primary:active,
+.theme-comic button.btn-secondary:active {
+  transform: rotate(-1deg) scale(0.97) !important;
+}
+
+/* ───── Inputs (HxInput & HxTextarea) ───── */
+.theme-comic .hx-input,
+.theme-comic .hx-textarea,
+.theme-comic input[type="text"],
+.theme-comic textarea {
+  border: 3px solid var(--border-strong) !important;
+  border-radius: 12px !important;
+  font-family: 'Comic Neue', cursive, var(--font-sans) !important;
+}
+
+.theme-comic .hx-input:focus,
+.theme-comic .hx-textarea:focus,
+.theme-comic input[type="text"]:focus,
+.theme-comic textarea:focus {
+  border-color: var(--primary-border) !important;
+  box-shadow: 0 0 0 3px var(--primary-light) !important;
+}
+
+/* ───── Cards ───── */
+.theme-comic .hx-card {
+  border: 3px solid var(--border-strong) !important;
+  border-radius: 16px !important;
+}
+
+/* ───── Sidebar nav items ───── */
+.theme-comic .nav-item {
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+}
+
+.theme-comic .nav-item.active {
+  border: 2px solid var(--primary-border) !important;
+}
+
+/* ───── Session items ───── */
+.theme-comic .session-item {
+  border-radius: 12px !important;
+}
+
+/* ───── Tool accordion items ───── */
+.theme-comic .tool-item {
+  border: 2px solid var(--border-light) !important;
+  border-radius: 12px !important;
+}
+
+.theme-comic .tool-header {
+  font-weight: 700 !important;
+}
+
+/* ───── Toggle / switch ───── */
+.theme-comic .hx-toggle {
+  border-radius: 100px !important;
+}
+
+/* ───── Badges ───── */
+.theme-comic .hx-badge {
+  border: 2px solid !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+}
+
+/* ───── Select dropdowns ───── */
+.theme-comic .hx-select,
+.theme-comic select {
+  border: 3px solid var(--border-strong) !important;
+  border-radius: 12px !important;
+}
+
+/* ───── Code blocks ───── */
+.theme-comic .code-window {
+  border: 3px solid var(--border-strong) !important;
+  border-radius: 12px !important;
+}
+
+/* ───── Status pills ───── */
+.theme-comic .status-pill {
+  border: 2px solid var(--border-light) !important;
+  border-radius: 100px !important;
+  font-weight: 700 !important;
+}
+
+/* ───── Input capsule in chat ───── */
+.theme-comic .input-capsule {
+  border: 3px solid var(--border-strong) !important;
+  border-radius: 16px !important;
+}
+
+/* ───── Sidebar footer theme button ───── */
+.theme-comic .theme-btn {
+  border: 3px solid var(--border-strong) !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+}
+
+/* ───── Variant toggle button ───── */
+.theme-comic .variant-btn {
+  border: 3px solid var(--border-strong) !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+}
+
+/* ───── Misc: headings get bolder ───── */
+.theme-comic h1,
+.theme-comic h2,
+.theme-comic h3,
+.theme-comic h4,
+.theme-comic h5,
+.theme-comic h6 {
+  font-weight: 700 !important;
+  font-family: 'Comic Neue', cursive, var(--font-sans);
+}
+
+/* ───── Tool trace toggle button ───── */
+.theme-comic .tool-trace-btn {
+  border: 3px solid var(--border-strong) !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+}

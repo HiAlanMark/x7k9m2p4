@@ -64,10 +64,7 @@ export const useAppStore = defineStore('app', () => {
     connectionError.value = ''
     
     try {
-      const isDev = import.meta.env?.DEV ?? false
-      const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
-      
-      const status = await getAgentStatus(agentUrl)
+      const status = await getAgentStatus()
       
       if (status) {
         connectionState.value = 'connected'

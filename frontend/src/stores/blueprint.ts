@@ -76,6 +76,12 @@ export interface Blueprint {
   version?: number
 }
 
+export interface BlueprintRunNodeData {
+  status?: string
+  output?: string
+  error?: string
+}
+
 export interface BlueprintRun {
   id: string
   blueprint_id: string
@@ -85,6 +91,7 @@ export interface BlueprintRun {
   finished_at?: string
   node_statuses?: Record<string, string>
   error?: string
+  nodes?: Record<string, BlueprintRunNodeData>
   node_runs?: Array<{
     node_id: string
     status: string
@@ -100,6 +107,7 @@ export interface InboxItem {
   content: string
   blueprint_id?: string
   run_id?: string
+  node_id?: string
   status: 'pending' | 'approved' | 'rejected' | 'read'
   created_at: string
 }
