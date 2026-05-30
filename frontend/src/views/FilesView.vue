@@ -248,7 +248,7 @@ const { t } = useI18n()
 const toast = useToast()
 
 // State
-const currentPath = ref('~/.hermes')
+const currentPath = ref('bundled/hermes-agent')
 const entries = ref<FileEntry[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -302,13 +302,27 @@ const breadcrumbs = computed(() => {
   
   const segs: Array<{ name: string; path: string }> = []
   
-  // Handle Project sub-paths (e.g. ./src)
-  if (currentPath.value.startsWith('./')) {
+  // Handle Project sub-paths (e.g. bundled/hermes-agent)
+  // Also handles absolute paths under project root like /root/x7k9m2p4/bundled/...
+  const projRoot = '/root/x7k9m2p4'
+  if (!currentPath.value.startsWith('/')) {
+    // Relative path from Project Root
     segs.push({ name: 'Project', path: '.' })
-    const parts = currentPath.value.slice(2).split('/').filter(Boolean)
+    const parts = currentPath.value.split('/').filter(Boolean)
     let buildPath = '.'
     for (const part of parts) {
-      buildPath = `${buildPath}/${part}`
+      buildPath = buildPath === '.' ? part : `${buildPath}/${part}`
+      segs.push({ name: part, path: buildPath })
+    }
+    return segs
+  } else if (currentPath.value.startsWith(projRoot)) {
+    // Absolute path under Project Root
+    segs.push({ name: 'Project', path: '.' })
+    const rel = currentPath.value.slice(projRoot.length + 1)
+    const parts = rel.split('/').filter(Boolean)
+    let buildPath = '.'
+    for (const part of parts) {
+      buildPath = buildPath === '.' ? part : `${buildPath}/${part}`
       segs.push({ name: part, path: buildPath })
     }
     return segs
