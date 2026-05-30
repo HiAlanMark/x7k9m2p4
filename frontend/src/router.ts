@@ -9,13 +9,14 @@ const router = createRouter({
     { path: '/history', component: () => import('./views/HistoryView.vue') },
     { path: '/skills', component: () => import('./views/SkillStoreView.vue') },
     { path: '/tasks', component: () => import('./views/TasksView.vue') },
-    { path: '/usage', component: () => import('./views/UsageView.vue') },
-    { path: '/settings', component: () => import('./views/SettingsView.vue') },
-    { path: '/profiles', component: () => import('./views/ProfilesView.vue') },
-    { path: '/channels', component: () => import('./views/ChannelsView.vue') },
     { path: '/files', component: () => import('./views/FilesView.vue') },
     { path: '/group-chat', component: () => import('./views/GroupChatView.vue') },
-    { path: '/coding-agents', component: () => import('./views/CodingAgentsView.vue') },
+    // Settings 包含了 Profiles, Channels, Usage, CodingAgents
+    { path: '/settings', component: () => import('./views/SettingsView.vue') },
+    { path: '/profiles', redirect: '/settings' },
+    { path: '/channels', redirect: '/settings' },
+    { path: '/usage', redirect: '/settings' },
+    { path: '/coding-agents', redirect: '/settings' },
   ],
 })
 

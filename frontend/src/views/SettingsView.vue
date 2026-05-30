@@ -1085,6 +1085,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import { useGfwStore } from '../stores/gfw'
 import { useChatStore } from '../stores/chat'
 import { useAppStore } from '../stores/app'
@@ -1167,7 +1168,28 @@ const showCreateKey = ref(false)
 const newKeyName = ref('')
 const newKeyLimit = ref(50)
 const userInfo = ref<{ group_name: string } | null>(null)
-const activeSection = ref('model')
+
+// Sync activeSection with URL params for deep linking
+const route = useRoute()
+const initialSection = (route.query.section as string) || 'model'
+const activeSection = ref(initialSection)
+
+// Watch URL changes to update activeSection
+watch(() => route.query.section, (newSection) => {
+  if (newSection && navItems.some(i => i.key === newSection)) {
+    activeSection.value = newSection
+  }
+})
+
+// Update URL when activeSection changes
+watch(activeSection, (newSection) => {
+  // 不阻塞 UI 的更新 URL
+  nextTick(() => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('section', newSection)
+    window.history.replaceState({}, '', url.toString())
+  })
+})
 
 // HxSelect 选项定义
 const backendOptions = [
