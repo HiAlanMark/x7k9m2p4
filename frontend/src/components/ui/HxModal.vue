@@ -65,6 +65,11 @@ const emit = defineEmits<{
 const sizeClass = computed(() => `hixns-modal--${props.size}`)
 const modalStyle = computed(() => props.width ? { '--modal-width': props.width } : {})
 
+function onClose() {
+  emit('update:modelValue', false)
+  emit('close')
+}
+
 const iconStyle = computed(() => {
   const s: Record<string, string> = {}
   if (props.iconColor) s.color = props.iconColor
