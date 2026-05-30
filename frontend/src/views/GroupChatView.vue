@@ -67,7 +67,7 @@
             <span class="gc-agent-color" :style="{ background: a.color }"></span>
             <div class="gc-agent-info">
               <span class="gc-agent-name">{{ a.name }}</span>
-              <span class="gc-agent-model">{{ a.model }}</span>
+              <span class="gc-agent-model">{{ a.model }}<template v-if="a.provider"> · {{ a.provider }}</template></span>
             </div>
             <button class="gc-agent-remove" @click="onRemoveAgent(a.id)" :title="t('groupChat.removeAgent')">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -134,11 +134,12 @@
             </div>
             <HxInput v-model="ad.name" :placeholder="t('groupChat.agentName')" style="flex:1" />
             <HxInput v-model="ad.model" :placeholder="t('groupChat.agentModel')" style="flex:1" />
+            <HxInput v-model="ad.provider" placeholder="Provider (optional)" style="width:90px" />
             <button class="gc-agent-def-remove" @click="newAgents.splice(i, 1)" v-if="newAgents.length > 1">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
-          <button class="gc-add-agent-btn" @click="newAgents.push({ name: '', model: '', system_prompt: '', color: AGENT_COLORS[newAgents.length % AGENT_COLORS.length] })">+ {{ t('groupChat.addAgent') }}</button>
+          <button class="gc-add-agent-btn" @click="newAgents.push({ name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[newAgents.length % AGENT_COLORS.length] })">+ {{ t('groupChat.addAgent') }}</button>
         </div>
       </div>
       <template #footer>
@@ -157,6 +158,10 @@
         <label class="gc-field">
           <span class="gc-field-label">{{ t('groupChat.agentModel') }}</span>
           <HxInput v-model="addAgentModel" />
+        </label>
+        <label class="gc-field">
+          <span class="gc-field-label">Provider</span>
+          <HxInput v-model="addAgentProvider" placeholder="e.g. custom, openai (optional)" />
         </label>
         <label class="gc-field">
           <span class="gc-field-label">{{ t('groupChat.systemPrompt') }}</span>
@@ -209,13 +214,14 @@ const showDeleteConfirm = ref(false)
 // Create group form
 const newGroupName = ref('')
 const newAgents = reactive([
-  { name: '', model: '', system_prompt: '', color: AGENT_COLORS[0] },
-  { name: '', model: '', system_prompt: '', color: AGENT_COLORS[1] },
+  { name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[0] },
+  { name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[1] },
 ])
 
 // Add agent form
 const addAgentName = ref('')
 const addAgentModel = ref('')
+const addAgentProvider = ref('')
 const addAgentPrompt = ref('')
 const addAgentColor = ref(AGENT_COLORS[2])
 
@@ -362,8 +368,8 @@ async function onCreateGroup() {
     showCreateModal.value = false
     newGroupName.value = ''
     newAgents.splice(0, newAgents.length, ...[
-      { name: '', model: '', system_prompt: '', color: AGENT_COLORS[0] },
-      { name: '', model: '', system_prompt: '', color: AGENT_COLORS[1] },
+      { name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[0] },
+      { name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[1] },
     ])
     toast.success(t('groupChat.created'))
   } else {
@@ -376,12 +382,14 @@ async function onAddAgent() {
   await store.addAgent({
     name: addAgentName.value.trim(),
     model: addAgentModel.value.trim() || 'default',
+    provider: addAgentProvider.value.trim(),
     system_prompt: addAgentPrompt.value.trim(),
     color: addAgentColor.value,
   })
   showAddAgentModal.value = false
   addAgentName.value = ''
   addAgentModel.value = ''
+  addAgentProvider.value = ''
   addAgentPrompt.value = ''
   addAgentColor.value = AGENT_COLORS[(store.agents.length) % AGENT_COLORS.length]
   toast.success(t('groupChat.agentAdded'))

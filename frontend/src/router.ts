@@ -16,7 +16,6 @@ const router = createRouter({
     { path: '/profiles', redirect: '/settings' },
     { path: '/channels', redirect: '/settings' },
     { path: '/usage', redirect: '/settings' },
-    { path: '/coding-agents', redirect: '/settings' },
   ],
 })
 

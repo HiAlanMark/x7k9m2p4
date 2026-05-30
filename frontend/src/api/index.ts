@@ -765,47 +765,6 @@ export async function generateTitle(
 // 浏览器模式专用：直接调用 gfw.net 进行对话
 // ============================================================
 
-export function isBrowserMode() {
-  return true
-}
-
-export async function browserChat(
-  content: string,
-  model: string,
-  onChunk: (text: string) => void,
-  onDone: (fullText: string, usage: Record<string, number>) => void,
-  onError: (err: string) => void,
-  customConfig?: { baseUrl: string; apiKey: string; model: string; blueprint_run_id?: string },
-  onToolCall?: (tool: string, args: Record<string, unknown>) => void,
-  onToolResult?: (tool: string, result: string, duration: number) => void,
-  history?: Array<{ role: string; content: string }>,
-  onStatus?: (message: string, iteration: number, maxIterations: number) => void,
-  onApproval?: (id: string, tool: string, command: string, reason: string) => void,
-  sessionId?: string,
-  onSessionId?: (sid: string) => void,
-) {
-  // 优先尝试 Agent Server（同源或本地端口）
-  const agentUrl = isDev ? '/proxy/agent' : ''  // Wails 模式下走 AssetServer Handler（同源）
-  const agentAvailable = await checkAgentHealth(agentUrl)
-
-  if (agentAvailable) {
-    return agentChat(content, model, onChunk, onDone, onError, customConfig, onToolCall, onToolResult, agentUrl, history, onStatus, onApproval, sessionId, onSessionId)
-  }
-
-  // Fallback: 直接调 LLM API（纯聊天，无工具能力）
-  return directChat(content, model, onChunk, onDone, onError, customConfig, history)
-}
-
-async function checkAgentHealth(agentUrl: string): Promise<boolean> {
-  try {
-    const r = await fetch(`${agentUrl}/v1/agent/health`, { signal: AbortSignal.timeout(1500) })
-    return r.ok
-  } catch (e) {
-    console.warn('[API] Agent health check failed:', e)
-    return false
-  }
-}
-
 export interface AgentStatus {
   status: string
   uptime: number
@@ -1118,6 +1077,7 @@ export interface GroupChatDetailResult {
       id: string
       name: string
       model: string
+      provider: string
       system_prompt: string
       color: string
       created_at: string
@@ -1144,6 +1104,7 @@ export interface GroupChatCreateResult {
       id: string
       name: string
       model: string
+      provider: string
       system_prompt: string
       color: string
       created_at: string
@@ -1173,6 +1134,7 @@ export async function groupChatsList(): Promise<GroupChatListResult> {
 export async function groupChatsCreate(name: string, agents: Array<{
   name: string
   model: string
+  provider: string
   system_prompt: string
   color?: string
 }>): Promise<GroupChatCreateResult> {
@@ -1189,8 +1151,8 @@ export async function groupChatDelete(id: string): Promise<{ deleted: string }> 
 
 export async function groupChatAddAgent(
   groupId: string,
-  agent: { name: string; model: string; system_prompt: string; color?: string },
-): Promise<{ agent: { id: string; name: string; model: string; system_prompt: string; color: string; created_at: string } }> {
+  agent: { name: string; model: string; provider: string; system_prompt: string; color?: string },
+): Promise<{ agent: { id: string; name: string; model: string; provider: string; system_prompt: string; color: string; created_at: string } }> {
   return agentPost(`/v1/agent/group-chats/${groupId}/agents`, agent as unknown as Record<string, unknown>)
 }
 
@@ -1219,68 +1181,6 @@ export async function groupChatSendMessage(
     method: 'POST',
     body: JSON.stringify({ content, mentions }),
   })
-}
-
-// ═══════════════════════════════════════════════════════════
-//  Coding Agents API
-// ═══════════════════════════════════════════════════════════
-
-export interface CodingAgent {
-  id: string
-  name: string
-  installed: boolean
-  version: string | null
-  running: boolean
-  config: Record<string, unknown>
-}
-
-export interface CodingAgentsListResult {
-  agents: CodingAgent[]
-}
-
-export interface CodingAgentLaunchResult {
-  pid: number
-  started_at: string
-}
-
-export interface CodingAgentLogsResult {
-  logs: string[]
-  lines: number
-}
-
-export interface CodingAgentConfigResult {
-  config: Record<string, unknown>
-}
-
-export async function codingAgentsList(): Promise<CodingAgentsListResult> {
-  return agentJson('/v1/agent/coding-agents')
-}
-
-export async function codingAgentLaunch(
-  id: string,
-  opts?: { workdir?: string; prompt?: string; model?: string },
-): Promise<CodingAgentLaunchResult> {
-  return agentPost(`/v1/agent/coding-agents/${id}/launch`, {
-    workdir: opts?.workdir,
-    prompt: opts?.prompt,
-    model: opts?.model,
-  })
-}
-
-export async function codingAgentStop(id: string): Promise<{ stopped: boolean }> {
-  return agentPost(`/v1/agent/coding-agents/${id}/stop`, {})
-}
-
-export async function codingAgentLogs(id: string): Promise<CodingAgentLogsResult> {
-  return agentJson(`/v1/agent/coding-agents/${id}/logs`)
-}
-
-export async function codingAgentGetConfig(id: string): Promise<CodingAgentConfigResult> {
-  return agentJson(`/v1/agent/coding-agents/${id}/config`)
-}
-
-export async function codingAgentSetConfig(id: string, config: Record<string, unknown>): Promise<{ success: boolean }> {
-  return agentPost(`/v1/agent/coding-agents/${id}/config`, { config })
 }
 
 // ══════════════════════════════════════════════════════════════════

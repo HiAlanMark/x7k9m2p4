@@ -286,6 +286,7 @@ export interface GroupAgent {
   groupId: string
   name: string
   model: string
+  provider: string
   systemPrompt: string
   color: string
   createdAt: string

@@ -1,7 +1,7 @@
 import { ref, onBeforeUnmount } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useAppStore } from '@/stores/app'
-import { isBrowserMode, browserChat, hermesCancel, generateTitle } from '@/api'
+import { hermesCancel, generateTitle } from '@/api'
 import * as api from '@/api'
 import type { ToolCallInfo } from '@/types'
 
@@ -66,8 +66,8 @@ export function useChatStream() {
   ) {
     const config = chatStore.getActiveConfig()
 
-    // If agent is not running in non-browser mode, start it
-    if (!isBrowserMode() && !appStore.agentRunning) {
+    // If agent is not running, start it
+    if (!appStore.agentRunning) {
       isConnecting.value = true
       try {
         await api.agentStart('')
@@ -84,65 +84,13 @@ export function useChatStream() {
     chatStore.startAssistantResponse()
     startStreamTimer()
 
-    if (isBrowserMode()) {
-      await browserChat(
-        content,
-        selectedModel,
-        // onChunk
-        (chunk) => chatStore.appendToResponse(chunk),
-        // onDone
-        (fullText, usage) => {
-          agentStatus.value = ''
-          agentIteration.value = 0
-          stopStreamTimer()
-          chatStore.finishResponse(usage, config.model, undefined, fullText)
-          options?.onDone?.(fullText, usage, config)
-          // Auto-generate title on first message
-          if (options?.onAutoTitle) {
-            options.onAutoTitle(content, fullText, config)
-          }
-        },
-        // onError
-        (err) => {
-          agentStatus.value = ''
-          stopStreamTimer()
-          chatStore.finishResponse()
-          chatStore.addSystemMessage(`Error: ${err}`)
-          options?.onError?.(err)
-        },
-        config,
-        // onToolCall
-        (tool, args) => { chatStore.addToolCall(tool, args) },
-        // onToolResult
-        (tool, result, duration) => {
-          const idx = chatStore.currentToolCalls.findIndex(tc => tc.tool === tool && tc.status === 'running')
-          if (idx >= 0) chatStore.completeToolCall(idx, result.substring(0, 500), 'completed')
-        },
-        options?.history || [],
-        // onStatus
-        (message, iteration, maxIterations) => {
-          agentStatus.value = message
-          agentIteration.value = iteration
-          agentMaxIter.value = maxIterations
-        },
-        // onApproval
-        (id, tool, command, reason) => {
-          pendingApproval.value = { id, tool, command, reason }
-        },
-        // sessionId
-        chatStore.getHermesSessionId(),
-        // onSessionId
-        (sid) => { chatStore.setHermesSessionId(sid) },
-      )
-    } else {
-      try {
-        await api.agentSendMessage(content, selectedModel)
-      } catch (e) {
-        console.warn('[useChatStream] agentSendMessage failed:', e)
-        stopStreamTimer()
-        chatStore.finishResponse()
-        options?.onError?.(String(e))
-      }
+    try {
+      await api.agentSendMessage(content, selectedModel)
+    } catch (e) {
+      console.warn('[useChatStream] agentSendMessage failed:', e)
+      stopStreamTimer()
+      chatStore.finishResponse()
+      options?.onError?.(String(e))
     }
   }
 

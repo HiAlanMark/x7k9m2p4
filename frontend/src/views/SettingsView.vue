@@ -1038,12 +1038,6 @@
           <h2 class="section-title">频道配置</h2>
           <ChannelsView />
         </div>
-
-        <!-- Coding Agents -->
-        <div v-if="activeSection === 'coding-agents'" class="content-section embedded-view-wrap">
-          <h2 class="section-title">编程代理</h2>
-          <CodingAgentsView />
-        </div>
       </div>
       <!-- GFW Create Key Modal -->
       <HxModal v-model="showGfwCreateKey" :icon="'key'" :title="t('settings.createApiKey')" width="480px">
@@ -1246,7 +1240,6 @@ const navItems = [
   { key: 'usage', label: '用量', keywords: 'usage 统计 消耗 调用次数 token 图表 模型 session', icon: '' },
   { key: 'profiles', label: '配置', keywords: 'profile 用户档案 切换 导出 导入 运行状态', icon: '' },
   { key: 'channels', label: '频道', keywords: 'channel 渠道 连接 telegram webhook', icon: '' },
-  { key: 'coding-agents', label: '编程代理', keywords: 'coding agent claude codex opencode', icon: '' },
 ]
 const filteredNavItems = computed(() => {
   if (!searchQuery.value.trim()) return navItems
@@ -4530,8 +4523,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 /* Hide embedded views' own headers since SettingsView already provides section-title */
 .embedded-view-wrap :deep(.profiles-header),
-.embedded-view-wrap :deep(.channels-header),
-.embedded-view-wrap :deep(.ca-header) {
+.embedded-view-wrap :deep(.channels-header) {
   display: none !important;
 }
 /* Normalize cards inside embedded views to match settings card spacing */

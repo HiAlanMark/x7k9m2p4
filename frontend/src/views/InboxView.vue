@@ -87,6 +87,21 @@ async function fetchInbox() {
   try {
     const data = await agentJson('/v1/agent/inbox') as any
     const newItems: InboxItem[] = Array.isArray(data) ? data : (data?.items || data?.data || [])
+    // Backfill missing type/context for older items
+    for (const item of newItems) {
+      if (!item.type) {
+        const c = (item.content || '').toLowerCase()
+        const t = (item.title || '').toLowerCase()
+        if (c.includes('approve') || c.includes('批准') || t.includes('approve') || t.includes('批准')) {
+          item.type = 'approval'
+        } else if (c.includes('deploy') || c.includes('部署') || c.includes('完成') || t.includes('deploy')) {
+          item.type = 'notification'
+        } else {
+          item.type = 'approval'
+        }
+      }
+      if (!item.context) item.context = {}
+    }
     // Mark new items for spring animation
     const prevIds = new Set(items.value.map(i => i.id))
     for (const item of newItems) {

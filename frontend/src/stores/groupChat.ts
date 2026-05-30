@@ -28,6 +28,7 @@ function mapAgent(a: any): GroupAgent {
     groupId: a.group_id ?? '',
     name: a.name,
     model: a.model,
+    provider: a.provider ?? '',
     systemPrompt: a.system_prompt,
     color: a.color,
     createdAt: a.created_at,
@@ -85,7 +86,7 @@ export const useGroupChatStore = defineStore('groupChat', () => {
 
   async function createGroup(
     name: string,
-    agentDefs: Array<{ name: string; model: string; system_prompt: string; color?: string }>,
+    agentDefs: Array<{ name: string; model: string; provider: string; system_prompt: string; color?: string }>,
   ) {
     loading.value = true
     error.value = null
@@ -157,7 +158,7 @@ export const useGroupChatStore = defineStore('groupChat', () => {
 
   async function addAgent(
     groupId: string,
-    agent: { name: string; model: string; system_prompt: string; color?: string },
+    agent: { name: string; model: string; provider: string; system_prompt: string; color?: string },
   ) {
     try {
       const res = await groupChatAddAgent(groupId, agent)
