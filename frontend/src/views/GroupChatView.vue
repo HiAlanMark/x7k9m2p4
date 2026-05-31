@@ -198,6 +198,7 @@ import { useGroupChatStore } from '@/stores/groupChat'
 import { AGENT_COLORS } from '@/types'
 import { HxButton, HxInput, HxTextarea, HxModal, HxEmpty } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
+import { marked } from 'marked'
 
 const { t } = useI18n()
 const store = useGroupChatStore()
@@ -248,15 +249,54 @@ function formatTime(ts: string): string {
 }
 
 function renderContent(content: string): string {
-  // Simple rendering: escape HTML, convert @mentions to colored spans
-  const escaped = content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  return escaped.replace(/@(\w+)/g, (_, name) => {
-    const agent = store.agents.find(a => a.name === name)
+  // Use marked for Markdown rendering
+  // First, render mentions so they don't get escaped
+  // We use a placeholder to protect them from markdown parsing if needed, 
+  // but simple @Name usually survives markdown.
+  
+  // Escape HTML for safety? Marked does this usually, but let's be safe.
+  // Actually, we want to render the markdown.
+  
+  // Handle mentions: convert @Name to HTML span before markdown parsing?
+  // Or after? If after, we might parse <span> as markdown?
+  // Better: Convert @Name to HTML, then parse.
+  
+  // But wait, if content is: "**@Name** is here", we want bold name?
+  // Let's just parse markdown first.
+  
+  const rendered = marked.parse(content, { async: false }) as string
+  
+  // Now handle mentions in the rendered HTML?
+  // That's risky if markdown generated <span>s.
+  
+  // Alternative: Just parse markdown. If the user types @Name, it's usually plain text.
+  // Let's stick to a simpler approach:
+  // 1. Replace @Name with a unique placeholder
+  // 2. Parse Markdown
+  // 3. Replace placeholder with actual HTML
+  
+  const agents = store.agents
+  const mentions: { name: string, color: string }[] = []
+  
+  let processedContent = content.replace(/@(\w+)/g, (match, name) => {
+    const agent = agents.find(a => a.name.toLowerCase() === name.toLowerCase())
     if (agent) {
-      return `<span style="color:${agent.color};font-weight:600">@${name}</span>`
+      const placeholder = `MENTION_${mentions.length}_PLACEHOLDER`
+      mentions.push({ name: agent.name, color: agent.color })
+      return placeholder
     }
-    return `@${name}`
+    return match
   })
+  
+  let html = marked.parse(processedContent, { async: false }) as string
+  
+  mentions.forEach((m, i) => {
+    const placeholder = `MENTION_${i}_PLACEHOLDER`
+    const span = `<span style="color:${m.color};font-weight:600">@${m.name}</span>`
+    html = html.split(placeholder).join(span)
+  })
+  
+  return html
 }
 
 async function selectGroup(id: string) {
