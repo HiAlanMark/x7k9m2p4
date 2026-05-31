@@ -149,19 +149,33 @@
     </HxModal>
 
     <!-- Add Agent Modal -->
-    <HxModal v-model:visible="showAddAgentModal" :title="t('groupChat.addAgent')" size="sm">
+    <HxModal v-model:visible="showAddAgentModal" :title="t('groupChat.addAgent')" size="md">
       <div class="gc-modal-body">
+        <div class="gc-role-section">
+          <h4 class="gc-section-title">选择角色模板:</h4>
+          <div class="gc-role-grid">
+            <div 
+              v-for="role in AGENT_ROLES" 
+              :key="role.id" 
+              class="gc-role-card"
+              :class="{ active: addAgentName === role.name }"
+              @click="selectRoleForAdd(role)"
+            >
+              <div class="gc-role-icon">{{ role.icon }}</div>
+              <div class="gc-role-name">{{ role.name }}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="gc-field-separator">自定义配置:</div>
+
         <label class="gc-field">
           <span class="gc-field-label">{{ t('groupChat.agentName') }}</span>
           <HxInput v-model="addAgentName" />
         </label>
         <label class="gc-field">
           <span class="gc-field-label">{{ t('groupChat.agentModel') }}</span>
-          <HxInput v-model="addAgentModel" />
-        </label>
-        <label class="gc-field">
-          <span class="gc-field-label">Provider</span>
-          <HxInput v-model="addAgentProvider" placeholder="e.g. custom, openai (optional)" />
+          <HxInput v-model="addAgentModel" placeholder="留空则使用默认模型" />
         </label>
         <label class="gc-field">
           <span class="gc-field-label">{{ t('groupChat.systemPrompt') }}</span>
@@ -199,6 +213,7 @@ import { AGENT_COLORS } from '@/types'
 import { HxButton, HxInput, HxTextarea, HxModal, HxEmpty } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { marked } from 'marked'
+import { AGENT_ROLES, type AgentRole } from '@/data/agent-roles'
 
 const { t } = useI18n()
 const store = useGroupChatStore()
@@ -417,6 +432,13 @@ async function onCreateGroup() {
   }
 }
 
+function selectRoleForAdd(role: AgentRole) {
+  addAgentName.value = role.name
+  addAgentPrompt.value = role.systemPrompt
+  addAgentColor.value = role.color
+  addAgentModel.value = '' // Use default model
+}
+
 async function onAddAgent() {
   if (!store.activeGroupId || !addAgentName.value.trim()) return
   await store.addAgent({
@@ -625,7 +647,70 @@ onMounted(() => {
   border-radius: 12px 12px 4px 12px;
 }
 
-/* Agent Panel */
+/* ─── Role Picker ─── */
+.gc-role-section {
+  margin-bottom: 16px;
+}
+.gc-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 8px 0;
+}
+.gc-role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+}
+.gc-role-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--border-base);
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+.gc-role-card:hover {
+  background: var(--glass-hover);
+  border-color: var(--accent);
+}
+.gc-role-card.active {
+  border-color: var(--accent);
+  background: var(--accent-alpha);
+}
+.gc-role-icon {
+  font-size: 24px;
+}
+.gc-role-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: center;
+}
+.gc-field-separator {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: 12px 0;
+  position: relative;
+}
+.gc-field-separator::before,
+.gc-field-separator::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 30%;
+  height: 1px;
+  background: var(--border-base);
+}
+.gc-field-separator::before { left: 0; }
+.gc-field-separator::after { right: 0; }
+
+/* ─── Agent Panel ─── */
 .gc-agent-panel {
   border-top: 1px solid var(--border-base, rgba(255,255,255,.08));
   padding: 12px 16px;
