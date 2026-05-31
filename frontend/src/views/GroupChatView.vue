@@ -30,6 +30,9 @@
         <div class="gc-header">
           <span class="gc-header-name">{{ store.activeGroup.name }}</span>
           <div class="gc-header-actions">
+            <button class="gc-icon-btn" @click="showTaskBoard = !showTaskBoard" :title="t('groupChat.taskBoard')" :class="{ active: showTaskBoard }">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M3 9h18"/></svg>
+            </button>
             <button class="gc-icon-btn" @click="showAgentPanel = !showAgentPanel" :title="t('groupChat.manageAgents')">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </button>
@@ -91,10 +94,21 @@
             </div>
           </div>
           <div class="gc-input-row">
+            <div class="gc-input-controls">
+              <button 
+                class="gc-mode-toggle" 
+                :class="{ active: actionMode }" 
+                @click="actionMode = !actionMode"
+                :title="actionMode ? 'Action Mode: Agents will EXECUTE tasks' : 'Chat Mode: Agents will DISCUSS'"
+              >
+                <span class="toggle-icon">{{ actionMode ? '🔧' : '💬' }}</span>
+                <span class="toggle-text">{{ actionMode ? '执行模式' : '聊天模式' }}</span>
+              </button>
+            </div>
             <HxTextarea
               ref="inputRef"
               v-model="inputText"
-              :placeholder="t('groupChat.typePlaceholder')"
+              :placeholder="actionMode ? '输入任务指令，Agent 将直接执行...' : t('groupChat.typePlaceholder') + ' (Use @Name to mention)'"
               autoResize
               :maxHeight="120"
               inline
@@ -107,6 +121,25 @@
           </div>
         </div>
       </template>
+      
+      <!-- Task Board Panel (Only when activeGroup exists) -->
+      <template v-if="store.activeGroup">
+        <div v-if="showTaskBoard" class="gc-task-board">
+          <div class="gc-task-header">
+            <span>📋 任务看板</span>
+            <button class="gc-icon-btn" @click="showTaskBoard = false">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="gc-task-list">
+            <div class="gc-task-empty">
+              <p>暂无自动提取的任务。</p>
+              <p class="gc-task-hint">💡 开启"执行模式"并 @分配任务 后，Agent 的工作将在这里显示。</p>
+            </div>
+          </div>
+        </div>
+      </template>
+      
       <div v-else class="gc-empty">
         <HxEmpty :description="t('groupChat.selectOrCreate')" />
       </div>
@@ -119,6 +152,22 @@
           <span class="gc-field-label">{{ t('groupChat.groupName') }}</span>
           <HxInput v-model="newGroupName" :placeholder="t('groupChat.groupNamePlaceholder')" />
         </label>
+        
+        <div class="gc-presets-section">
+          <span class="gc-section-title">快速组队 (Presets):</span>
+          <div class="gc-preset-grid">
+            <button 
+              v-for="preset in SQUAD_PRESETS" 
+              :key="preset.id" 
+              class="gc-preset-btn"
+              @click="applySquadPreset(preset)"
+            >
+              <span class="preset-icon">{{ preset.icon }}</span>
+              <span class="preset-name">{{ preset.name }}</span>
+            </button>
+          </div>
+        </div>
+
         <div class="gc-field">
           <span class="gc-field-label">{{ t('groupChat.agents') }}</span>
           
@@ -231,16 +280,17 @@ import python from 'highlight.js/lib/languages/python'
 import javascript from 'highlight.js/lib/languages/javascript'
 import bash from 'highlight.js/lib/languages/bash'
 import { AGENT_ROLES, type AgentRole } from '@/data/agent-roles'
+import { SQUAD_PRESETS } from '@/data/squad-presets'
 
-const { t } = useI18n()
-const store = useGroupChatStore()
-const toast = useToast()
-
-// Configure Highlight.js
+// Register languages
 hljs.registerLanguage('typescript', typescript)
 hljs.registerLanguage('python', python)
 hljs.registerLanguage('javascript', javascript)
 hljs.registerLanguage('bash', bash)
+
+const { t } = useI18n()
+const store = useGroupChatStore()
+const toast = useToast()
 
 // Configure Marked with Highlight.js
 marked.setOptions({
@@ -259,6 +309,10 @@ const showCreateModal = ref(false)
 const showAddAgentModal = ref(false)
 const showAgentPanel = ref(false)
 const showDeleteConfirm = ref(false)
+const showTaskBoard = ref(false)
+
+// Action Mode
+const actionMode = ref(false)
 
 // Create group form
 const newGroupName = ref('')
@@ -361,8 +415,14 @@ function scrollBottom() {
 }
 
 async function onSend() {
-  const text = inputText.value.trim()
+  let text = inputText.value.trim()
   if (!text || store.sending) return
+
+  // Inject Action Mode Prompt
+  if (actionMode.value) {
+    text = `⚠️ [ACTION MODE ENABLED]: ${text}\n\nInstructions for the Agent receiving this:\n- You are in execution mode. Do NOT just chat about the task.\n- You MUST use your available tools (write_file, terminal, etc.) to complete the task immediately.\n- If you are a Developer, write the code to files.\n- If you are a PM, create a detailed task list using tools if available, or just output the plan.\n- Output the result directly.`
+  }
+
   // Parse @mentions
   const mentionRegex = /@(\w+)/g
   const mentionedIds: string[] = []
@@ -371,6 +431,7 @@ async function onSend() {
     const agent = store.agents.find(a => a.name === match[1])
     if (agent) mentionedIds.push(agent.id)
   }
+  
   inputText.value = ''
   mentionHint.visible = false
   await store.sendMessage(text, mentionedIds.length > 0 ? mentionedIds : undefined)
@@ -448,6 +509,32 @@ function insertMention(agent: any) {
   textarea.focus()
 }
 
+function selectRoleForAdd(role: AgentRole) {
+  addAgentName.value = role.name
+  addAgentPrompt.value = role.systemPrompt
+  addAgentColor.value = role.color
+  addAgentModel.value = '' // Use default model
+}
+
+function applySquadPreset(preset: typeof SQUAD_PRESETS[0]) {
+  // Clear existing agents
+  newAgents.splice(0, newAgents.length)
+  
+  // Add agents from preset
+  for (const pAgent of preset.agents) {
+    const role = AGENT_ROLES.find(r => r.id === pAgent.roleId)
+    if (role) {
+      newAgents.push({
+        name: pAgent.name,
+        model: '',
+        provider: '',
+        system_prompt: role.systemPrompt,
+        color: role.color
+      })
+    }
+  }
+}
+
 async function onCreateGroup() {
   const validAgents = newAgents.filter(a => a.name.trim())
   if (!newGroupName.value.trim() || validAgents.length === 0) return
@@ -463,13 +550,6 @@ async function onCreateGroup() {
   } else {
     toast.error(store.error || t('groupChat.error'))
   }
-}
-
-function selectRoleForAdd(role: AgentRole) {
-  addAgentName.value = role.name
-  addAgentPrompt.value = role.systemPrompt
-  addAgentColor.value = role.color
-  addAgentModel.value = '' // Use default model
 }
 
 async function onAddAgent() {
@@ -911,9 +991,104 @@ onMounted(() => {
   background: rgba(90,200,250,.25);
 }
 .gc-send-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Action Mode Toggle */
+.gc-input-controls {
+  display: flex;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+.gc-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-base);
+  background: var(--glass-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.gc-mode-toggle:hover {
+  background: var(--glass-hover);
+}
+.gc-mode-toggle.active {
+  background: var(--accent-alpha);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.toggle-icon {
+  font-size: 14px;
+}
+
+/* Task Board Panel */
+.gc-task-board {
+  width: 280px;
+  border-left: 1px solid var(--border-base);
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.gc-task-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-base);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+}
+.gc-task-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gc-task-item {
+  background: var(--glass-bg);
+  border: 1px solid var(--border-base);
+  border-radius: 8px;
+  padding: 12px;
+  transition: transform 0.2s;
+}
+.gc-task-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.gc-task-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.gc-task-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.gc-task-assignee {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--glass-hover);
+  border-radius: 4px;
+}
+.gc-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.gc-status-dot.pending { background: var(--warning); }
+.gc-status-dot.done { background: var(--success); }
 
 /* Empty State */
 .gc-empty {
