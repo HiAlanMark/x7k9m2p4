@@ -121,7 +121,20 @@
         </label>
         <div class="gc-field">
           <span class="gc-field-label">{{ t('groupChat.agents') }}</span>
+          
           <div v-for="(ad, i) in newAgents" :key="i" class="gc-agent-def">
+            <div class="gc-agent-role-select">
+              <button
+                v-for="role in AGENT_ROLES"
+                :key="role.id"
+                class="gc-role-mini"
+                :class="{ active: ad.name === role.name }"
+                @click="ad.name = role.name; ad.system_prompt = role.systemPrompt; ad.color = role.color"
+                :title="role.name"
+              >
+                {{ role.icon }}
+              </button>
+            </div>
             <div class="gc-agent-def-colors">
               <button
                 v-for="c in AGENT_COLORS"
@@ -134,7 +147,6 @@
             </div>
             <HxInput v-model="ad.name" :placeholder="t('groupChat.agentName')" style="flex:1" />
             <HxInput v-model="ad.model" :placeholder="t('groupChat.agentModel')" style="flex:1" />
-            <HxInput v-model="ad.provider" placeholder="Provider (optional)" style="width:90px" />
             <button class="gc-agent-def-remove" @click="newAgents.splice(i, 1)" v-if="newAgents.length > 1">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -213,11 +225,32 @@ import { AGENT_COLORS } from '@/types'
 import { HxButton, HxInput, HxTextarea, HxModal, HxEmpty } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { marked } from 'marked'
+import hljs from 'highlight.js/lib/core'
+import typescript from 'highlight.js/lib/languages/typescript'
+import python from 'highlight.js/lib/languages/python'
+import javascript from 'highlight.js/lib/languages/javascript'
+import bash from 'highlight.js/lib/languages/bash'
 import { AGENT_ROLES, type AgentRole } from '@/data/agent-roles'
 
 const { t } = useI18n()
 const store = useGroupChatStore()
 const toast = useToast()
+
+// Configure Highlight.js
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('bash', bash)
+
+// Configure Marked with Highlight.js
+marked.setOptions({
+  highlight: function(code: string, lang: string) {
+    if (lang && hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang }).value
+    }
+    return hljs.highlightAuto(code).value
+  }
+})
 
 const messagesRef = ref<HTMLElement | null>(null)
 const inputRef = ref<InstanceType<typeof HxTextarea> | null>(null)
@@ -480,6 +513,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import 'highlight.js/styles/github-dark.css';
+
 .gc-view {
   display: flex;
   height: 100%;
@@ -691,6 +726,45 @@ onMounted(() => {
   color: var(--text-primary);
   text-align: center;
 }
+/* Role Select Mini (for Create Group) */
+.gc-agent-def {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 4px;
+  border-radius: 6px;
+  background: var(--glass-bg);
+}
+.gc-agent-role-select {
+  display: flex;
+  gap: 2px;
+}
+.gc-role-mini {
+  width: 22px;
+  height: 22px;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  opacity: 0.5;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gc-role-mini:hover {
+  opacity: 1;
+  background: var(--glass-hover);
+}
+.gc-role-mini.active {
+  opacity: 1;
+  background: var(--accent-alpha);
+}
+
 .gc-field-separator {
   font-size: 11px;
   color: var(--text-tertiary);
