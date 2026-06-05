@@ -141,8 +141,8 @@
             </div>
           </div>
           <div class="task-prompt" v-if="task.prompt">{{ task.prompt }}</div>
-          <div v-if="task.skills" class="task-skills">
-            <span v-for="s in task.skills.split(',')" :key="s" class="skill-tag">{{ s.trim() }}</span>
+          <div v-if="task.skills && task.skills.length" class="task-skills">
+            <span v-for="s in (Array.isArray(task.skills) ? task.skills : task.skills.split(','))" :key="s" class="skill-tag">{{ typeof s === 'string' ? s.trim() : s }}</span>
           </div>
           <div class="task-footer">
             <div class="task-actions">
@@ -193,8 +193,8 @@
             </div>
           </div>
           <div class="task-prompt" v-if="task.prompt">{{ task.prompt }}</div>
-          <div v-if="task.skills" class="task-skills">
-            <span v-for="s in task.skills.split(',')" :key="s" class="skill-tag">{{ s.trim() }}</span>
+          <div v-if="task.skills && task.skills.length" class="task-skills">
+            <span v-for="s in (Array.isArray(task.skills) ? task.skills : task.skills.split(','))" :key="s" class="skill-tag">{{ typeof s === 'string' ? s.trim() : s }}</span>
           </div>
         </div>
       </div>

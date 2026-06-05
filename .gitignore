@@ -8,3 +8,4 @@ src-tauri/
 agent/
 hermes_bridge.py
 .hermes/
+hixns-agent\nhixns-server\n*.exe

@@ -2519,7 +2519,7 @@ var distFS embed.FS
 
 func main() {
 	port := "9800"
-	host := "127.0.0.1"
+	host := "0.0.0.0"
 
 	for i, arg := range os.Args {
 		if arg == "--port" && i+1 < len(os.Args) {
@@ -2541,6 +2541,13 @@ func main() {
 	mux.HandleFunc("/v1/agent/approve", handleApprove)
 	mux.HandleFunc("/v1/agent/config", handleConfig)
 	mux.HandleFunc("/v1/agent/config/set", handleConfigSet)
+
+	// Credentials API
+	mux.HandleFunc("/v1/agent/config/credentials", handleConfigCredentials)
+
+	// Files API
+	mux.HandleFunc("/v1/agent/files", handleFilesRouter)
+	mux.HandleFunc("/v1/agent/files/", handleFilesRouter)
 	mux.HandleFunc("/v1/agent/cron/list", handleCronList)
 	mux.HandleFunc("/v1/agent/cron/create", handleCronCreate)
 	mux.HandleFunc("/v1/agent/cron/pause", handleCronPause)
@@ -2753,6 +2760,7 @@ func main() {
 
 	if err != nil {
 		log.Printf("[Hi!XNS] Wails 桌面窗口跳过 (无图形环境): %v", err)
+		log.Printf("[Hi!XNS] Headless 模式 — API 运行在 http://%s", addr)
 		// Don't exit — keep HTTP server running for headless/dev mode
 		select {}
 	}

@@ -674,7 +674,7 @@ func executeManagerSlotNode(bp BlueprintDefinition, node BlueprintNode, run *Blu
 	}
 
 	upstream := collectUpstreamOutput(bp, node.ID, *run)
-	prompt := fmt.Sprintf("Executing manager slot #%d (mode: %s, lanes: %d).\nUpstream context:\n%s", slot, execMode, parallelLanes, upstream)
+	_ = fmt.Sprintf("Executing manager slot #%d (mode: %s, lanes: %d).\nUpstream context:\n%s", slot, execMode, parallelLanes, upstream)
 
 	// Slot nodes delegate to their child agent nodes — for now, pass through.
 	nr.Status = NodeRunStatusSucceeded

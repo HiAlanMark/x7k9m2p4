@@ -670,7 +670,7 @@ func handleRunsRouter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	parts := strings.SplitN(path, "/", 2)
-	id := parts[0]
+	_ = parts[0] // id
 
 	if len(parts) == 1 {
 		handleRunGet(w, r)
