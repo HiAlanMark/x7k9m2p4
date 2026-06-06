@@ -482,9 +482,9 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 			"stream":         true,
 			"stream_options": map[string]any{"include_usage": true},
 		}
-		// 原生 function calling: 传 tools 参数
+		// 原生 function calling: 传 tools 参数（动态加载内置工具+技能工具）
 		if !usePromptTools {
-			body["tools"] = toolDefs
+			body["tools"] = getToolDefs()
 		}
 		bodyBytes, _ := json.Marshal(body)
 
@@ -646,10 +646,10 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 			}
 
 			t0 := time.Now()
-			result := executeTool(ntc.Name, args)
-				duration := time.Since(t0).Seconds()
+			result := executeToolExtended(ntc.Name, args)
+			duration := time.Since(t0).Seconds()
 
-				sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
+			sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
 
 				toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: %s\n</tool_result>\n", ntc.Name, truncate(result, 3500)))
 
@@ -736,10 +736,10 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 		}
 
 		t0 := time.Now()
-		result := executeTool(tc.Name, tc.Args)
-			duration := time.Since(t0).Seconds()
+		result := executeToolExtended(tc.Name, tc.Args)
+		duration := time.Since(t0).Seconds()
 
-			sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
+		sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
 
 			toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: %s\n</tool_result>\n", tc.Name, truncate(result, 3500)))
 		}
@@ -828,7 +828,7 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	// hermes 仍用于后台功能：config/sessions/cron/memory/tools/skills 管理
 	{
 		log.Printf("[handleChat] 使用内置 agentLoop（流式输出）")
-		messages := []map[string]any{{"role": "system", "content": systemPrompt}}
+		messages := []map[string]any{{"role": "system", "content": buildSystemPrompt(getToolDefs())}}
 		messages = append(messages, body.Messages...)
 		if body.Content != "" {
 			messages = append(messages, map[string]any{"role": "user", "content": body.Content})
@@ -1548,32 +1548,55 @@ func handleMemoryEdit(w http.ResponseWriter, r *http.Request) {
 func handleToolsList(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
 	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
-	out, _ := runHermes("tools", "list")
-	// Parse the output into structured data
-	// 格式: "  ✓ enabled  name  🔍 Description Text"
-	// Fields: ["✓", "enabled", "name", "🔍", "Description", "Text"]
-	tools := []map[string]any{}
-	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "✓ enabled") || strings.HasPrefix(line, "✗ disabled") {
-			enabled := strings.HasPrefix(line, "✓")
-			parts := strings.Fields(line)
-			if len(parts) >= 3 {
-				name := parts[2]
-				descParts := parts[3:]
-				// 去掉描述开头的 emoji
-				if len(descParts) > 0 {
-					firstRunes := []rune(descParts[0])
-					if len(firstRunes) > 0 && firstRunes[0] > 0x2000 {
-						descParts = descParts[1:]
+
+	// Merge Go builtin tools + skill tools
+	allTools := getToolDefs()
+	tools := make([]map[string]any, 0, len(allTools))
+	for _, t := range allTools {
+		fn, _ := t["function"].(map[string]any)
+		name, _ := fn["name"].(string)
+		desc, _ := fn["description"].(string)
+		toolType := "builtin"
+		if strings.HasPrefix(name, "use_skill_") {
+			toolType = "skill"
+		}
+		tools = append(tools, map[string]any{"name": name, "enabled": true, "description": desc, "type": toolType})
+	}
+
+	// Also try hermes tools (non-blocking, append if available)
+	if out, err := runHermes("tools", "list"); err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "✓ enabled") || strings.HasPrefix(line, "✗ disabled") {
+				enabled := strings.HasPrefix(line, "✓")
+				parts := strings.Fields(line)
+				if len(parts) >= 3 {
+					name := parts[2]
+					// Skip if already in our list
+					found := false
+					for _, existing := range tools {
+						if existing["name"] == name {
+							found = true
+							break
+						}
+					}
+					if !found {
+						descParts := parts[3:]
+						if len(descParts) > 0 {
+							firstRunes := []rune(descParts[0])
+							if len(firstRunes) > 0 && firstRunes[0] > 0x2000 {
+								descParts = descParts[1:]
+							}
+						}
+						desc := strings.Join(descParts, " ")
+						tools = append(tools, map[string]any{"name": name, "enabled": enabled, "description": desc, "type": "hermes"})
 					}
 				}
-				desc := strings.Join(descParts, " ")
-				tools = append(tools, map[string]any{"name": name, "enabled": enabled, "description": desc})
 			}
 		}
 	}
-	jsonResponse(w, map[string]any{"tools": tools})
+
+	jsonResponse(w, map[string]any{"tools": tools, "count": len(tools)})
 }
 
 func handleToolsEnable(w http.ResponseWriter, r *http.Request) {
