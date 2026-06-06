@@ -923,7 +923,7 @@
         <div v-if="activeSection === 'security'" class="content-section">
           <h2 class="section-title">{{ t('settings.securitySettings') }}</h2>
 
-          <HxCard style="margin-bottom: 16px;">
+          <HxCard>
             <div class="form-row">
               <label class="form-label">{{ t('settings.keyRedaction') }}</label>
               <HxToggle v-model="securitySettings.redactSecrets" :label="securitySettings.redactSecrets ? t('settings.enabled') : t('settings.disabled')" />
@@ -935,19 +935,13 @@
               <p class="form-hint">{{ t('settings.piiRedactionHint') }}</p>
             </div>
           </HxCard>
+        </div>
+
+        <!-- 工具权限 -->
+        <div v-if="activeSection === 'tools'" class="content-section">
+          <h2 class="section-title">工具权限</h2>
 
           <HxCard style="margin-bottom: 16px;">
-            <template #header>
-              <span>{{ t('settings.websiteAccessRestriction') }}</span>
-            </template>
-            <div class="form-row">
-              <label class="form-label">{{ t('settings.websiteBlocklist') }}</label>
-              <HxTextarea v-model="securitySettings.blocklist" :rows="3" :placeholder="t('settings.blocklistPlaceholder')"></HxTextarea>
-              <p class="form-hint">{{ t('settings.blocklistHint') }}</p>
-            </div>
-          </HxCard>
-
-          <HxCard>
             <template #header>
               <span>{{ t('settings.toolPermissions') }}</span>
             </template>
@@ -959,7 +953,7 @@
             </div>
           </HxCard>
 
-          <HxCard v-if="skillToolsets.length > 0" style="margin-top: 16px;">
+          <HxCard v-if="skillToolsets.length > 0">
             <template #header>
               <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                 <span>技能权限</span>
@@ -1001,6 +995,27 @@
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
               {{ t('settings.saved') }}
             </span>
+          </div>
+        </div>
+
+        <!-- 网站访问限制 -->
+        <div v-if="activeSection === 'website'" class="content-section">
+          <h2 class="section-title">网站访问限制</h2>
+
+          <HxCard>
+            <template #header>
+              <span>{{ t('settings.websiteAccessRestriction') }}</span>
+            </template>
+            <div class="form-row">
+              <label class="form-label">{{ t('settings.websiteBlocklist') }}</label>
+              <HxTextarea v-model="securitySettings.blocklist" :rows="3" :placeholder="t('settings.blocklistPlaceholder')"></HxTextarea>
+              <p class="form-hint">{{ t('settings.blocklistHint') }}</p>
+            </div>
+          </HxCard>
+
+          <div class="form-actions" style="margin-top: 16px;">
+            <HxButton variant="primary" @click="() => saveSecuritySettings()">{{ t('settings.saveSettings') }}</HxButton>
+            <span v-if="securitySaveOk" class="save-feedback">{{ t('settings.saved') }}</span>
           </div>
         </div>
 
@@ -1264,7 +1279,9 @@ const navItems = [
   { key: 'terminal', label: '终端', keywords: '后端 超时 审批模式 SSH Docker 工作目录 timeout', icon: '' },
   { key: 'display', label: '显示', keywords: '工具进度 推理过程 费用 markdown 代码高亮 语法', icon: '' },
   { key: 'voice', label: '语音', keywords: 'STT TTS 语音识别 语音合成 Whisper Edge ElevenLabs', icon: '' },
-  { key: 'security', label: '安全', keywords: '密钥 PII 脱敏 屏蔽 站点黑名单 工具开关 redaction', icon: '' },
+  { key: 'security', label: '安全', keywords: '密钥 PII 脱敏 redaction', icon: '' },
+  { key: 'tools', label: '工具权限', keywords: '工具 开关 启用 禁用 技能 toolset skill', icon: '' },
+  { key: 'website', label: '网站访问限制', keywords: '网站 黑名单 屏蔽 域名 blocklist', icon: '' },
   { key: 'credentials', label: '凭据', keywords: 'API密钥 key secret token 凭证 credentials provider', icon: '' },
   { key: 'usage', label: '用量', keywords: 'usage 统计 消耗 调用次数 token 图表 模型 session', icon: '' },
   { key: 'profiles', label: '配置', keywords: 'profile 用户档案 切换 导出 导入 运行状态', icon: '' },
