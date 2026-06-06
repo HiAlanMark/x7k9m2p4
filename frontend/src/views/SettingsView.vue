@@ -959,7 +959,7 @@
             </div>
           </HxCard>
 
-          <HxCard v-if="skillToolsets.length > 0">
+          <HxCard v-if="skillToolsets.length > 0" style="margin-top: 16px;">
             <template #header>
               <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                 <span>技能权限</span>
