@@ -952,10 +952,39 @@
               <span>{{ t('settings.toolPermissions') }}</span>
             </template>
             <div class="toolset-grid">
-              <label v-for="ts in toolsetList" :key="ts.id" class="toolset-item">
+              <label v-for="ts in builtinToolsets" :key="ts.id" class="toolset-item">
                 <span class="toolset-label">{{ ts.label }}</span>
                 <HxToggle v-model="ts.enabled" :label="ts.enabled ? t('settings.enabled') : t('settings.disabled')" />
               </label>
+            </div>
+          </HxCard>
+
+          <HxCard v-if="skillToolsets.length > 0">
+            <template #header>
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <span>技能权限</span>
+                <span class="toolset-count">{{ skillToolsets.length }} 个技能</span>
+              </div>
+            </template>
+            <div class="skill-search-bar" style="margin-bottom: 8px;">
+              <HxInput v-model="skillSearchQuery" placeholder="搜索技能..." size="sm" />
+            </div>
+            <div class="skill-table">
+              <div class="skill-table-header">
+                <span class="skill-col-name">技能名称</span>
+                <span class="skill-col-desc">描述</span>
+                <span class="skill-col-toggle">启用</span>
+              </div>
+              <label v-for="sk in filteredSkillToolsets" :key="sk.id" class="skill-table-row">
+                <span class="skill-col-name" :title="sk.id">{{ sk.label }}</span>
+                <span class="skill-col-desc" :title="sk.description">{{ sk.description }}</span>
+                <span class="skill-col-toggle">
+                  <HxToggle v-model="sk.enabled" />
+                </span>
+              </label>
+              <div v-if="filteredSkillToolsets.length === 0" class="skill-table-empty">
+                {{ skillSearchQuery ? '未找到匹配的技能' : '暂无已安装技能' }}
+              </div>
             </div>
           </HxCard>
 
@@ -2470,6 +2499,24 @@ const toolsetList = ref([
   { id: 'cronjob', label: '定时任务', enabled: true },
 ])
 
+// 技能工具（use_skill_*）单独管理
+const skillToolsets = ref<Array<{ id: string; label: string; description: string; enabled: boolean }>>([])
+const skillSearchQuery = ref('')
+
+// 内置工具分类（不含 use_skill_*）
+const builtinToolsets = computed(() => toolsetList.value.filter(t => !t.id.startsWith('use_skill_')))
+
+// 过滤后的技能列表
+const filteredSkillToolsets = computed(() => {
+  const q = skillSearchQuery.value.toLowerCase().trim()
+  if (!q) return skillToolsets.value
+  return skillToolsets.value.filter(s =>
+    s.label.toLowerCase().includes(q) ||
+    s.id.toLowerCase().includes(q) ||
+    s.description.toLowerCase().includes(q)
+  )
+})
+
 // toolset 开关状态从真实 Hermes API 加载 (见 loadToolsets)
 
 async function saveSecuritySettings(silent = false) {
@@ -2500,11 +2547,28 @@ async function loadToolsets(): Promise<void> {
   try {
     const data = await hermesToolsList()
     if (data.tools && Array.isArray(data.tools)) {
-      toolsetList.value = data.tools.map((t: any) => ({
-        id: t.name,
-        label: t.description || t.name,
-        enabled: t.enabled,
-      }))
+      const builtin: Array<{ id: string; label: string; enabled: boolean }> = []
+      const skills: Array<{ id: string; label: string; description: string; enabled: boolean }> = []
+      for (const t of data.tools) {
+        const name = t.name || t.id || ''
+        const desc = t.description || name
+        if (name.startsWith('use_skill_')) {
+          skills.push({ id: name, label: name.replace('use_skill_', ''), description: desc, enabled: t.enabled })
+        } else {
+          builtin.push({ id: name, label: desc, enabled: t.enabled })
+        }
+      }
+      // 合并内置工具：保留初始默认值 + 补充 API 返回的新工具
+      const initialIds = new Set(toolsetList.value.map(t => t.id))
+      for (const b of builtin) {
+        if (!initialIds.has(b.id)) {
+          toolsetList.value.push({ id: b.id, label: b.label, enabled: b.enabled })
+        } else {
+          const existing = toolsetList.value.find(t => t.id === b.id)
+          if (existing && b.label) existing.label = b.label
+        }
+      }
+      skillToolsets.value = skills
     }
   } catch (e) { console.warn('[SettingsView] Hermes tools list failed (agent not running):', e) }
 }
@@ -2927,6 +2991,76 @@ const pageNumbers = computed<(number | string)[]>(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.toolset-count {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary, rgba(255,255,255,0.35));
+  background: var(--glass-bg, rgba(255,255,255,0.04));
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+/* 技能权限表 */
+.skill-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.skill-table-header {
+  display: grid;
+  grid-template-columns: 1fr 2fr 64px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary, rgba(255,255,255,0.35));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-base, rgba(255,255,255,0.08));
+  margin-bottom: var(--space-1);
+  position: sticky;
+  top: 0;
+  background: inherit;
+  z-index: 1;
+}
+.skill-table-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 64px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  align-items: center;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--fast);
+}
+.skill-table-row:hover {
+  background: var(--glass-bg, rgba(255,255,255,0.04));
+}
+.skill-col-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--accent, rgba(90,200,250,1));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.skill-col-desc {
+  font-size: var(--text-xs);
+  color: var(--text-secondary, rgba(255,255,255,0.55));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.skill-col-toggle {
+  display: flex;
+  justify-content: center;
+}
+.skill-table-empty {
+  padding: var(--space-6) var(--space-2);
+  text-align: center;
+  color: var(--text-tertiary, rgba(255,255,255,0.35));
+  font-size: var(--text-sm);
 }
 /* 卡片内的输入框样式 (scoped穿透) */
 .toolset-item :deep(.hixns-input) {
