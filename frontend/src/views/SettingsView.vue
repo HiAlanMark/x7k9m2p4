@@ -2529,6 +2529,66 @@ function shortenLabel(text: string): string {
   return text.slice(0, 18) + '…'
 }
 
+// 工具名称中文映射（英文名 → 中文短标签）
+const toolNameMap: Record<string, string> = {
+  // Hermes 工具
+  web_search: '网页搜索',
+  web: '网页搜索',
+  browser: '浏览器',
+  terminal: '终端命令',
+  file: '文件读写',
+  code_execution: '代码执行',
+  vision: '图片分析',
+  image_gen: '图片生成',
+  video: '视频分析',
+  video_gen: '视频生成',
+  tts: '文字转语音',
+  x_search: 'X 搜索',
+  session_search: '会话搜索',
+  clarify: '澄清提问',
+  homeassistant: '智能家居',
+  spotify: 'Spotify',
+  yuanbao: '元宝群聊',
+  computer_use: '电脑操控',
+  delegation: '子Agent委派',
+  memory: '持久记忆',
+  skills: '技能管理',
+  cronjob: '定时任务',
+  kanban: '看板',
+  discord: 'Discord',
+  // Go 内置工具
+  run_terminal: '终端命令',
+  read_file: '读取文件',
+  write_file: '写入文件',
+  list_directory: '目录列表',
+  search_files: '文件搜索',
+  system_info: '系统信息',
+  patch_file: '文件补丁',
+  web_fetch: '网页抓取',
+  move_file: '移动文件',
+  delete_path: '删除路径',
+  // 技能工具常见名
+  'macos-computer-use': '电脑操控',
+  'ascii-video': 'ASCII视频',
+  'manim-video': '数学动画',
+}
+
+// 获取工具的中文标签：映射表优先，否则缩短描述
+function getToolLabel(id: string, description: string): string {
+  // 1. 精确匹配
+  if (toolNameMap[id]) return toolNameMap[id]
+  // 2. use_skill_ 前缀去掉再匹配
+  const bare = id.replace('use_skill_', '')
+  if (toolNameMap[bare]) return toolNameMap[bare]
+  // 3. 关键词模糊匹配
+  const lower = id.toLowerCase()
+  for (const [key, label] of Object.entries(toolNameMap)) {
+    if (lower.includes(key)) return label
+  }
+  // 4. 缩短描述
+  return shortenLabel(description) || bare
+}
+
 async function saveSecuritySettings(silent = false) {
   const s = securitySettings.value
   try {
@@ -2563,9 +2623,11 @@ async function loadToolsets(): Promise<void> {
         const name = t.name || t.id || ''
         const desc = t.description || name
         if (name.startsWith('use_skill_')) {
-          skills.push({ id: name, label: name.replace('use_skill_', ''), description: desc, enabled: t.enabled })
+          const label = getToolLabel(name, desc)
+          skills.push({ id: name, label, description: shortenLabel(desc), enabled: t.enabled })
         } else {
-          builtin.push({ id: name, label: desc, enabled: t.enabled })
+          const label = getToolLabel(name, desc)
+          builtin.push({ id: name, label, enabled: t.enabled })
         }
       }
       // 合并内置工具：保留初始短标签 + 补充 API 返回的新工具
