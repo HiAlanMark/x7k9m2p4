@@ -2568,6 +2568,11 @@ func main() {
 	// Credentials API
 	mux.HandleFunc("/v1/agent/config/credentials", handleConfigCredentials)
 
+	// Auth API — Hi!XNS 无需认证，自动登录
+	mux.HandleFunc("/v1/agent/auth/status", handleAuthStatus)
+	mux.HandleFunc("/v1/agent/auth/auto-login", handleAuthAutoLogin)
+	mux.HandleFunc("/v1/agent/auth/login", handleAuthLogin)
+
 	// Files API
 	mux.HandleFunc("/v1/agent/files", handleFilesRouter)
 	mux.HandleFunc("/v1/agent/files/", handleFilesRouter)
@@ -2791,3 +2796,39 @@ func main() {
 
 // Regex for search
 var _ = regexp.Compile
+
+// ── Auth Handlers — Hi!XNS 无需认证，自动登录 ──
+
+func handleAuthStatus(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	jsonResponse(w, map[string]any{
+		"authenticated": true,
+		"has_token":     true,
+	})
+}
+
+func handleAuthAutoLogin(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	token := fmt.Sprintf("hixns-auto-%d", time.Now().UnixMilli())
+	jsonResponse(w, map[string]any{
+		"success": true,
+		"token":   token,
+	})
+}
+
+func handleAuthLogin(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	var body struct{ Token string `json:"token"` }
+	json.NewDecoder(r.Body).Decode(&body)
+	token := body.Token
+	if token == "" {
+		token = fmt.Sprintf("hixns-manual-%d", time.Now().UnixMilli())
+	}
+	jsonResponse(w, map[string]any{
+		"success": true,
+		"token":   token,
+	})
+}
