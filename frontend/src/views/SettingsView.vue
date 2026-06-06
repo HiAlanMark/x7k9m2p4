@@ -2519,6 +2519,16 @@ const filteredSkillToolsets = computed(() => {
 
 // toolset 开关状态从真实 Hermes API 加载 (见 loadToolsets)
 
+// 截取长描述为短标签：取第一个句号/逗号前，最多20字
+function shortenLabel(text: string): string {
+  if (!text) return ''
+  // 优先截取第一个句号前
+  const cut = text.search(/[。，；、\n.]/)
+  if (cut > 0 && cut <= 20) return text.slice(0, cut)
+  if (text.length <= 20) return text
+  return text.slice(0, 18) + '…'
+}
+
 async function saveSecuritySettings(silent = false) {
   const s = securitySettings.value
   try {
@@ -2558,17 +2568,20 @@ async function loadToolsets(): Promise<void> {
           builtin.push({ id: name, label: desc, enabled: t.enabled })
         }
       }
-      // 合并内置工具：保留初始默认值 + 补充 API 返回的新工具
+      // 合并内置工具：保留初始短标签 + 补充 API 返回的新工具
       const initialIds = new Set(toolsetList.value.map(t => t.id))
       for (const b of builtin) {
         if (!initialIds.has(b.id)) {
-          toolsetList.value.push({ id: b.id, label: b.label, enabled: b.enabled })
+          // 新工具：截取描述前段作为短标签
+          toolsetList.value.push({ id: b.id, label: shortenLabel(b.label), enabled: b.enabled })
         } else {
+          // 已有工具：只更新启用状态，保留初始短标签
           const existing = toolsetList.value.find(t => t.id === b.id)
-          if (existing && b.label) existing.label = b.label
+          if (existing) existing.enabled = b.enabled
         }
       }
-      skillToolsets.value = skills
+      // 技能工具同样截取描述
+      skillToolsets.value = skills.map(s => ({ ...s, description: shortenLabel(s.description) }))
     }
   } catch (e) { console.warn('[SettingsView] Hermes tools list failed (agent not running):', e) }
 }
