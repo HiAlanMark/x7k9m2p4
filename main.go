@@ -2573,6 +2573,9 @@ func main() {
 	mux.HandleFunc("/v1/agent/auth/auto-login", handleAuthAutoLogin)
 	mux.HandleFunc("/v1/agent/auth/login", handleAuthLogin)
 
+	// Update API — 版本检测与自动更新
+	mux.HandleFunc("/v1/agent/update/check", handleUpdateCheck)
+
 	// Files API
 	mux.HandleFunc("/v1/agent/files", handleFilesRouter)
 	mux.HandleFunc("/v1/agent/files/", handleFilesRouter)
@@ -2798,6 +2801,62 @@ func main() {
 var _ = regexp.Compile
 
 // ── Auth Handlers — Hi!XNS 无需认证，自动登录 ──
+
+// Version info for update check
+const (
+	hixnsVersion    = "0.9.29"
+	hixnsVersionURL = "https://hixns.ai" // 官网地址
+)
+
+func handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+
+	current := r.URL.Query().Get("current")
+	if current == "" {
+		// 尝试从 body 读取
+		var body struct{ Current string `json:"current"` }
+		if r.Method == "POST" {
+			json.NewDecoder(r.Body).Decode(&body)
+			current = body.Current
+		}
+	}
+
+	// 解析语义化版本比较
+	hasUpdate := compareVersions(hixnsVersion, current)
+
+	resp := map[string]any{
+		"latest":       hixnsVersion,
+		"current":      current,
+		"has_update":   hasUpdate,
+		"download_url": hixnsVersionURL + "/downloads/",
+		"release_notes": hixnsVersionURL + "/#changelog",
+		"changelog": []string{
+			"Go Agent Loop: 动态工具发现 + 5个新内置工具 + 技能加载",
+			"Auth API: 自动登录无需认证",
+			"设置页: 工具权限和网站访问限制拆分",
+			"工具权限中文翻译映射",
+			"启动动画亮色模式适配",
+		},
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// compareVersions returns true if latest > current (semantic versioning)
+func compareVersions(latest, current string) bool {
+	if current == "" { return false }
+	if current == latest { return false }
+	lParts := strings.Split(strings.TrimPrefix(latest, "v"), ".")
+	cParts := strings.Split(strings.TrimPrefix(current, "v"), ".")
+	for i := 0; i < 3; i++ {
+		l, _ := strconv.Atoi(func() string { if i < len(lParts) { return lParts[i] }; return "0" }())
+		c, _ := strconv.Atoi(func() string { if i < len(cParts) { return cParts[i] }; return "0" }())
+		if l > c { return true }
+		if l < c { return false }
+	}
+	return false
+}
 
 func handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
