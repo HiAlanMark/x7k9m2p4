@@ -1,9 +1,9 @@
 <template>
   <transition name="splash-fade">
-    <div v-if="visible" class="splash-screen">
+    <div v-if="visible" class="splash-screen" :class="{ 'splash-light': !isDark }">
       <!-- Color Bends 动态背景 -->
       <VueBitsColorBends
-        :colors="['#0A84FF', '#BF5AF2', '#30D158', '#FF9F0A']"
+        :colors="isDark ? ['#0A84FF', '#BF5AF2', '#30D158', '#FF9F0A'] : ['#5AC8FA', '#7BD3FF', '#A3E4FC', '#C8F0FF']"
         :rotation="0"
         :auto-rotate="5"
         :speed="0.5"
@@ -40,8 +40,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import VueBitsColorBends from '@/components/fx/VueBitsColorBends.vue'
+import { useAppStore } from '@/stores/app'
+
+const appStore = useAppStore()
+const isDark = computed(() => appStore.isDark)
 
 const props = withDefaults(defineProps<{
   duration?: number
@@ -109,6 +113,9 @@ onMounted(() => {
   filter: drop-shadow(0 0 30px color-mix(in srgb, var(--accent) 30%, transparent));
   animation: logoPulse 2s ease-in-out infinite;
 }
+.splash-light .splash-logo-img {
+  filter: drop-shadow(0 0 20px color-mix(in srgb, var(--accent) 15%, transparent));
+}
 @keyframes logoPulse {
   0%, 100% { filter: drop-shadow(0 0 20px color-mix(in srgb, var(--accent) 20%, transparent)); transform: scale(1); }
   50% { filter: drop-shadow(0 0 40px color-mix(in srgb, var(--accent) 40%, transparent)); transform: scale(1.03); }
@@ -131,9 +138,12 @@ onMounted(() => {
 .splash-title {
   font-size: 28px;
   font-weight: 700;
-  color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  color: var(--text-primary);
   letter-spacing: 2px;
   font-family: var(--font-family, -apple-system, sans-serif);
+}
+.splash-light .splash-title {
+  text-shadow: 0 2px 10px rgba(0,0,0,0.08);
 }
 .splash-subtitle {
   font-size: 13px;
