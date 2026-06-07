@@ -166,31 +166,13 @@
         background: var(--bg-base);
       }
       
-      /* Prevent flash on load — match system theme before Vue mounts */
+      /* Prevent white flash on load */
       @media (prefers-color-scheme: dark) {
-        body { background: #0a0a0f; color: rgba(255,255,255,0.95); }
-        #app { background: #050507; }
-      }
-      @media (prefers-color-scheme: light) {
-        body { background: #f5f5f7; color: rgba(0,0,0,0.95); }
-        #app { background: #f5f5f7; }
+        body { background: #0a0a0f; }
       }
     </style>
   </head>
   <body>
-    <script>
-      // Early theme detection — prevent flash of wrong theme before Vue mounts
-      (function() {
-        var saved = localStorage.getItem('hermes_theme');
-        var isDark = true; // default dark
-        if (saved === 'light') {
-          isDark = false;
-        } else if (saved === 'system' || !saved) {
-          isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        }
-        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-      })();
-    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
