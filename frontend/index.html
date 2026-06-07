@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
   <head>
+    <script>
+      // 在浏览器解析CSS前设置data-theme，防止亮色模式闪黑屏
+      (function(){var t=localStorage.getItem('hermes_theme');var d=t==='light'?false:t==='dark'?true:window.matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.setAttribute('data-theme',d?'dark':'light')})()
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
