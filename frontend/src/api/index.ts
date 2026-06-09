@@ -568,14 +568,18 @@ export async function filesDownload(filePath: string): Promise<void> {
     throw new Error(`Download failed (${r.status})`)
   }
   const blob = await r.blob()
-  const url = URL.createObjectURL(blob)
+  // Convert to data URL to avoid WebView2/Chrome blob:HTTPS security block
+  const buffer = await blob.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  const binary = bytes.reduce((acc, b) => acc + String.fromCharCode(b), '')
+  const base64 = btoa(binary)
+  const url = `data:application/octet-stream;base64,${base64}`
   const a = document.createElement('a')
   a.href = url
   a.download = filePath.split('/').pop() || 'download'
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
-  URL.revokeObjectURL(url)
 }
 
 export async function filesMkdir(dirPath: string): Promise<{ path: string; created: boolean }> {

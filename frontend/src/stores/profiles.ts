@@ -98,14 +98,17 @@ export const useProfilesStore = defineStore('profiles', () => {
       }
       // Download the file
       const blob = await r.blob()
-      const url = URL.createObjectURL(blob)
+      const buffer = await blob.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      const binary = bytes.reduce((acc, b) => acc + String.fromCharCode(b), '')
+      const base64 = btoa(binary)
+      const url = `data:application/gzip;base64,${base64}`
       const a = document.createElement('a')
       a.href = url
       a.download = `profile_${name}.tar.gz`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
       return true
     } catch (e: any) {
       error.value = e?.message || 'Failed to export profile'

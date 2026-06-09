@@ -2,8 +2,9 @@
   <div class="chat-view">
     <!-- Empty state -->
     <div v-if="messages.length === 0 && !isStreaming && !isConnecting" class="messages messages-empty">
-      <div class="empty-inner animate-spring-in">
-        <!-- Status Panel (replaces old terminal) -->
+      <div class="empty-glow" aria-hidden="true"></div>
+      <div class="empty-inner hero-fade-in hero-fade-in-1">
+        <!-- Status Panel -->
         <div class="status-panel">
           <div class="status-panel-header">
             <span class="status-panel-dot" :class="appStore.connectionState"></span>
@@ -23,21 +24,25 @@
             </div>
           </div>
         </div>
-        <div class="quick-actions stagger-children">
-          <div class="quick-item hover-lift" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
-            <span class="qa-icon">></span>
+        <p class="empty-subtitle hero-fade-in hero-fade-in-2">
+          不是绑在 IDE 里的编程助手，也不是套着单一 API 的聊天包装。<br/>
+          是在你电脑上自主运行、记住所学、越用越强的 Agent。
+        </p>
+        <div class="quick-actions hero-fade-in hero-fade-in-3">
+          <div class="quick-item" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
+            <span class="qa-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span>
             <span class="qa-text">{{ t('chatView.quickSort') }}</span>
           </div>
-          <div class="quick-item hover-lift" @click="quickAsk('解释 TCP 三次握手的工作原理')">
-            <span class="qa-icon">></span>
+          <div class="quick-item" @click="quickAsk('解释 TCP 三次握手的工作原理')">
+            <span class="qa-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
             <span class="qa-text">{{ t('chatView.tcpHandshake') }}</span>
           </div>
-          <div class="quick-item hover-lift" @click="quickAsk('审查这段代码的性能问题: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
-            <span class="qa-icon">></span>
+          <div class="quick-item" @click="quickAsk('审查这段代码的性能问题: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
+            <span class="qa-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></span>
             <span class="qa-text">{{ t('chatView.codeReview') }}</span>
           </div>
-          <div class="quick-item hover-lift" @click="quickAsk('生成一个 Node.js 应用的多阶段构建 Dockerfile')">
-            <span class="qa-icon">></span>
+          <div class="quick-item" @click="quickAsk('生成一个 Node.js 应用的多阶段构建 Dockerfile')">
+            <span class="qa-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
             <span class="qa-text">{{ t('chatView.dockerfile') }}</span>
           </div>
         </div>
@@ -729,8 +734,29 @@ const getFilePreviewUrl = (file: File): string => {
 // Auto-resize handled by HxTextarea autoResize prop
 
 function renderMarkdown(content: string) {
-  const html = marked(content) as string
-  return DOMPurify.sanitize(html, { ADD_ATTR: ['class', 'onclick', 'type', 'disabled', 'checked'] })
+  let html = marked(content) as string
+  // Add copy buttons to code blocks
+  html = html.replace(/<pre><code class="([^"]*)">([\s\S]*?)<\/code><\/pre>/g, (match, lang, code) => {
+    const language = lang.replace('language-', '') || 'text'
+    const copyId = `copy_${Math.random().toString(36).slice(2, 8)}`
+    return `<div class="code-block-wrap"><div class="code-block-header"><span class="code-lang">${language}</span><button class="code-copy-btn" onclick="copyCodeBlock(this, '${copyId}')" title="复制"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button></div><pre class="code-block-body" id="${copyId}"><code class="${lang}">${code}</code></pre></div>`
+  })
+  return DOMPurify.sanitize(html, { ADD_ATTR: ['class', 'onclick', 'type', 'disabled', 'checked', 'id'] })
+}
+
+// Global copy function for code blocks (called from onclick in v-html)
+;(window as any).copyCodeBlock = function(btn: HTMLElement, id: string) {
+  const el = document.getElementById(id)
+  if (!el) return
+  const text = el.textContent || ''
+  navigator.clipboard.writeText(text).then(() => {
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>'
+    btn.classList.add('copied')
+    setTimeout(() => {
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>'
+      btn.classList.remove('copied')
+    }, 1500)
+  })
 }
 
 function formatJson(obj: Record<string, unknown>) {
@@ -906,7 +932,7 @@ onBeforeUnmount(() => {
   }
 })
 
-function exportChat() {
+async function exportChat() {
   const session = chatStore.currentSession
   if (!session || session.messages.length === 0) return
   const title = session.title || t('chatView.chatTitle')
@@ -936,12 +962,16 @@ function exportChat() {
   }
   // 触发浏览器下载
   const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
+  // Convert to data URL to avoid WebView2/Chrome blob:HTTPS security block
+  const buffer = await blob.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  const binary = bytes.reduce((acc, b) => acc + String.fromCharCode(b), '')
+  const base64 = btoa(binary)
+  const url = `data:text/markdown;base64,${base64}`
   const a = document.createElement('a')
   a.href = url
   a.download = `${title.replace(/[/\\:*?"<>|]/g, '_')}_${new Date().toISOString().slice(0, 10)}.md`
   a.click()
-  URL.revokeObjectURL(url)
   toast.success(t('chatView.exportSuccess'), t('chatView.exportSaved'), 3000)
 }
 </script>
@@ -999,8 +1029,33 @@ function exportChat() {
 }
 
 .empty-inner {
-  max-width: 520px;
+  max-width: 560px;
   width: 100%;
+  position: relative;
+  z-index: 1;
+}
+.empty-glow {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, var(--accent-glow), transparent 60%);
+  filter: blur(60px);
+  opacity: .4;
+}
+.empty-subtitle {
+  font-size: .9375rem;
+  line-height: 1.75;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: 20px 0 28px;
+  max-width: 440px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .status-panel {
@@ -1097,23 +1152,29 @@ function exportChat() {
   gap: 10px;
   padding: 10px 14px;
   cursor: pointer;
-  border-radius: 12px;
-  border: 1px solid transparent;
-  transition: background 0.2s var(--ease-expo), color 0.2s var(--ease-expo);
-}
-
-.quick-item:hover {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
   background: var(--glass-base);
-  border-color: var(--glass-border);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(12px);
+  transition: all .25s var(--ease-expo);
 }
-
+.quick-item:hover {
+  background: var(--glass-hover);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
 .qa-icon {
-  font-family: var(--font-mono);
-  font-size: 12px;
+  display: flex;
+  align-items: center;
   color: var(--text-tertiary);
   user-select: none;
   flex-shrink: 0;
+  transition: all .25s var(--ease-spring);
+}
+.quick-item:hover .qa-icon {
+  color: var(--accent);
+  transform: scale(1.1);
 }
 
 .qa-text {
@@ -1613,8 +1674,76 @@ function exportChat() {
 [data-theme="light"] .markdown-body :deep(.hljs-name) { color: #116327; }
 [data-theme="light"] .markdown-body :deep(.hljs-attribute) { color: #0550AE; }
 
+/* Code block wrapper with copy button */
+.markdown-body :deep(.code-block-wrap) {
+  margin: 16px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
+  transition: border-color .2s var(--ease-out);
+}
+.markdown-body :deep(.code-block-wrap:hover) {
+  border-color: var(--accent);
+}
+.markdown-body :deep(.code-block-header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--glass-bg-hover);
+  border-bottom: 1px solid var(--glass-border);
+}
+.markdown-body :deep(.code-lang) {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: lowercase;
+  font-family: var(--font-mono);
+}
+.markdown-body :deep(.code-copy-btn) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .2s var(--ease-out);
+  font-family: var(--font-sans);
+}
+.markdown-body :deep(.code-copy-btn:hover) {
+  color: var(--text-primary);
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border);
+}
+.markdown-body :deep(.code-copy-btn.copied) {
+  color: var(--success);
+}
+.markdown-body :deep(.code-block-body) {
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  background: transparent;
+  max-height: 400px;
+}
+.markdown-body :deep(.code-block-body code) {
+  background: none;
+  padding: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  display: block;
+  overflow-x: auto;
+}
+
 /* Inline code */
-.markdown-body :deep(code:not(.hljs)) {
+.markdown-body :deep(code:not(.hljs):not(.code-block-body code)) {
   background: var(--glass-bg-hover);
   border: 1px solid var(--glass-border);
   padding: 2px 6px;
@@ -1656,16 +1785,14 @@ function exportChat() {
 .markdown-body :deep(.contains-task-list input[type="checkbox"]:checked) {
   background: var(--accent);
   border-color: var(--accent);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 13l4 4L19 7' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 10px 10px;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .markdown-body :deep(.contains-task-list input[type="checkbox"]:checked::after) {
-  content: '✓';
-  position: absolute;
-  top: -1px;
-  left: 2px;
-  font-size: 10px;
-  color: white;
-  font-weight: 700;
+  content: none;
 }
 
 .markdown-body :deep(.contains-task-list .task-list-item-block) {

@@ -694,14 +694,18 @@ async function exportSession() {
   if (!sid) return
   try {
     const blob = await apiSessionExport(sid, 'markdown')
-    const url = URL.createObjectURL(blob)
+    // Convert to data URL to avoid WebView2/Chrome blob:HTTPS security block
+    const buffer = await blob.arrayBuffer()
+    const bytes = new Uint8Array(buffer)
+    const binary = bytes.reduce((acc, b) => acc + String.fromCharCode(b), '')
+    const base64 = btoa(binary)
+    const url = `data:text/markdown;base64,${base64}`
     const a = document.createElement('a')
     a.href = url
     a.download = `session_${sid}.md`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-    URL.revokeObjectURL(url)
     closeContextMenu()
   } catch (e: any) {
     alert('导出失败: ' + (e.message || String(e)))

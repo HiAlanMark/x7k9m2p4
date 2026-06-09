@@ -345,12 +345,15 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     try {
       const r = await agentFetch(`/v1/agent/blueprints/${id}/export`)
       const blob = await r.blob()
-      const url = URL.createObjectURL(blob)
+      const buffer = await blob.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      const binary = bytes.reduce((acc, b) => acc + String.fromCharCode(b), '')
+      const base64 = btoa(binary)
+      const url = `data:application/json;base64,${base64}`
       const a = document.createElement('a')
       a.href = url
       a.download = `blueprint-${id}.json`
       a.click()
-      URL.revokeObjectURL(url)
     } catch (e: any) {
       error.value = e?.message || 'Failed to export blueprint'
     }
