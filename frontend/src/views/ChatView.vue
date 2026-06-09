@@ -9,17 +9,12 @@
         <div class="empty-grid"></div>
       </div>
       <div class="empty-inner">
-        <!-- Main Title -->
-        <div class="empty-hero hero-fade-in hero-fade-in-1">
-          <h1 class="empty-title">
-            越用越强的<br/><span class="empty-title-accent">AI Agent</span>
-          </h1>
-          <p class="empty-subtitle">
-            不是绑在 IDE 里的编程助手，也不是套着单一 API 的聊天包装。<br/>
-            是在你电脑上自主运行、记住所学、越用越强的 Agent。
-          </p>
+        <!-- Large Logo -->
+        <div class="empty-logo hero-fade-in hero-fade-in-1">
+          <img src="@/../public/logo.svg" alt="Hi!XNS" />
+          <div class="logo-glow"></div>
         </div>
-        <!-- Quick Actions Bento -->
+        <!-- Quick Actions -->
         <div class="quick-bento hero-fade-in hero-fade-in-2">
           <div class="quick-bento-card" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
             <div class="quick-bento-icon">
@@ -1056,6 +1051,33 @@ async function exportChat() {
   text-align: center;
 }
 
+/* Large Logo */
+.empty-logo {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  margin-bottom: 48px;
+}
+.empty-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 40px rgba(var(--accent-rgb),.25));
+  animation: logoFloat 6s ease-in-out infinite;
+}
+.logo-glow {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(var(--accent-rgb),.15), transparent 60%);
+  filter: blur(30px);
+  animation: glowPulse 3s ease-in-out infinite;
+}
+@keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes glowPulse{0%,100%{opacity:.4;transform:translate(-50%,-50%) scale(1)}50%{opacity:.7;transform:translate(-50%,-50%) scale(1.15)}}
+
 /* Background: orbs + grid */
 .empty-bg {
   position: absolute;
@@ -1095,34 +1117,6 @@ async function exportChat() {
   background-size: 64px 64px;
   -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 40%, black 20%, transparent 70%);
   mask-image: radial-gradient(ellipse 60% 50% at 50% 40%, black 20%, transparent 70%);
-}
-
-/* Hero title */
-.empty-hero { margin-bottom: 48px; }
-.empty-title {
-  font-size: clamp(2.25rem, 5vw, 3.5rem);
-  font-weight: 800;
-  letter-spacing: -.03em;
-  line-height: 1.1;
-  margin-bottom: 20px;
-  color: var(--text-primary);
-}
-.empty-title-accent {
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 40%, var(--purple) 80%);
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: gradientShift 8s ease-in-out infinite;
-}
-@keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
-.empty-subtitle {
-  font-size: .9375rem;
-  line-height: 1.8;
-  color: var(--text-muted);
-  max-width: 480px;
-  margin: 0 auto;
 }
 
 /* Quick Bento Cards */
@@ -1345,6 +1339,7 @@ async function exportChat() {
   animation: pulseDot 1.5s ease-in-out infinite;
 }
 
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
 @keyframes pulseDot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(0.8); }
