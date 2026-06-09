@@ -1177,6 +1177,28 @@ async function exportChat() {
   transform: scale(1.1);
 }
 
+/* Hero fade-in animations */
+.hero-fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: heroFadeIn .8s var(--ease-expo) forwards;
+}
+.hero-fade-in-1 { animation-delay: .1s }
+.hero-fade-in-2 { animation-delay: .25s }
+.hero-fade-in-3 { animation-delay: .4s }
+@keyframes heroFadeIn {
+  to { opacity: 1; transform: translateY(0) }
+}
+
+/* Status panel title gradient */
+.status-panel-title {
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
 .qa-text {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -2571,8 +2593,12 @@ async function exportChat() {
 .messages-empty {
   flex: 1;
   overflow-y: auto;
-  padding: 45px 45px;
+  padding: 0 24px;
   padding-bottom: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
   scroll-behavior: smooth;
   -webkit-mask-image: linear-gradient(
     to bottom,
@@ -2588,5 +2614,15 @@ async function exportChat() {
     black calc(100% - 150px),
     transparent 100%
   );
+}
+.empty-inner {
+  max-width: 600px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 </style>
