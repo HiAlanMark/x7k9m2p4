@@ -2,49 +2,66 @@
   <div class="chat-view">
     <!-- Empty state -->
     <div v-if="messages.length === 0 && !isStreaming && !isConnecting" class="messages messages-empty">
-      <div class="empty-glow" aria-hidden="true"></div>
-      <div class="empty-inner hero-fade-in hero-fade-in-1">
-        <!-- Status Panel -->
-        <div class="status-panel">
-          <div class="status-panel-header">
-            <span class="status-panel-dot" :class="appStore.connectionState"></span>
-            <span class="status-panel-title">Hi!XNS Agent</span>
-            <span class="status-panel-version">v{{ appVersion }}</span>
+      <div class="empty-bg" aria-hidden="true">
+        <div class="empty-orb empty-orb-1"></div>
+        <div class="empty-orb empty-orb-2"></div>
+        <div class="empty-orb empty-orb-3"></div>
+        <div class="empty-grid"></div>
+      </div>
+      <div class="empty-inner">
+        <!-- Main Title -->
+        <div class="empty-hero hero-fade-in hero-fade-in-1">
+          <h1 class="empty-title">
+            越用越强的<br/><span class="empty-title-accent">AI Agent</span>
+          </h1>
+          <p class="empty-subtitle">
+            不是绑在 IDE 里的编程助手，也不是套着单一 API 的聊天包装。<br/>
+            是在你电脑上自主运行、记住所学、越用越强的 Agent。
+          </p>
+        </div>
+        <!-- Quick Actions Bento -->
+        <div class="quick-bento hero-fade-in hero-fade-in-2">
+          <div class="quick-bento-card" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
+            <div class="quick-bento-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </div>
+            <div class="quick-bento-text">
+              <span class="quick-bento-label">快速排序</span>
+              <span class="quick-bento-desc">Python 类型提示实现</span>
+            </div>
           </div>
-          <div class="status-panel-body">
-            <div v-if="appStore.connectionState === 'connected'" class="status-panel-ready">
-              <span class="status-panel-ready-text">{{ t('chatView.ready') }} · {{ appStore.hermesStatus?.version?.split(' ')[0] || t('chatView.hermesIntegrated') }}</span>
+          <div class="quick-bento-card" @click="quickAsk('解释 TCP 三次握手的工作原理')">
+            <div class="quick-bento-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             </div>
-            <div v-else-if="appStore.connectionState === 'connecting'" class="status-panel-ready">
-              <div class="status-panel-spinner"></div>
-              <span class="status-panel-ready-text">{{ t('chatView.connecting') }}</span>
+            <div class="quick-bento-text">
+              <span class="quick-bento-label">TCP 三次握手</span>
+              <span class="quick-bento-desc">网络协议原理</span>
             </div>
-            <div v-else class="status-panel-ready">
-              <span class="status-panel-ready-text error">{{ t('chatView.backendDisconnected') }}</span>
+          </div>
+          <div class="quick-bento-card" @click="quickAsk('审查这段代码的性能问题: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
+            <div class="quick-bento-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            <div class="quick-bento-text">
+              <span class="quick-bento-label">代码审查</span>
+              <span class="quick-bento-desc">斐波那契性能分析</span>
+            </div>
+          </div>
+          <div class="quick-bento-card" @click="quickAsk('生成一个 Node.js 应用的多阶段构建 Dockerfile')">
+            <div class="quick-bento-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div class="quick-bento-text">
+              <span class="quick-bento-label">Dockerfile</span>
+              <span class="quick-bento-desc">多阶段构建优化</span>
             </div>
           </div>
         </div>
-        <p class="empty-subtitle hero-fade-in hero-fade-in-2">
-          不是绑在 IDE 里的编程助手，也不是套着单一 API 的聊天包装。<br/>
-          是在你电脑上自主运行、记住所学、越用越强的 Agent。
-        </p>
-        <div class="quick-actions hero-fade-in hero-fade-in-3">
-          <div class="quick-item" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
-            <span class="qa-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span>
-            <span class="qa-text">{{ t('chatView.quickSort') }}</span>
-          </div>
-          <div class="quick-item" @click="quickAsk('解释 TCP 三次握手的工作原理')">
-            <span class="qa-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
-            <span class="qa-text">{{ t('chatView.tcpHandshake') }}</span>
-          </div>
-          <div class="quick-item" @click="quickAsk('审查这段代码的性能问题: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
-            <span class="qa-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></span>
-            <span class="qa-text">{{ t('chatView.codeReview') }}</span>
-          </div>
-          <div class="quick-item" @click="quickAsk('生成一个 Node.js 应用的多阶段构建 Dockerfile')">
-            <span class="qa-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
-            <span class="qa-text">{{ t('chatView.dockerfile') }}</span>
-          </div>
+        <!-- Status -->
+        <div class="empty-status hero-fade-in hero-fade-in-3">
+          <span class="empty-status-dot" :class="appStore.connectionState"></span>
+          <span class="empty-status-text">{{ appStore.connectionState === 'connected' ? (t('chatView.ready') + ' · ' + (appStore.hermesStatus?.version?.split(' ')[0] || t('chatView.hermesIntegrated'))) : appStore.connectionState === 'connecting' ? t('chatView.connecting') : t('chatView.backendDisconnected') }}</span>
         </div>
       </div>
     </div>
@@ -1029,152 +1046,183 @@ async function exportChat() {
 }
 
 .empty-inner {
-  max-width: 560px;
+  max-width: 680px;
   width: 100%;
   position: relative;
   z-index: 1;
-}
-.empty-glow {
-  position: absolute;
-  left: 50%;
-  top: 40%;
-  transform: translate(-50%, -50%);
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  pointer-events: none;
-  background: radial-gradient(circle, var(--accent-glow), transparent 60%);
-  filter: blur(60px);
-  opacity: .4;
-}
-.empty-subtitle {
-  font-size: .9375rem;
-  line-height: 1.75;
-  color: var(--text-tertiary);
-  text-align: center;
-  margin: 20px 0 28px;
-  max-width: 440px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.status-panel {
   display: flex;
   flex-direction: column;
-  background: var(--glass-base);
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  overflow: hidden;
-  margin-bottom: 24px;
-  max-width: 420px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.status-panel-header {
-  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--glass-border);
+  text-align: center;
 }
 
-.status-panel-dot {
-  width: 8px;
-  height: 8px;
+/* Background: orbs + grid */
+.empty-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.empty-orb {
+  position: absolute;
   border-radius: 50%;
-  flex-shrink: 0;
+  filter: blur(100px);
+  pointer-events: none;
+}
+.empty-orb-1 {
+  width: 600px; height: 600px; top: -200px; left: -200px;
+  background: radial-gradient(circle, rgba(var(--accent-rgb),.12), transparent 60%);
+  animation: orbDrift1 25s ease-in-out infinite;
+}
+.empty-orb-2 {
+  width: 500px; height: 500px; bottom: -150px; right: -150px;
+  background: radial-gradient(circle, rgba(191,90,242,.08), transparent 60%);
+  animation: orbDrift2 30s ease-in-out infinite;
+}
+.empty-orb-3 {
+  width: 400px; height: 400px; top: 30%; left: 50%; transform: translate(-50%,-50%);
+  background: radial-gradient(circle, rgba(255,171,0,.06), transparent 60%);
+  animation: orbDrift3 20s ease-in-out infinite;
+}
+@keyframes orbDrift1{0%,100%{transform:translate(0,0)}50%{transform:translate(80px,50px)}}
+@keyframes orbDrift2{0%,100%{transform:translate(0,0)}50%{transform:translate(-50px,-70px)}}
+@keyframes orbDrift3{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-40%,-55%) scale(1.15)}}
+.empty-grid {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 40%, black 20%, transparent 70%);
+  mask-image: radial-gradient(ellipse 60% 50% at 50% 40%, black 20%, transparent 70%);
 }
 
-.status-panel-dot.connected { background: var(--success); box-shadow: 0 0 8px var(--success-glow); }
-.status-panel-dot.connecting { background: var(--warning); box-shadow: 0 0 8px var(--warning-glow); }
-.status-panel-dot.disconnected { background: var(--error); }
-
-.status-panel-title {
-  font-size: 13px;
-  font-weight: 600;
+/* Hero title */
+.empty-hero { margin-bottom: 48px; }
+.empty-title {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1.1;
+  margin-bottom: 20px;
   color: var(--text-primary);
 }
-
-.status-panel-version {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
+.empty-title-accent {
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 40%, var(--purple) 80%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 8s ease-in-out infinite;
+}
+@keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+.empty-subtitle {
+  font-size: .9375rem;
+  line-height: 1.8;
+  color: var(--text-muted);
+  max-width: 480px;
+  margin: 0 auto;
 }
 
-.status-panel-body {
-  padding: 12px 16px;
+/* Quick Bento Cards */
+.quick-bento {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 32px;
 }
-
-.status-panel-ready {
+.quick-bento-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.status-panel-ready-text {
-  font-size: 13px;
-  color: var(--primary-text);
-  font-weight: 500;
-}
-
-.status-panel-ready-text.error {
-  color: var(--error);
-}
-
-.status-panel-spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--warning-glow);
-  border-top-color: var(--warning);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Quick actions */
-.quick-actions {
-  margin-top: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.quick-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  cursor: pointer;
+  gap: 14px;
+  padding: 16px 18px;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);
   background: var(--glass-base);
-  backdrop-filter: blur(12px);
-  transition: all .25s var(--ease-expo);
+  backdrop-filter: blur(16px) saturate(1.2);
+  cursor: pointer;
+  transition: all .3s var(--ease-expo);
+  position: relative;
+  overflow: hidden;
 }
-.quick-item:hover {
-  background: var(--glass-hover);
+.quick-bento-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb),.06), transparent 50%);
+  opacity: 0;
+  transition: opacity .3s;
+  pointer-events: none;
+}
+.quick-bento-card:hover::before { opacity: 1 }
+.quick-bento-card:hover {
   border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px var(--accent-glow);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(0,0,0,.15);
 }
-.qa-icon {
+.quick-bento-icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb),.08);
+  border: 1px solid rgba(var(--accent-rgb),.1);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+  transition: all .3s var(--ease-spring);
+}
+.quick-bento-card:hover .quick-bento-icon {
+  background: rgba(var(--accent-rgb),.14);
+  box-shadow: 0 0 16px rgba(var(--accent-rgb),.15);
+}
+.quick-bento-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.quick-bento-label {
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.quick-bento-desc {
+  font-size: .75rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+/* Status */
+.empty-status {
   display: flex;
   align-items: center;
-  color: var(--text-tertiary);
-  user-select: none;
-  flex-shrink: 0;
-  transition: all .25s var(--ease-spring);
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: var(--glass-base);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
 }
-.quick-item:hover .qa-icon {
-  color: var(--accent);
-  transform: scale(1.1);
+.empty-status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+.empty-status-dot.connected {
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(48,209,88,.4);
+}
+.empty-status-dot.connecting {
+  background: var(--warning);
+  box-shadow: 0 0 8px rgba(250,204,21,.4);
+}
+.empty-status-dot.disconnected { background: var(--error); }
+.empty-status-text {
+  font-size: .75rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 /* Hero fade-in animations */
@@ -1189,24 +1237,6 @@ async function exportChat() {
 @keyframes heroFadeIn {
   to { opacity: 1; transform: translateY(0) }
 }
-
-/* Status panel title gradient */
-.status-panel-title {
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 700;
-}
-
-.qa-text {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.quick-item:hover .qa-text { color: var(--text-primary); }
-.quick-item:hover .qa-icon { color: var(--primary-text); }
 
 /* ===== Message Wrappers ===== */
 .msg-wrapper {
