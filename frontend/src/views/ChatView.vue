@@ -469,22 +469,19 @@ const scrollerItems = computed(() => {
   return items
 })
 
-// Blueprint context association
-// REMOVED: const showBlueprintPicker = ref(false)
-// REMOVED: const blueprintRunId = computed(() => chatStore.blueprintRunId)
-// REMOVED: const blueprintRuns = computed(() => blueprintStore.runs)
+// Blueprint context association — stubs (backend removed)
+const showBlueprintPicker = ref(false)
+const blueprintRunId = computed(() => chatStore.blueprintRunId || '')
+const blueprintRuns = ref<any[]>([])
 
-/* REMOVED: function toggleBlueprintPicker() {
+function toggleBlueprintPicker() {
   showBlueprintPicker.value = !showBlueprintPicker.value
-  if (showBlueprintPicker.value) {
-    blueprintStore.fetchAllRuns()
-  }
-} */
+  // blueprint store no longer exists, picker stays empty
+}
 
-/* REMOVED: function selectBlueprintRun(run: any) {
-  chatStore.blueprintRunId = run.id
+function selectBlueprintRun(_run: any) {
   showBlueprintPicker.value = false
-} */
+}
 
 const inputText = ref('')
 const scrollerRef = ref<any>(null)
@@ -1857,7 +1854,7 @@ async function exportChat() {
 }
 
 .markdown-body :deep(blockquote) {
-  border: 1px solid var(--accent);
+  border-left: 3px solid var(--accent);
   padding: 4px 12px;
   margin: 8px 0;
   color: var(--text-secondary);
