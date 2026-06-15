@@ -89,13 +89,6 @@
           <span class="nav-label">{{ $t('nav.chat') }}</span>
           <kbd class="nav-shortcut">1</kbd>
         </router-link>
-<!-- REMOVED BLUEPRINT NAV -->
-        <router-link to="/blueprints" class="nav-item" :class="{ active: $route.path === '/blueprints' }">
-          <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
-<!-- END REMOVED BLUEPRINT NAV -->
-          <span class="nav-label">{{ $t('nav.blueprints') }}</span>
-          <kbd class="nav-shortcut">2</kbd>
-        </router-link>
         <router-link to="/inbox" class="nav-item" :class="{ active: $route.path === '/inbox' }">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
