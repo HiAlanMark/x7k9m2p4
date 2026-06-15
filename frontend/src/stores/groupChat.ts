@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { GroupChat, GroupAgent, GroupMessage } from '@/types'
+import { useChatStore } from './chat'
 import {
   groupChatsList,
   groupChatsCreate,
@@ -204,7 +205,9 @@ export const useGroupChatStore = defineStore('groupChat', () => {
     messages.value.push(userMsg)
 
     try {
-      const response = await groupChatSendMessage(activeGroupId.value, content, mentions)
+      const chatStore = useChatStore()
+      const config = chatStore.getActiveConfig()
+      const response = await groupChatSendMessage(activeGroupId.value, content, mentions, config)
       const reader = response.body?.getReader()
       if (!reader) throw new Error('No stream body')
 

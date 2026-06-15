@@ -2572,6 +2572,10 @@ func main() {
 	mux.HandleFunc("/v1/agent/tools/enable", handleToolsEnable)
 	mux.HandleFunc("/v1/agent/tools/disable", handleToolsDisable)
 
+	// Group chat API
+	mux.HandleFunc("/v1/agent/group-chats", handleGroupChats)
+	mux.HandleFunc("/v1/agent/group-chats/", handleGroupChatRouter)
+
 	// Inbox / runs API
 	mux.HandleFunc("/v1/agent/runs", handleRunsList)                   // GET list all runs
 	mux.HandleFunc("/v1/agent/inbox", handleInboxList)                 // GET

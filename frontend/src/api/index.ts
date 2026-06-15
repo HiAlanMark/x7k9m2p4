@@ -1179,11 +1179,18 @@ export async function groupChatSendMessage(
   groupId: string,
   content: string,
   mentions: string[] = [],
+  config?: { baseUrl: string; apiKey: string; model: string },
 ): Promise<Response> {
   // Returns SSE stream — use agentFetch to get raw Response
   return agentFetch(`/v1/agent/group-chats/${groupId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ content, mentions }),
+    body: JSON.stringify({
+      content,
+      mentions,
+      api_base: config?.baseUrl,
+      api_key: config?.apiKey,
+      model: config?.model,
+    }),
   })
 }
 
