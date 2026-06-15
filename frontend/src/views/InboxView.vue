@@ -186,9 +186,9 @@ function toggleReply(id: string) {
   }
 }
 
-function navigateToBlueprint(blueprintId: string) {
+/* REMOVED: function navigateToBlueprint(blueprintId: string) {
   router.push(`/blueprints?id=${blueprintId}`)
-}
+} */
 
 // ═══════════════════════════════════════════════════════════
 // Helpers
@@ -360,7 +360,7 @@ defineExpose({ inboxPendingCount })
           </div>
 
           <!-- Blueprint/Run Reference -->
-          <div v-if="item.blueprint_id || item.run_id" class="inbox-card__refs">
+          <div v-if="false" class="inbox-card__refs">
             <button
               v-if="item.blueprint_id"
               class="ref-link"
@@ -521,7 +521,7 @@ defineExpose({ inboxPendingCount })
         </template>
 
         <!-- References -->
-        <div v-if="detailItem.blueprint_id || detailItem.run_id" class="detail-section">
+        <div v-if="false" class="detail-section">
           <span class="detail-label">{{ t('inbox.references') }}</span>
           <div class="detail-refs">
             <button v-if="detailItem.blueprint_id" class="ref-link" @click="navigateToBlueprint(detailItem.blueprint_id!)">

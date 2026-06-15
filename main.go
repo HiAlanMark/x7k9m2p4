@@ -2600,10 +2600,6 @@ func main() {
 	mux.HandleFunc("/v1/agent/tools/disable", handleToolsDisable)
 
 	// ── 蓝图工作流 ──
-	mux.HandleFunc("/v1/agent/blueprints", handleBlueprintsList)       // GET list, POST create
-	mux.HandleFunc("/v1/agent/blueprints/", handleBlueprintsRouter)    // /{id} GET/PUT/DELETE, /{id}/export, /{id}/runs
-	mux.HandleFunc("/v1/agent/blueprints/import", handleBlueprintsImport) // POST import
-	mux.HandleFunc("/v1/agent/runs/", handleRunsRouter)                // /{id} GET, /{id}/cancel POST
 	mux.HandleFunc("/v1/agent/runs", handleRunsList)                   // GET list all runs
 	mux.HandleFunc("/v1/agent/inbox", handleInboxList)                 // GET
 	mux.HandleFunc("/v1/agent/inbox/create", handleInboxCreate)         // POST create proposal/notification items

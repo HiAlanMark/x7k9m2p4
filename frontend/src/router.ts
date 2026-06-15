@@ -4,7 +4,6 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: () => import('./views/ChatView.vue') },
-    { path: '/blueprints', component: () => import('./views/BlueprintView.vue') },
     { path: '/inbox', component: () => import('./views/InboxView.vue') },
     { path: '/history', component: () => import('./views/HistoryView.vue') },
     { path: '/skills', component: () => import('./views/SkillStoreView.vue') },
