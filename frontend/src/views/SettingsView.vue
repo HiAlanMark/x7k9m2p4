@@ -2973,7 +2973,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
     color-mix(in srgb, var(--accent) 15%, transparent) 100%
   );
   color: var(--accent);
-  border-left: 3px solid color-mix(in srgb, var(--accent) 80%, transparent);
+  border: 1px solid var(--border-light) 80%, transparent);
   box-shadow: 
     inset 0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent),
     0 0 16px color-mix(in srgb, var(--accent) 20%, transparent);
@@ -3506,7 +3506,7 @@ const pageNumbers = computed<(number | string)[]>(() => {
   border-radius: 3px 3px 0 0;
   min-height: 2px;
   position: relative;
-  transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--slow);
 }
 .bar--input { background: var(--accent); opacity: 0.85; }
 .bar--output { background: var(--purple); opacity: 0.85; }

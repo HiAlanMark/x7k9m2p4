@@ -395,7 +395,7 @@ onMounted(() => {
 /* Expand transition */
 .expand-enter-active,
 .expand-leave-active {
-  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+  transition: transform var(--slow);
   max-height: 400px;
   opacity: 1;
   overflow: hidden;

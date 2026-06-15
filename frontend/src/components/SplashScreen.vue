@@ -101,7 +101,7 @@ onMounted(() => {
 .splash-logo {
   opacity: 0;
   transform: scale(0.6);
-  transition: opacity 0.8s cubic-bezier(.34,1.56,.64,1), transform 0.8s cubic-bezier(.34,1.56,.64,1);
+  transition: opacity 0.8s cubic-bezier(.16, 1, .3, 1), transform 0.8s cubic-bezier(.16, 1, .3, 1);
 }
 .splash-logo.logo-enter {
   opacity: 1;

@@ -100,7 +100,7 @@ function onChange(e: Event) {
     var(--shadow-sm),
     0 1px 2px rgba(0, 0, 0, 0.1),
     inset 0 1px 2px rgba(255, 255, 255, 0.8);
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.4s cubic-bezier(.16, 1, .3, 1), background 0.4s cubic-bezier(.16, 1, .3, 1);
   z-index: 1;
 }
 

@@ -1420,7 +1420,7 @@ onBeforeUnmount(() => {
 }
 .markdown-body :deep(a) { color: var(--primary-text); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color var(--duration-150) var(--ease-expo); }
 .markdown-body :deep(a:hover) { border-bottom-color: var(--primary-text); }
-.markdown-body :deep(blockquote) { border-left: 2px solid var(--primary); margin: var(--space-3) 0; padding: var(--space-2) var(--space-4); color: var(--text-tertiary); }
+.markdown-body :deep(blockquote) { border: 1px solid var(--primary); margin: var(--space-3) 0; padding: var(--space-2) var(--space-4); color: var(--text-tertiary); }
 .markdown-body :deep(hr) { border: none; border-top: 1px solid var(--border-base); margin: var(--space-4) 0; }
 .markdown-body :deep(img) { max-width: 100%; border-radius: var(--radius-md); }
 .markdown-body :deep(table) { width: 100%; border-collapse: collapse; margin: var(--space-3) 0; font-size: var(--text-xs); }

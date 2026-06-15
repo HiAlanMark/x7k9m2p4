@@ -651,7 +651,7 @@ onMounted(() => {
 }
 .gc-group-item.active {
   background: rgba(90,200,250,.10);
-  border-left: 3px solid var(--accent, #5ac8fa);
+  border: 1px solid var(--accent, #5ac8fa);
 }
 .gc-group-name {
   font-size: 13px;
@@ -1029,7 +1029,7 @@ onMounted(() => {
 /* Task Board Panel */
 .gc-task-board {
   width: 280px;
-  border-left: 1px solid var(--border-base);
+  border: 1px solid var(--border-base);
   background: var(--bg-base);
   display: flex;
   flex-direction: column;

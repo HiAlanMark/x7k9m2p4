@@ -845,9 +845,9 @@ function formatElapsed(iso?: string): string {
 }
 
 .task-card.paused { opacity: 0.55; }
-.task-card.running { border-left: 3px solid var(--accent); }
-.task-card.history.success { border-left: 3px solid var(--success); }
-.task-card.history.failed { border-left: 3px solid var(--error); }
+.task-card.running { border: 1px solid var(--accent); }
+.task-card.history.success { border: 1px solid var(--success); }
+.task-card.history.failed { border: 1px solid var(--error); }
 
 .task-header {
   display: flex;

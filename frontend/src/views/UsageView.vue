@@ -366,7 +366,7 @@ onMounted(() => {
   flex: 1;
   border-radius: 2px 2px 0 0;
   min-height: 1px;
-  transition: height 0.4s ease;
+  transition: transform var(--slow);
 }
 
 .bar-input {
@@ -443,7 +443,7 @@ onMounted(() => {
   height: 100%;
   background: linear-gradient(90deg, rgba(90, 200, 250, 0.4), rgba(90, 200, 250, 0.8));
   border-radius: 4px;
-  transition: width 0.5s ease;
+  transition: transform var(--slow);
 }
 
 .model-count {

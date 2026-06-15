@@ -44,7 +44,7 @@ const cssVars = computed(() => ({
   border: var(--gp-border);
   border-radius: var(--gp-radius);
   box-shadow: var(--gp-shadow-inset), var(--gp-shadow-outer);
-  transition: transform 0.35s cubic-bezier(.34,1.56,.64,1),
+  transition: transform 0.35s cubic-bezier(.16, 1, .3, 1),
               box-shadow 0.35s ease,
               background 0.3s ease;
 }

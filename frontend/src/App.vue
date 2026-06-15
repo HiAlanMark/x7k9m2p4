@@ -741,7 +741,7 @@ async function exportSession() {
   display: flex;
   flex-direction: column;
   z-index: var(--z-surface);
-  transition: width var(--normal), min-width var(--normal), opacity var(--normal);
+  transition: transform var(--slow);
 }
 
 @media (max-width: 768px) {

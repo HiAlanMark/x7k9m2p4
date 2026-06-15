@@ -135,10 +135,10 @@ defineExpose({ show, remove, success, error, warning, info })
   -webkit-backdrop-filter: blur(20px);
 }
 
-.hixns-toast--success { border-left: 3px solid var(--success); }
-.hixns-toast--error { border-left: 3px solid var(--error); }
-.hixns-toast--warning { border-left: 3px solid var(--warning); }
-.hixns-toast--info { border-left: 3px solid var(--accent); }
+.hixns-toast--success { border: 1px solid var(--success); }
+.hixns-toast--error { border: 1px solid var(--error); }
+.hixns-toast--warning { border: 1px solid var(--warning); }
+.hixns-toast--info { border: 1px solid var(--accent); }
 
 .hixns-toast-icon {
   flex-shrink: 0;

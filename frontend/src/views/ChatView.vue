@@ -1857,7 +1857,7 @@ async function exportChat() {
 }
 
 .markdown-body :deep(blockquote) {
-  border-left: 3px solid var(--accent);
+  border: 1px solid var(--accent);
   padding: 4px 12px;
   margin: 8px 0;
   color: var(--text-secondary);
