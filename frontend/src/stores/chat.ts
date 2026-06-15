@@ -113,7 +113,7 @@ export const useChatStore = defineStore('chat', () => {
   const selectedModel = ref('gpt-4o-mini')
 
   // Blueprint context association
-  /* REMOVED: const blueprintRunId = ref('') */
+  const blueprintRunId = ref('')
 
   // Provider
   const providerMode = ref<ProviderMode>(
@@ -318,7 +318,7 @@ export const useChatStore = defineStore('chat', () => {
         apiKey: activeProfile.apiKey,
         model: activeProfile.model || 'gpt-4o-mini',
         profileName: activeProfile.name,
-        // blueprint_run_id: bpRunId,
+        blueprint_run_id: bpRunId,
       }
     }
     if (providerMode.value === 'custom' && customProvider.value.baseUrl && customProvider.value.apiKey) {
@@ -326,14 +326,14 @@ export const useChatStore = defineStore('chat', () => {
         baseUrl: customProvider.value.baseUrl,
         apiKey: customProvider.value.apiKey,
         model: customProvider.value.model || 'gpt-4o-mini',
-        // blueprint_run_id: bpRunId,
+        blueprint_run_id: bpRunId,
       }
     }
     return {
       baseUrl: DEFAULT_GFW_BASE,
       apiKey: localStorage.getItem('gfw_api_key') || '',
       model: selectedModel.value,
-      // blueprint_run_id: bpRunId,
+      blueprint_run_id: bpRunId,
     }
   }
 

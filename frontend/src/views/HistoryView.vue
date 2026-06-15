@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+/* REMOVED: import { useBlueprintStore } from '@/stores/blueprint' */
 import { HxButton, HxCard, HxEmpty, HxSelect } from '@/components/ui'
 import { agentFetch, agentJson } from '@/api'
 
 const { t } = useI18n()
+/* REMOVED: const bpStore = useBlueprintStore() */
 
 interface NodeRun {
   id: string
@@ -59,7 +61,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null
 const filtered = computed(() => {
   let list = [...runs.value]
   if (filterBlueprint.value) {
-    // Removed blueprint filter
+    // Blueprint filter removed
   }
   if (filterStatus.value) {
     list = list.filter(r => r.status === filterStatus.value)
@@ -81,10 +83,9 @@ async function fetchRuns() {
     const data = await agentJson('/v1/agent/runs')
     runs.value = Array.isArray(data) ? data : (data?.runs || data?.data || [])
     // Enrich with blueprint names
-    await bpStore.fetchBlueprints()
+    // Blueprint fetch removed
     for (const run of runs.value) {
-      const bp = bpStore.blueprints.find(b => b.id === run.blueprint_id)
-      if (bp) run.blueprint_name = bp.name
+// Blueprint enrichment removed
     }
   } catch { runs.value = [] }
   finally { loading.value = false }
@@ -177,7 +178,13 @@ const statusOptions = computed(() => [
   { value: 'cancelled', label: t('history.status.cancelled') },
 ])
 
-// Blueprint filter removed
+const blueprintOptions = computed(() => {
+  const opts = [{ value: '', label: t('history.allBlueprints') }]
+  for (const bp of bpStore.blueprints) {
+    opts.push({ value: bp.id, label: bp.name })
+  }
+  return opts
+})
 
 onMounted(() => {
   fetchRuns()
@@ -208,7 +215,9 @@ defineExpose({ runningCount })
 
     <!-- Filters -->
     <div class="history-filters">
-      <!-- REMOVED: <HxSelect v-model="filterBlueprint" :options="blueprintOptions" class="filter-select" /> -->
+      <!-- REMOVED BLUEPRINT FILTER -->
+<HxSelect v-model="filterBlueprint" :options="blueprintOptions" class="filter-select" />
+<!-- END REMOVED BLUEPRINT FILTER -->
       <HxSelect v-model="filterStatus" :options="statusOptions" class="filter-select" />
       <input v-model="filterFrom" type="date" class="filter-date" :placeholder="t('history.from')" />
       <input v-model="filterTo" type="date" class="filter-date" :placeholder="t('history.to')" />
@@ -229,7 +238,7 @@ defineExpose({ runningCount })
         <div class="run-card-main" @click="toggleExpand(run.id)">
           <div class="run-status-indicator" :class="statusClass(run.status)"></div>
           <div class="run-info">
-            <div class="run-name">run.blueprint_id.slice(0, 8)</div>
+            <div class="run-name">{{ run.blueprint_name || run.blueprint_id.slice(0, 8) }}</div>
             <div class="run-meta">
               <span class="run-status-text" :class="statusClass(run.status)">{{ t('history.status.' + run.status) || run.status }}</span>
               <span class="run-time">{{ timeAgo(run.started_at) }}</span>

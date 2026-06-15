@@ -11,7 +11,7 @@
       <div class="empty-inner">
         <!-- Large Logo -->
         <div class="empty-logo hero-fade-in hero-fade-in-1">
-          <img src="/logo.svg" alt="Hi!XNS" />
+          <img src="@/../public/logo.svg" alt="Hi!XNS" />
           <div class="logo-glow"></div>
         </div>
         <!-- Quick Actions -->
@@ -256,7 +256,7 @@
         <button @click="triggerFileUpload" class="upload-btn" :title="t('chatView.uploadFile')">
           <svg width="18" height="14" viewBox="0 0 1329 1024" fill="currentColor"><path d="M1036.572 951.784h-780.721c-62.416 0-113.411-47.899-115.072-107.38l-78.125-495.818v-2.735c0-60.873 51.662-110.396 115.164-110.396h14.961v-63.036c0-60.873 51.651-110.396 115.13-110.396h234.199c42.067 0 105.428 34.714 140.178 74.338h302.237c48.717 0 161.228 35.661 166.943 104.891 45.468 14.762 78.311 56.069 78.311 104.599v2.747l-78.137 495.807c-1.659 59.493-52.643 107.38-115.072 107.38zM136.887 343.559l78.008 495.07v2.747c0 21.109 18.374 38.279 40.957 38.279h780.721c22.582 0 40.957-17.17 40.957-38.279v-2.747l78.008-495.07c-1.274-20.046-19.146-35.989-40.932-35.989h-37.075v-59.903c-1.823-3.846-12.027-14.026-34.48-24.113-23.096-10.357-46.52-15.078-58.536-15.078h-341.532l-10.87-17.147c-17.953-28.368-70.714-57.191-90-57.191h-234.199c-22.593 0-40.968 17.182-40.968 38.279v135.152h-89.135c-21.775 0-39.647 15.942-40.921 36z"/><path d="M100.875 306.542h1086.428v69.779h-1086.428z"/></svg>
         </button>
-        <button class="toolbar-btn" @click.stop="toggleBlueprintPicker" :title="t('chatView.attachBlueprint')">
+        <button class="toolbar-btn" @click="toggleBlueprintPicker" :title="t('chatView.attachBlueprint')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
           </svg>
@@ -290,6 +290,7 @@
       </div>
 
       <!-- Blueprint context indicator -->
+<!-- REMOVED BLUEPRINT BLOCK -->
       <div v-if="blueprintRunId" class="blueprint-context-bar">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -301,6 +302,7 @@
           </svg>
         </button>
       </div>
+<!-- END REMOVED BLUEPRINT BLOCK -->
 
       <div class="fab-anchor">
         <transition name="fab-fade">
@@ -310,7 +312,8 @@
         </transition>
 
         <!-- Blueprint run picker dropdown -->
-        <div v-if="showBlueprintPicker" class="blueprint-picker-dropdown" @click.stop>
+<!-- REMOVED BLUEPRINT BLOCK -->
+        <div v-if="showBlueprintPicker" class="blueprint-picker-dropdown">
           <div v-if="blueprintRuns.length === 0" class="bp-picker-empty">
             {{ t('chatView.noBlueprintRuns') }}
           </div>
@@ -319,6 +322,7 @@
             <span class="bp-picker-status" :class="'status-' + run.status">{{ run.status }}</span>
           </div>
         </div>
+<!-- END REMOVED BLUEPRINT BLOCK -->
 
         <div class="input-capsule" :class="{ focused: inputFocused }">
         <span class="prompt-symbol">❯</span>
@@ -375,6 +379,7 @@ import { ref, nextTick, watch, onMounted, onBeforeUnmount, reactive, computed } 
 import { useChatStore } from '../stores/chat'
 import { useAppStore } from '../stores/app'
 import { useGfwStore } from '../stores/gfw'
+/* REMOVED: import { useBlueprintStore } from '@/stores/blueprint' */
 import { storeToRefs } from 'pinia'
 import { marked, type Tokens } from 'marked'
 import DOMPurify from 'dompurify'
@@ -448,6 +453,7 @@ function formatTokenCount(n: number): string {
 const chatStore = useChatStore()
 const appStore = useAppStore()
 const gfwStore = useGfwStore()
+/* REMOVED: const blueprintStore = useBlueprintStore() */
 const appVersion = __APP_VERSION__
 const { messages, isStreaming, currentResponse, currentToolCalls, selectedModel } = storeToRefs(chatStore)
 
@@ -464,8 +470,21 @@ const scrollerItems = computed(() => {
 })
 
 // Blueprint context association
+// REMOVED: const showBlueprintPicker = ref(false)
+// REMOVED: const blueprintRunId = computed(() => chatStore.blueprintRunId)
+// REMOVED: const blueprintRuns = computed(() => blueprintStore.runs)
 
+/* REMOVED: function toggleBlueprintPicker() {
+  showBlueprintPicker.value = !showBlueprintPicker.value
+  if (showBlueprintPicker.value) {
+    blueprintStore.fetchAllRuns()
+  }
+} */
 
+/* REMOVED: function selectBlueprintRun(run: any) {
+  chatStore.blueprintRunId = run.id
+  showBlueprintPicker.value = false
+} */
 
 const inputText = ref('')
 const scrollerRef = ref<any>(null)
@@ -913,7 +932,6 @@ async function regenerateMessage(idx: number) {
 
 onMounted(async () => {
   if (gfwStore.models.length === 0) await gfwStore.fetchModels()
-  // Close blueprint picker on outside click
   // Attach scroll listener to DynamicScroller's internal scroll container
   await nextTick()
   const scrollerEl = scrollerRef.value?.$el as HTMLElement | undefined
