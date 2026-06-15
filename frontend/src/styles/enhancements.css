@@ -483,6 +483,7 @@
   border-radius: var(--radius-sm);
   color: var(--text-tertiary);
   cursor: pointer;
+  opacity: 0;
   transition: all var(--fast);
   flex-shrink: 0;
 }
@@ -542,20 +543,6 @@
 .hixns-input__number-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
-}
-  
-  width: 20px;
-  height: 20px;
-  
-  background: transparent;
-  border: none;
-  border-radius: 50%;
-  
-  color: var(--text-tertiary);
-  cursor: pointer;
-  
-  opacity: 0;
-  transition: all var(--fast);
 }
 
 .hixns-input:hover .hixns-input__clear,

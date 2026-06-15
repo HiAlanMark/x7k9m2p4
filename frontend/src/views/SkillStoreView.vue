@@ -158,7 +158,7 @@
         <div class="filter-chips">
           <HxButton :variant="installedFilter === 'all' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = 'all'">{{ t('skillStore.all') }}</HxButton>
           <HxButton :variant="installedFilter === 'builtin' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = 'builtin'">{{ t('skillStore.builtin') }}</HxButton>
-          <HxButton :variant="installedFilter === '2x' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = '2x'">{{ t('skillStore.storeInstall') }}</HxButton>
+          <HxButton :variant="installedFilter === 'source-2x' ? 'primary' : 'ghost'" size="sm" @click="installedFilter = 'source-2x'">{{ t('skillStore.storeInstall') }}</HxButton>
         </div>
       </div>
 
@@ -185,7 +185,7 @@
           <div class="card-footer">
             <div class="card-tags">
               <span v-if="sk.category" class="tag">{{ sk.category }}</span>
-              <span class="tag" :class="{ cap: sk.source === '2x' }">{{ sk.source === '2x' ? t('skillStore.storeSource') : t('skillStore.builtinSource') }}</span>
+              <span class="tag" :class="{ cap: sk.source === 'source-2x' }">{{ sk.source === 'source-2x' ? t('skillStore.storeSource') : t('skillStore.builtinSource') }}</span>
             </div>
             <div class="card-footer-right">
               <span class="meta-stat">{{ sk.files }} {{ t('skillStore.filesUnit') }}</span>
@@ -215,11 +215,11 @@
 
       <div class="modal-stats">
         <div class="stat-item">
-          <span class="stat-num">{{ formatNum(detailSkill?.total_downloads) }}</span>
+          <span class="stat-num">{{ formatNum(detailSkill?.total_downloads || 0) }}</span>
           <span class="stat-label">{{ t('skillStore.downloads') }}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-num">{{ formatNum(detailSkill?.total_favorites) }}</span>
+          <span class="stat-num">{{ formatNum(detailSkill?.total_favorites || 0) }}</span>
           <span class="stat-label">{{ t('skillStore.favorites') }}</span>
         </div>
         <div class="stat-item">
@@ -401,7 +401,7 @@ function isInstalled(slug: string): boolean {
 }
 
 const installedSearch = ref('')
-const installedFilter = ref<'all' | 'builtin' | '2x'>('all')
+const installedFilter = ref<'all' | 'builtin' | 'source-2x'>('all')
 
 const filteredInstalled = computed(() => {
   let list = installedSkills.value
@@ -598,7 +598,7 @@ async function loadInstalled() {
     const data = await r.json()
     installedSkills.value = (data.skills || []).sort((a: any, b: any) => {
       // 商店安装的排前面，然后按分类/名称排序
-      if (a.source !== b.source) return a.source === '2x' ? -1 : 1
+      if (a.source !== b.source) return a.source === 'source-2x' ? -1 : 1
       if (a.category !== b.category) return (a.category || '').localeCompare(b.category || '')
       return (a.name || a.slug).localeCompare(b.name || b.slug)
     })
@@ -612,7 +612,7 @@ async function loadInstalled() {
 }
 
 async function checkUpdates() {
-  const storeSkills = installedSkills.value.filter(s => s.source === '2x' && s.version)
+  const storeSkills = installedSkills.value.filter(s => s.source === 'source-2x' && s.version)
   if (storeSkills.length === 0) return
   // twoXFetch 已内置全局限流，直接顺序调用即可
   for (const sk of storeSkills) {
@@ -1763,7 +1763,7 @@ onBeforeUnmount(() => {
   color: var(--text-tertiary);
 }
 
-.source-badge.2x {
+.source-badge.source-2x {
   background: var(--primary-light);
   color: var(--primary-text);
 }

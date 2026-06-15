@@ -257,7 +257,7 @@ const dragOver = ref(false)
 
 // Preview
 const showPreview = ref(false)
-const previewFile = ref<FileEntry | null>(null)
+const previewFile = ref<(FileEntry & { path?: string }) | null>(null)
 const previewContent = ref('')
 const previewLoading = ref(false)
 const previewError = ref('')
@@ -436,9 +436,9 @@ async function onFileInput(e: Event) {
   for (const file of Array.from(input.files)) {
     try {
       await filesUpload(currentPath.value, file)
-      toast.show(t('files.uploadSuccess'), 'success')
+      toast.success(t('files.uploadSuccess'))
     } catch (e: any) {
-      toast.show(t('files.uploadError') + ': ' + (e.message || String(e)), 'error')
+      toast.error(t('files.uploadError'), e.message || String(e))
     }
   }
   input.value = ''
@@ -452,9 +452,9 @@ async function onDrop(e: DragEvent) {
   for (const file of Array.from(files)) {
     try {
       await filesUpload(currentPath.value, file)
-      toast.show(t('files.uploadSuccess'), 'success')
+      toast.success(t('files.uploadSuccess'))
     } catch (e: any) {
-      toast.show(t('files.uploadError') + ': ' + (e.message || String(e)), 'error')
+      toast.error(t('files.uploadError'), e.message || String(e))
     }
   }
   refresh()
@@ -468,12 +468,12 @@ async function createFolder() {
     : `${currentPath.value}/${mkdirName.value.trim()}`
   try {
     await filesMkdir(path)
-    toast.show(t('files.createSuccess'), 'success')
+    toast.success(t('files.createSuccess'))
     showMkdirModal.value = false
     mkdirName.value = ''
     refresh()
   } catch (e: any) {
-    toast.show(t('files.createError') + ': ' + (e.message || String(e)), 'error')
+    toast.error(t('files.createError'), e.message || String(e))
   }
 }
 
@@ -485,12 +485,12 @@ async function createNewFile() {
     : `${currentPath.value}/${newFileName.value.trim()}`
   try {
     await fileWrite(path, '')
-    toast.show('文件已创建', 'success')
+    toast.success('文件已创建')
     showNewFileModal.value = false
     newFileName.value = ''
     refresh()
   } catch (e: any) {
-    toast.show('创建文件失败: ' + (e.message || String(e)), 'error')
+    toast.error('创建文件失败', e.message || String(e))
   }
 }
 
@@ -536,13 +536,13 @@ async function renameEntry() {
     : `${currentPath.value}/${selectedEntry.value.name}`
   try {
     await filesRename(fullPath, renameValue.value.trim())
-    toast.show(t('files.renameSuccess'), 'success')
+    toast.success(t('files.renameSuccess'))
     showRenameModal.value = false
     renameValue.value = ''
     selectedEntry.value = null
     refresh()
   } catch (e: any) {
-    toast.show(t('files.renameError') + ': ' + (e.message || String(e)), 'error')
+    toast.error(t('files.renameError'), e.message || String(e))
   }
 }
 
@@ -560,13 +560,13 @@ async function deleteEntry() {
     : `${currentPath.value}/${deleteTarget.value.name}`
   try {
     await filesDelete(fullPath)
-    toast.show(t('files.deleteSuccess'), 'success')
+    toast.success(t('files.deleteSuccess'))
     showDeleteModal.value = false
     deleteTarget.value = null
     selectedEntry.value = null
     refresh()
   } catch (e: any) {
-    toast.show(t('files.deleteError') + ': ' + (e.message || String(e)), 'error')
+    toast.error(t('files.deleteError'), e.message || String(e))
   }
 }
 
@@ -598,13 +598,13 @@ async function confirmCopy() {
     : `${currentPath.value}/${copyDestName.value.trim()}`
   try {
     await fileCopy(srcPath, dstPath)
-    toast.show('文件已复制', 'success')
+    toast.success('文件已复制')
     showCopyModal.value = false
     copyDestName.value = ''
     selectedEntry.value = null
     refresh()
   } catch (e: any) {
-    toast.show('复制失败: ' + (e.message || String(e)), 'error')
+    toast.error('复制失败', e.message || String(e))
   }
 }
 
@@ -621,7 +621,7 @@ async function downloadFile(filePath: string) {
   try {
     await filesDownload(filePath)
   } catch (e: any) {
-    toast.show(t('files.downloadError') + ': ' + (e.message || String(e)), 'error')
+    toast.error(t('files.downloadError'), e.message || String(e))
   }
 }
 

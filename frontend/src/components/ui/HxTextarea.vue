@@ -92,10 +92,10 @@ onMounted(() => {
   if (props.autoResize) adjustHeight()
 })
 
-defineExpose({ 
-  focus: () => areaRef.value?.focus(), 
+defineExpose({
+  focus: () => areaRef.value?.focus(),
   blur: () => areaRef.value?.blur(),
-  textarea: areaRef 
+  get textarea() { return areaRef.value }
 })
 </script>
 

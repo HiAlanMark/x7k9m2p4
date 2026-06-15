@@ -163,7 +163,7 @@
                     <span v-if="tc.status === 'running'" class="tool-spinner-sm"></span>
                     <span v-else :class="['tool-status', tc.status]"></span>
                     <span class="tool-name">{{ tc.tool }}</span>
-                    <span class="tool-label">{{ tc.status === 'completed' ? t('chatView.completed') : tc.status === 'failed' ? t('chatView.failed') : tc.status === 'denied' ? t('chatView.denied') : tc.status === 'timeout' ? t('chatView.approvalTimeout') : t('chatView.executing') }}</span>
+                    <span class="tool-label">{{ toolStatusLabel(tc.status) }}</span>
                   </div>
                 </div>
               </div>
@@ -342,10 +342,10 @@
           @contextmenu.prevent="showContextMenu"
         />
         
-        <button @click="sendMessage" :disabled="!inputText.trim() && attachedFiles.length === 0" class="send-btn">
+        <button @click="onSendClick" :disabled="!inputText.trim() && attachedFiles.length === 0" class="send-btn">
           <svg class="send-arrow" width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M853.333333 128a42.666667 42.666667 0 0 0-42.666666 42.666667v298.666666c0 71.210667-56.789333 128-128 128H170.666667a42.666667 42.666667 0 0 0-42.666667 42.666667 42.666667 42.666667 0 0 0 42.666667 42.666667h512c117.632 0 213.333333-95.701333 213.333333-213.333334V170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z"/><path d="M384 384a42.666667 42.666667 0 0 0-30.165333 12.501333l-213.333334 213.333334a42.666667 42.666667 0 0 0 0 60.330666l213.333334 213.333334a42.666667 42.666667 0 0 0 60.330666 0 42.666667 42.666667 0 0 0 0-60.330667L231.168 640l182.997333-182.997333a42.666667 42.666667 0 0 0 0-60.330667A42.666667 42.666667 0 0 0 384 384z"/></svg>
         </button>
-        <button @click="cancelExecution" class="cancel-btn" v-if="isStreaming">
+        <button @click="onCancelClick" class="cancel-btn" v-if="isStreaming">
           <span>{{ t('chatView.stop') }}</span>
           <svg class="cancel-icon" width="10" height="10" viewBox="0 0 1024 1024" fill="currentColor"><path d="M213.333333 85.333333C143.146667 85.333333 85.333333 143.146667 85.333333 213.333333v597.333334c0 70.186667 57.813333 128 128 128h597.333334c70.186667 0 128-57.813333 128-128V213.333333c0-70.186667-57.813333-128-128-128z"/></svg>
         </button>
@@ -505,6 +505,14 @@ function timingTooltip(msg: any): string {
 // Context menu state
 const ctxMenu = reactive({ show: false, x: 0, y: 0, hasContent: false, hasSelection: false, source: '' as 'input' | 'body' | '' })
 
+function onSendClick() {
+  void sendMessage()
+}
+
+function onCancelClick() {
+  void cancelExecution()
+}
+
 function onChatKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     e.preventDefault()
@@ -512,8 +520,17 @@ function onChatKeydown(e: KeyboardEvent) {
   }
 }
 
+function toolStatusLabel(status: string) {
+  const s = status as string
+  if (s === 'completed') return t('chatView.completed')
+  if (s === 'failed') return t('chatView.failed')
+  if (s === 'denied') return t('chatView.denied')
+  if (s === 'timeout') return t('chatView.approvalTimeout')
+  return t('chatView.executing')
+}
+
 function showContextMenu(e: MouseEvent) {
-  const ta = nativeTextarea.value
+  const ta = nativeTextarea.value as HTMLTextAreaElement | null
   ctxMenu.hasContent = !!ta?.value.length
   ctxMenu.hasSelection = ta ? ta.selectionStart !== ta.selectionEnd : false
   ctxMenu.source = 'input'
@@ -545,7 +562,7 @@ function hideContextMenu() {
 }
 
 function ctxCopy() {
-  const ta = nativeTextarea.value
+  const ta = nativeTextarea.value as HTMLTextAreaElement | null
   if (!ta) return
   ta.focus()
   try { document.execCommand('copy') } catch {}
@@ -558,7 +575,7 @@ function ctxBodyCopy() {
 }
 
 function ctxCut() {
-  const ta = nativeTextarea.value
+  const ta = nativeTextarea.value as HTMLTextAreaElement | null
   if (!ta) return
   ta.focus()
   try { document.execCommand('cut') } catch {}
@@ -567,7 +584,7 @@ function ctxCut() {
 }
 
 function ctxPaste() {
-  const ta = nativeTextarea.value
+  const ta = nativeTextarea.value as HTMLTextAreaElement | null
   if (!ta) return
   hideContextMenu()
   if (navigator.clipboard?.readText) {
@@ -584,7 +601,8 @@ function ctxPaste() {
 }
 
 function ctxSelectAll() {
-  nativeTextarea.value?.select()
+  const ta = nativeTextarea.value as HTMLTextAreaElement | null
+  ta?.select()
   hideContextMenu()
 }
 const attachedFiles = ref<Array<{ id: string; file: File; type: string; name: string; size: number; extractedText?: string }>>([])
@@ -860,7 +878,7 @@ function onScrollerScroll() {
 
 // Click delegation for code copy buttons (handles v-html inline onclick fallback)
 function onMessagesClick(e: MouseEvent) {
-  const btn = (e.target as HTMLElement).closest('.code-copy-btn')
+  const btn = (e.target as HTMLElement).closest('.code-copy-btn') as HTMLElement | null
   if (!btn) return
   e.preventDefault()
   const codeEl = btn.closest('.code-window')?.querySelector('code')

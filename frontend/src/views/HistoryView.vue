@@ -50,7 +50,7 @@ interface RunRecord {
 const runs = ref<RunRecord[]>([])
 const loading = ref(false)
 const expandedRun = ref<string | null>(null)
-/* REMOVED: const filterBlueprint = ref('') */
+const filterBlueprint = ref('')
 const filterStatus = ref('')
 const filterFrom = ref('')
 const filterTo = ref('')
@@ -60,9 +60,6 @@ let pollTimer: ReturnType<typeof setInterval> | null = null
 
 const filtered = computed(() => {
   let list = [...runs.value]
-  if (filterBlueprint.value) {
-    // Blueprint filter removed
-  }
   if (filterStatus.value) {
     list = list.filter(r => r.status === filterStatus.value)
   }
@@ -178,13 +175,7 @@ const statusOptions = computed(() => [
   { value: 'cancelled', label: t('history.status.cancelled') },
 ])
 
-const blueprintOptions = computed(() => {
-  const opts = [{ value: '', label: t('history.allBlueprints') }]
-  for (const bp of bpStore.blueprints) {
-    opts.push({ value: bp.id, label: bp.name })
-  }
-  return opts
-})
+const blueprintOptions = computed(() => [{ value: '', label: t('history.allBlueprints') }])
 
 onMounted(() => {
   fetchRuns()

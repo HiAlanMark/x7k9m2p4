@@ -393,6 +393,8 @@ const threeRef = ref<{
   composer?: EffectComposer;
   touch?: ReturnType<typeof createTouchTexture>;
   liquidEffect?: Effect;
+  onPointerDown?: (e: PointerEvent) => void;
+  onPointerMove?: (e: PointerEvent) => void;
 } | null>(null);
 
 interface PixelBlastConfig {
@@ -428,8 +430,8 @@ const setup = () => {
       const t = threeRef.value;
       t.resizeObserver?.disconnect();
       cancelAnimationFrame(t.raf!);
-      t.renderer.domElement.removeEventListener('pointerdown', onPointerDown);
-      t.renderer.domElement.removeEventListener('pointermove', onPointerMove);
+      if (t.onPointerDown) t.renderer.domElement.removeEventListener('pointerdown', t.onPointerDown);
+      if (t.onPointerMove) t.renderer.domElement.removeEventListener('pointermove', t.onPointerMove);
       t.quad?.geometry.dispose();
       t.material.dispose();
       t.composer?.dispose();
@@ -616,7 +618,9 @@ const setup = () => {
       timeOffset,
       composer,
       touch,
-      liquidEffect
+      liquidEffect,
+      onPointerDown,
+      onPointerMove
     };
   } else {
     const t = threeRef.value!;
@@ -649,8 +653,8 @@ const setup = () => {
     const t = threeRef.value;
     t.resizeObserver?.disconnect();
     cancelAnimationFrame(t.raf!);
-    t.renderer.domElement.removeEventListener('pointerdown', onPointerDown);
-    t.renderer.domElement.removeEventListener('pointermove', onPointerMove);
+    if (t.onPointerDown) t.renderer.domElement.removeEventListener('pointerdown', t.onPointerDown);
+    if (t.onPointerMove) t.renderer.domElement.removeEventListener('pointermove', t.onPointerMove);
     t.quad?.geometry.dispose();
     t.material.dispose();
     t.composer?.dispose();

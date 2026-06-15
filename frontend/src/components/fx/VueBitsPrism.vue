@@ -172,7 +172,7 @@ const setup = () => {
     ro = new ResizeObserver(handleResize)
     ro.observe(container)
   } else {
-    window.addEventListener('resize', handleResize)
+    globalThis.addEventListener('resize', handleResize)
   }
 
   const startTime = performance.now()
@@ -190,7 +190,7 @@ const setup = () => {
   cleanup = () => {
     if (rafRef.value !== null) cancelAnimationFrame(rafRef.value)
     if (ro) ro.disconnect()
-    else window.removeEventListener('resize', handleResize)
+    else globalThis.removeEventListener('resize', handleResize)
     geometry.dispose()
     material.dispose()
     renderer.dispose()

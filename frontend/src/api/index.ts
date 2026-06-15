@@ -660,7 +660,7 @@ export async function hermesCronEdit(id: string, updates: { schedule?: string; p
   return agentPost('/v1/agent/cron/edit', { id, ...updates })
 }
 
-export async function hermesCronUpdate(id: string, updates: { schedule?: string; prompt?: string; name?: string }) {
+export async function hermesCronUpdate(id: string, updates: { schedule?: string; prompt?: string; name?: string; skills?: string }) {
   return hermesCronEdit(id, updates)
 }
 

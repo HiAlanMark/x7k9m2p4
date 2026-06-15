@@ -193,7 +193,7 @@
                 <label class="form-label">API Key</label>
                 <HxSelect v-model="addModelSelectedGfwKey" :options="addModelGfwKeyOptions" placeholder="选择 Key" />
                 <label class="form-label" style="margin-top: 8px;">模型</label>
-                <HxSelect v-model="addModelSelectedGfwModel" :options="addModelGfwModelOptions" placeholder="选择模型" @update:modelValue="onGfwModelSelect" />
+                <HxSelect v-model="addModelSelectedGfwModel" :options="addModelGfwModelOptions" placeholder="选择模型" @update:modelValue="(v) => onGfwModelSelect(String(v))" />
               </div>
             </div>
             <div v-if="newProfile.provider === 'custom'" class="form-row">
@@ -1128,14 +1128,13 @@ import { useGfwStore } from '../stores/gfw'
 import { useChatStore } from '../stores/chat'
 import { useAppStore } from '../stores/app'
 import { storeToRefs } from 'pinia'
-import { hermesConfigGet, hermesConfigSet, hermesToolsList, hermesToolsEnable, hermesToolsDisable, hermesMemoryGet, hermesMemoryEdit, getCredentials, updateCredentials, availableModels, modelContext, sessionUsage as apiSessionUsage, type SessionUsage, textToSpeech as apiTextToSpeech, updateConfigYaml, listLogs, readLog } from '../api'
+import { agentFetch, hermesConfigGet, hermesConfigSet, hermesToolsList, hermesToolsEnable, hermesToolsDisable, hermesMemoryGet, hermesMemoryEdit, getCredentials, updateCredentials, availableModels, modelContext, sessionUsage as apiSessionUsage, type SessionUsage, textToSpeech as apiTextToSpeech, updateConfigYaml, listLogs, readLog } from '../api'
 import IconUser from '../components/icons/IconUser.vue'
 import IconSettings from '../components/icons/IconSettings.vue'
 import { HxButton, HxInput, HxTextarea, HxSelect, HxToggle, HxCard, HxBadge, HxModal } from '../components/ui'
 import { providerIconMap } from '../assets/provider-icons'
 import ChannelsView from './ChannelsView.vue'
 import ProfilesView from './ProfilesView.vue'
-import CodingAgentsView from './CodingAgentsView.vue'
 import { useToast } from '../composables/useToast'
 import { useContextCompression } from '../composables/useContextCompression'
 
@@ -1209,13 +1208,13 @@ const userInfo = ref<{ group_name: string } | null>(null)
 
 // Sync activeSection with URL params for deep linking
 const route = useRoute()
-const initialSection = (route.query.section as string) || 'model'
+const initialSection = (Array.isArray(route.query.section) ? route.query.section[0] : route.query.section) || 'model'
 const activeSection = ref(initialSection)
 
 // Watch URL changes to update activeSection
 watch(() => route.query.section, (newSection) => {
   if (newSection && navItems.some(i => i.key === newSection)) {
-    activeSection.value = newSection
+    activeSection.value = Array.isArray(newSection) ? (newSection[0] || 'model') : newSection
   }
 })
 
@@ -1387,7 +1386,7 @@ const addModelSelectedGfwKey = ref('')
 const addModelSelectedGfwModel = ref('')
 
 // ── GFW Options ──
-const addModelGfwKeyOptions = computed(() => gfwStore.apiKeys.map(k => ({ value: k.key, label: `${k.name || 'Key'} (${(k.balance || 0).toFixed(2)} G)` })))
+const addModelGfwKeyOptions = computed(() => gfwStore.apiKeys.map(k => ({ value: k.full_key || k.key_prefix || String(k.id), label: `${k.name || 'Key'} (${(k.gcoin_limit || 0).toFixed(2)} G)` })))
 const addModelGfwModelOptions = computed(() => gfwStore.models.filter(m => m.is_available).map(m => ({ value: m.id, label: m.name })))
 
 // ── Provider Presets ──
@@ -1417,9 +1416,9 @@ async function handleGfwLogin() {
   if (!addModelGfwPhone.value) return
   addModelGfwLogging.value = true
   try {
-    toast.show('请使用手机验证码登录', 'info')
+    toast.info('请使用手机验证码登录')
   } catch (e: any) {
-    toast.show(e.message || '登录失败', 'error')
+    toast.error(e.message || '登录失败')
   } finally {
     addModelGfwLogging.value = false
   }
@@ -1429,12 +1428,12 @@ async function handleGfwTokenLogin() {
   if (!addModelGfwToken.value) return
   addModelGfwLogging.value = true
   try {
-    await gfwStore.loginWithToken(addModelGfwToken.value)
+    localStorage.setItem('gfw_api_key', addModelGfwToken.value)
     await gfwStore.fetchApiKeys()
     await gfwStore.fetchModels()
-    toast.show('登录成功', 'success')
+    toast.success('登录成功')
   } catch (e: any) {
-    toast.show(e.message || '登录失败', 'error')
+    toast.error(e.message || '登录失败')
   } finally {
     addModelGfwLogging.value = false
   }
@@ -1467,7 +1466,7 @@ function addModelProfile() {
   if (newProfile.provider === 'gfw') {
     newProfile.apiKey = addModelSelectedGfwKey.value
     if (!addModelSelectedGfwModel.value) {
-      toast.show('请选择模型', 'error')
+      toast.error('请选择模型')
       return
     }
   }
@@ -1684,10 +1683,10 @@ async function testTTS() {
   ttsAudioUrl.value = ''
   try {
     const data = await apiTextToSpeech(ttsTestText.value)
-    if (data.success && data.audio_url) {
+    if (data.audio_url) {
       ttsAudioUrl.value = `http://127.0.0.1:1420${data.audio_url}`
-    } else if (data.error) {
-      const errMsg = data.error || ''
+    } else if ((data as any).error) {
+      const errMsg = (data as any).error || ''
       if (errMsg.includes('No audio was received')) {
         ttsError.value = '⚠️ 语音生成失败：可能是网络问题或该语音不可用。建议尝试英文语音 (en-US-AriaNeural)'
       } else if (errMsg.includes('not installed')) {
@@ -1717,12 +1716,12 @@ async function doCompress() {
       body: JSON.stringify({}),
     })
     if (r.ok) {
-      toast.show('上下文压缩完成', 'success')
+      toast.success('上下文压缩完成')
     } else {
-      toast.show('压缩失败', 'error')
+      toast.error('压缩失败')
     }
   } catch {
-    toast.show('压缩请求失败', 'error')
+    toast.error('压缩请求失败')
   } finally {
     compressing.value = false
   }

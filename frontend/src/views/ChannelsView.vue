@@ -65,7 +65,7 @@
                 :model-value="ch.config[key] || ''"
                 :type="isSecretKey(key) ? 'password' : 'text'"
                 :placeholder="t(`channels.fields.${key}`)"
-                @update:model-value="(val: string) => onFieldChange(ch, key, val)"
+                @update:model-value="(val: string | number) => onFieldChange(ch, key, String(val))"
               />
             </div>
             <div class="channel-card-footer">

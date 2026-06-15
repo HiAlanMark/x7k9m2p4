@@ -628,6 +628,10 @@ function statusLabel(status: string): string {
   }
 }
 
+function formatDate(iso?: string): string {
+  return formatTime(iso)
+}
+
 function formatTime(iso?: string): string {
   if (!iso) return '-'
   const d = new Date(iso)

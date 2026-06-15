@@ -359,28 +359,6 @@ defineExpose({ inboxPendingCount })
             </span>
           </div>
 
-          <!-- Blueprint/Run Reference -->
-          <div v-if="false" class="inbox-card__refs">
-            <button
-              v-if="item.blueprint_id"
-              class="ref-link"
-              @click.stop="navigateToBlueprint(item.blueprint_id!)"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                <path d="M2 17l10 5 10-5"/>
-                <path d="M2 12l10 5 10-5"/>
-              </svg>
-              {{ t('inbox.blueprintRef') }}
-            </button>
-            <span v-if="item.run_id" class="ref-link ref-link--static">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-              </svg>
-              {{ t('inbox.runRef') }}
-            </span>
-          </div>
-
           <!-- Timestamp -->
           <div class="inbox-card__time">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -519,25 +497,6 @@ defineExpose({ inboxPendingCount })
             <pre class="detail-params">{{ JSON.stringify(detailItem.context.params, null, 2) }}</pre>
           </div>
         </template>
-
-        <!-- References -->
-        <div v-if="false" class="detail-section">
-          <span class="detail-label">{{ t('inbox.references') }}</span>
-          <div class="detail-refs">
-            <button v-if="detailItem.blueprint_id" class="ref-link" @click="navigateToBlueprint(detailItem.blueprint_id!)">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-              </svg>
-              {{ detailItem.blueprint_id }}
-            </button>
-            <span v-if="detailItem.run_id" class="ref-link ref-link--static">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-              </svg>
-              {{ detailItem.run_id }}
-            </span>
-          </div>
-        </div>
 
         <!-- Timestamp -->
         <div class="detail-row">

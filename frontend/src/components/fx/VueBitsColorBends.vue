@@ -214,7 +214,7 @@ const setup = () => {
     ro.observe(container)
     resizeObserverRef.value = ro
   } else {
-    window.addEventListener('resize', handleResize)
+    globalThis.addEventListener('resize', handleResize)
   }
 
   const loop = () => {
@@ -253,7 +253,7 @@ const setup = () => {
   cleanup = () => {
     if (rafRef.value !== null) cancelAnimationFrame(rafRef.value)
     if (resizeObserverRef.value) resizeObserverRef.value.disconnect()
-    else window.removeEventListener('resize', handleResize)
+    else globalThis.removeEventListener('resize', handleResize)
     container.removeEventListener('pointermove', handlePointerMove)
     geometry.dispose()
     material.dispose()

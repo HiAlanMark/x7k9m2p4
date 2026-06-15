@@ -300,7 +300,7 @@ marked.setOptions({
     }
     return hljs.highlightAuto(code).value
   }
-})
+} as any)
 
 const messagesRef = ref<HTMLElement | null>(null)
 const inputRef = ref<InstanceType<typeof HxTextarea> | null>(null)
@@ -316,7 +316,7 @@ const actionMode = ref(false)
 
 // Create group form
 const newGroupName = ref('')
-const newAgents = reactive([
+const newAgents = reactive<Array<{ name: string; model: string; provider: string; system_prompt: string; color: string }>>([
   { name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[0] },
   { name: '', model: '', provider: '', system_prompt: '', color: AGENT_COLORS[1] },
 ])
@@ -326,7 +326,7 @@ const addAgentName = ref('')
 const addAgentModel = ref('')
 const addAgentProvider = ref('')
 const addAgentPrompt = ref('')
-const addAgentColor = ref(AGENT_COLORS[2])
+const addAgentColor = ref<string>(AGENT_COLORS[2])
 
 // @mention autocomplete
 const mentionHint = reactive({
@@ -426,9 +426,10 @@ async function onSend() {
   // Parse @mentions
   const mentionRegex = /@(\w+)/g
   const mentionedIds: string[] = []
-  let match
+  let match: RegExpExecArray | null
   while ((match = mentionRegex.exec(text)) !== null) {
-    const agent = store.agents.find(a => a.name === match[1])
+    const agentName = match[1]
+    const agent = store.agents.find(a => a.name === agentName)
     if (agent) mentionedIds.push(agent.id)
   }
   
@@ -554,7 +555,7 @@ async function onCreateGroup() {
 
 async function onAddAgent() {
   if (!store.activeGroupId || !addAgentName.value.trim()) return
-  await store.addAgent({
+  await store.addAgent(store.activeGroupId, {
     name: addAgentName.value.trim(),
     model: addAgentModel.value.trim() || 'default',
     provider: addAgentProvider.value.trim(),
@@ -572,7 +573,7 @@ async function onAddAgent() {
 
 async function onRemoveAgent(agentId: string) {
   if (!store.activeGroupId) return
-  await store.removeAgent(agentId)
+  await store.removeAgent(store.activeGroupId, agentId)
   toast.success(t('groupChat.agentRemoved'))
 }
 

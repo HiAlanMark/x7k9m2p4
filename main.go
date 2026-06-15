@@ -833,34 +833,7 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 		if body.Content != "" {
 			messages = append(messages, map[string]any{"role": "user", "content": body.Content})
 		}
-		// If a blueprint run context is specified, inject its results as context
-		if body.BlueprintRunID != "" {
-			if run, err := getRun(body.BlueprintRunID); err == nil {
-				var ctxParts []string
-				ctxParts = append(ctxParts, fmt.Sprintf("[Blueprint Run Context: %s (Status: %s)]", run.ID, run.Status))
-				if run.FinalResult != nil {
-					if s, ok := run.FinalResult.(string); ok && s != "" {
-						ctxParts = append(ctxParts, "Final Result: "+s)
-					}
-				}
-				for i, nr := range run.NodeRuns {
-					if nr.Status == "succeeded" && nr.Output != nil {
-						outStr := fmt.Sprintf("%v", nr.Output)
-						if len(outStr) > 500 {
-							outStr = outStr[:500] + "..."
-						}
-						label := nr.NodeLabel
-						if label == "" {
-							label = nr.NodeID
-						}
-						ctxParts = append(ctxParts, fmt.Sprintf("Node %d (%s): %s", i+1, label, outStr))
-					}
-				}
-				if len(ctxParts) > 1 {
-					messages = append([]map[string]any{{"role": "system", "content": strings.Join(ctxParts, "\n")}}, messages...)
-				}
-			}
-		}
+		// Blueprint context was removed; chat now runs without blueprint-run injection.
 		agentLoop(sse, messages, body.APIBase, body.APIKey, body.Model)
 	}
 
@@ -2599,7 +2572,7 @@ func main() {
 	mux.HandleFunc("/v1/agent/tools/enable", handleToolsEnable)
 	mux.HandleFunc("/v1/agent/tools/disable", handleToolsDisable)
 
-	// ── 蓝图工作流 ──
+	// Inbox / runs API
 	mux.HandleFunc("/v1/agent/runs", handleRunsList)                   // GET list all runs
 	mux.HandleFunc("/v1/agent/inbox", handleInboxList)                 // GET
 	mux.HandleFunc("/v1/agent/inbox/create", handleInboxCreate)         // POST create proposal/notification items
@@ -2695,8 +2668,7 @@ func main() {
 		log.Printf("[Hi!XNS] Hermes Agent 未检测到，使用内置工具")
 	}
 
-	// 初始化蓝图存储
-	initBlueprintStore()
+	// Inbox store is initialized lazily on first use.
 	// 初始化聊天会话存储
 	initChatStore()
 	log.Printf("[Hi!XNS] 技能目录: %s", hermesState.SkillsDir)
