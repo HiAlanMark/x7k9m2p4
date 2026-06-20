@@ -101,30 +101,29 @@
               <span>{{ a.name }}</span>
             </div>
           </div>
-          <div class="gc-input-row">
-            <div class="gc-input-controls">
-              <button 
-                class="gc-mode-toggle" 
-                :class="{ active: actionMode }" 
-                @click="actionMode = !actionMode"
-                :title="actionMode ? '执行模式: Agent 将直接执行任务' : '讨论模式: Agent 将讨论交流'"
-              >
-                <span class="toggle-icon" v-html="actionMode ? ICON_SVG.wrench : ICON_SVG.message"></span>
-                <span class="toggle-text">{{ actionMode ? '执行模式' : '聊天模式' }}</span>
-              </button>
-            </div>
+          <div class="gc-input-capsule">
+            <button 
+              class="gc-mode-chip" 
+              :class="{ active: actionMode }" 
+              @click="actionMode = !actionMode"
+              :title="actionMode ? '执行模式: Agent 将直接执行任务' : '讨论模式: Agent 将讨论交流'"
+            >
+              <span class="gc-mode-icon" v-html="actionMode ? ICON_SVG.wrench : ICON_SVG.message"></span>
+              <span>{{ actionMode ? '执行' : '聊天' }}</span>
+            </button>
             <HxTextarea
               ref="inputRef"
               v-model="inputText"
-              :placeholder="actionMode ? '输入任务指令，Agent 将直接执行...' : t('groupChat.typePlaceholder') + '（使用 @名称 提及）'"
+              :placeholder="actionMode ? '输入任务指令，Agent 将直接执行...' : '输入消息... 用 @ 提及智能体'"
               autoResize
               :maxHeight="120"
+              :rows="1"
               inline
               variant="chat"
               @keydown="onInputKeydown"
             />
             <button class="gc-send-btn" @click="onSend" :disabled="!inputText.trim() || store.sending">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
           </div>
         </div>
@@ -1118,9 +1117,9 @@ onMounted(() => {
 
 /* Input */
 .gc-input-area {
-  padding: 12px 16px;
-  border-top: 1px solid var(--border-base, rgba(255,255,255,.08));
+  padding: 12px 16px 16px;
   position: relative;
+  background: linear-gradient(to top, var(--bg-base, #0d0f14) 0%, transparent 100%);
 }
 .gc-mention-hint {
   position: absolute;
@@ -1150,64 +1149,101 @@ onMounted(() => {
 .gc-mention-item.active {
   background: rgba(90,200,250,.12);
 }
-.gc-input-row {
+
+/* Input Capsule — matches ChatView style */
+.gc-input-capsule {
   display: flex;
+  align-items: center;
+  background: var(--glass-base, rgba(255,255,255,.03));
+  backdrop-filter: blur(32px) saturate(1.5);
+  -webkit-backdrop-filter: blur(32px) saturate(1.5);
+  border: 1px solid var(--glass-border, rgba(255,255,255,.08));
+  border-radius: 24px;
+  padding: 8px 10px 8px 8px;
   gap: 8px;
-  align-items: flex-end;
+  box-shadow: var(--glass-inset, none), var(--shadow-lg, 0 4px 12px rgba(0,0,0,.2));
+  transition: border-color .3s var(--ease-expo, ease), box-shadow .3s var(--ease-expo, ease);
+  min-height: 48px;
 }
-.gc-input-row :deep(.hixns-textarea-wrap) {
+.gc-input-capsule:focus-within {
+  border-color: var(--border-focus, rgba(90,200,250,.4));
+  box-shadow: var(--glass-inset, none), var(--shadow-lg, 0 4px 12px rgba(0,0,0,.2)), 0 0 12px rgba(90,200,250,.1);
+}
+.gc-input-capsule :deep(.hixns-textarea-wrap) {
   flex: 1;
+  min-width: 0;
 }
-.gc-send-btn {
-  background: rgba(90,200,250,.15);
-  border: 1px solid rgba(90,200,250,.25);
-  color: var(--accent, #5ac8fa);
-  border-radius: 12px;
-  padding: 10px;
+.gc-input-capsule :deep(.hixns-textarea-inner.inline-inner) {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+.gc-input-capsule :deep(.hixns-textarea) {
+  resize: none;
+}
+
+/* Mode Chip */
+.gc-mode-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: var(--radius-full, 20px);
+  border: 1px solid var(--glass-border, rgba(255,255,255,.08));
+  background: var(--glass-base, rgba(255,255,255,.03));
+  color: var(--text-secondary, rgba(255,255,255,.5));
+  font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
+  transition: all .2s var(--ease-expo, ease);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.gc-mode-chip:hover {
+  border-color: var(--border-light, rgba(255,255,255,.15));
+  color: var(--text-primary);
+  background: var(--glass-bg-hover, rgba(255,255,255,.06));
+}
+.gc-mode-chip.active {
+  border-color: var(--accent, #5ac8fa);
+  color: var(--accent, #5ac8fa);
+  background: rgba(90,200,250,.08);
+}
+.gc-mode-icon {
+  display: flex;
+  align-items: center;
+}
+.gc-mode-icon :deep(svg) {
+  width: 12px;
+  height: 12px;
+}
+
+/* Send Button */
+.gc-send-btn {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--accent, #5ac8fa);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
   flex-shrink: 0;
-  height: 40px;
+  transition: background .2s var(--ease-expo, ease), transform .2s var(--ease-expo, ease), opacity .2s;
 }
 .gc-send-btn:hover:not(:disabled) {
-  background: rgba(90,200,250,.25);
+  background: var(--primary-dark, #4ab0e0);
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(90,200,250,.3);
 }
+.gc-send-btn:active:not(:disabled) { transform: scale(.95); }
 .gc-send-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.3;
   cursor: not-allowed;
-}
-
-/* Action Mode Toggle */
-.gc-input-controls {
-  display: flex;
-  gap: 8px;
-  padding-bottom: 8px;
-}
-.gc-mode-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--border-base);
-  background: var(--glass-bg);
-  color: var(--text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.gc-mode-toggle:hover {
-  background: var(--glass-hover);
-}
-.gc-mode-toggle.active {
-  background: var(--accent-alpha);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.toggle-icon {
-  font-size: 14px;
 }
 
 /* Task Board Panel */
