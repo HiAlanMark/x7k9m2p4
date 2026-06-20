@@ -28,18 +28,26 @@
       <template v-if="store.activeGroup">
         <!-- Header -->
         <div class="gc-header">
-          <span class="gc-header-name">{{ store.activeGroup.name }}</span>
-          <div class="gc-header-actions">
-            <button class="gc-icon-btn" @click="showTaskBoard = !showTaskBoard" :title="t('groupChat.taskBoard')" :class="{ active: showTaskBoard }">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M3 9h18"/></svg>
-            </button>
-            <button class="gc-icon-btn" @click="showAgentPanel = !showAgentPanel" :title="t('groupChat.manageAgents')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </button>
-            <button class="gc-icon-btn gc-delete-btn" @click="onDeleteGroup" :title="t('groupChat.deleteGroup')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </button>
+          <div class="gc-header-left">
+            <span class="gc-header-name">{{ store.activeGroup.name }}</span>
+            <span class="gc-header-agents-count">{{ store.agents.length }} 个智能体</span>
           </div>
+        </div>
+        <!-- Toolbar -->
+        <div class="gc-toolbar">
+          <button class="gc-toolbar-btn" @click="showAgentPanel = !showAgentPanel" :class="{ active: showAgentPanel }">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>智能体</span>
+          </button>
+          <button class="gc-toolbar-btn" @click="showTaskBoard = !showTaskBoard" :class="{ active: showTaskBoard }">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M3 9h18"/></svg>
+            <span>任务看板</span>
+          </button>
+          <span class="gc-toolbar-spacer"></span>
+          <button class="gc-toolbar-btn gc-toolbar-danger" @click="onDeleteGroup">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>删除</span>
+          </button>
         </div>
 
         <!-- Messages -->
@@ -712,17 +720,65 @@ onMounted(() => {
   min-width: 0;
 }
 .gc-header {
-  padding: 12px 16px;
+  padding: 14px 16px 10px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border-base, rgba(255,255,255,.08));
+  border-bottom: none;
+}
+.gc-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .gc-header-name {
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary, #e0e0e0);
 }
+.gc-header-agents-count {
+  font-size: 11px;
+  color: var(--text-muted, rgba(255,255,255,.4));
+}
+
+/* Toolbar */
+.gc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px 10px;
+  border-bottom: 1px solid var(--glass-border, rgba(255,255,255,.08));
+}
+.gc-toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: var(--radius-full, 20px);
+  border: 1px solid var(--glass-border, rgba(255,255,255,.08));
+  background: var(--glass-base, rgba(255,255,255,.03));
+  color: var(--text-secondary, rgba(255,255,255,.5));
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .2s var(--ease-expo, ease);
+}
+.gc-toolbar-btn:hover {
+  border-color: var(--border-light, rgba(255,255,255,.15));
+  color: var(--text-primary, #e0e0e0);
+  background: var(--glass-bg-hover, rgba(255,255,255,.06));
+}
+.gc-toolbar-btn.active {
+  border-color: var(--accent, #5ac8fa);
+  color: var(--accent, #5ac8fa);
+  background: rgba(90,200,250,.08);
+}
+.gc-toolbar-danger:hover {
+  border-color: rgba(255,107,107,.4);
+  color: #ff6b6b;
+  background: rgba(255,107,107,.06);
+}
+.gc-toolbar-spacer { flex: 1; }
+
 .gc-header-actions {
   display: flex;
   gap: 8px;
