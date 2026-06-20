@@ -539,19 +539,19 @@ defineExpose({ inboxPendingCount })
 /* ── Header ────────────────────────────────────────────── */
 
 .inbox-header {
-  margin-bottom: var(--space-6);
+  margin-bottom: 16px;
 }
 
 .inbox-title-row {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .inbox-title {
-  font-size: var(--text-2xl);
-  font-weight: var(--font-semibold);
+  font-size: 18px;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.01em;
@@ -566,14 +566,14 @@ defineExpose({ inboxPendingCount })
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
   border-radius: var(--radius-full);
   background: var(--accent);
-  color: var(--text-inverse);
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
   line-height: 1;
   animation: badge-pop 0.3s var(--ease-back);
 }

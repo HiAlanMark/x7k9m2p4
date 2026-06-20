@@ -662,23 +662,26 @@ function formatElapsed(iso?: string): string {
 .tasks-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-.header-left { display: flex; align-items: baseline; gap: 10px; }
+.header-left { display: flex; align-items: center; gap: 10px; }
 
 .tasks-title {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.3px;
 }
 
 .store-count {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-tertiary);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--glass-base);
+  border: 1px solid var(--glass-border);
 }
 
 .btn-create {

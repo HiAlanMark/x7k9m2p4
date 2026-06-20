@@ -197,22 +197,20 @@ defineExpose({ runningCount })
   <div class="history-view">
     <!-- Header -->
     <div class="history-header">
-      <h2 class="history-title">{{ t('history.title') }}</h2>
+      <h2 class="history-title">运行历史</h2>
+      <span v-if="runs.length > 0" class="history-count">{{ runs.length }} 条记录</span>
       <div v-if="runningCount > 0" class="running-badge">
         <span class="pulse-dot"></span>
-        {{ runningCount }} {{ t('history.status.running') }}
+        {{ runningCount }} 运行中
       </div>
     </div>
 
     <!-- Filters -->
     <div class="history-filters">
-      <!-- REMOVED BLUEPRINT FILTER -->
-<HxSelect v-model="filterBlueprint" :options="blueprintOptions" class="filter-select" />
-<!-- END REMOVED BLUEPRINT FILTER -->
       <HxSelect v-model="filterStatus" :options="statusOptions" class="filter-select" />
       <input v-model="filterFrom" type="date" class="filter-date" :placeholder="t('history.from')" />
       <input v-model="filterTo" type="date" class="filter-date" :placeholder="t('history.to')" />
-      <HxButton v-if="filterBlueprint || filterStatus || filterFrom || filterTo" variant="ghost" size="sm" @click="filterBlueprint='';filterStatus='';filterFrom='';filterTo=''">
+      <HxButton v-if="filterStatus || filterFrom || filterTo" variant="ghost" size="sm" @click="filterStatus='';filterFrom='';filterTo=''">
         {{ t('history.clearFilters') }}
       </HxButton>
       <HxButton variant="ghost" size="sm" :loading="loading" @click="fetchRuns">
@@ -221,7 +219,13 @@ defineExpose({ runningCount })
     </div>
 
     <!-- Empty State -->
-    <HxEmpty v-if="filtered.length === 0 && !loading" :title="runs.length === 0 ? t('history.empty') : t('history.noMatch')" :description="t('history.emptyHint')" />
+    <div v-if="filtered.length === 0 && !loading" class="history-empty">
+      <div class="history-empty-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <p class="history-empty-title">{{ runs.length === 0 ? '暂无运行记录' : '没有匹配的结果' }}</p>
+      <p class="history-empty-desc">Agent 执行的任务和定时任务记录将在这里展示</p>
+    </div>
 
     <!-- Run Cards -->
     <div class="history-list">
@@ -363,8 +367,8 @@ defineExpose({ runningCount })
 .history-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .history-title {
@@ -372,6 +376,15 @@ defineExpose({ runningCount })
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
+}
+
+.history-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--glass-base);
+  border: 1px solid var(--glass-border);
 }
 
 .running-badge {
@@ -382,13 +395,14 @@ defineExpose({ runningCount })
   border-radius: 12px;
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent, #5ac8fa);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
+  margin-left: auto;
 }
 
 .pulse-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--accent, #5ac8fa);
   animation: pulse 1.5s infinite;
@@ -397,6 +411,38 @@ defineExpose({ runningCount })
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
+}
+
+/* Empty State */
+.history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 60px 20px;
+}
+.history-empty-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb, 90,200,250),.08);
+  border: 1px solid rgba(var(--accent-rgb, 90,200,250),.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent, #5ac8fa);
+  margin-bottom: 16px;
+}
+.history-empty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+}
+.history-empty-desc {
+  font-size: .8rem;
+  color: var(--text-muted);
+  margin: 0;
 }
 
 .history-filters {
