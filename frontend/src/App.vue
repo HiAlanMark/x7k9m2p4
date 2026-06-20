@@ -2,6 +2,9 @@
   <!-- Splash Screen -->
   <SplashScreen v-if="showSplash" @done="showSplash = false" />
 
+  <!-- Onboarding Guide (first-time users) -->
+  <OnboardingGuide />
+
   <!-- Auth Login Modal -->
   <LoginModal ref="loginModalRef" @connected="onAuthConnected" />
 
@@ -86,50 +89,59 @@
       <nav class="sidebar-nav">
         <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
           <span class="nav-icon"><IconChat :size="18" /></span>
-          <span class="nav-label">{{ $t('nav.chat') }}</span>
+          <span class="nav-label">对话</span>
           <kbd class="nav-shortcut">1</kbd>
         </router-link>
+        <router-link to="/group-chat" class="nav-item" :class="{ active: $route.path === '/group-chat' }">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <span class="nav-label">多人协作</span>
+        </router-link>
+
+        <div class="nav-divider"></div>
+
         <router-link to="/inbox" class="nav-item" :class="{ active: $route.path === '/inbox' }">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
             <span v-if="inboxBadge > 0" class="nav-badge">{{ inboxBadge > 99 ? '99+' : inboxBadge }}</span>
           </span>
-          <span class="nav-label">{{ $t('nav.inbox') }}</span>
+          <span class="nav-label">收件箱</span>
           <kbd class="nav-shortcut">3</kbd>
+        </router-link>
+        <router-link to="/tasks" class="nav-item" :class="{ active: $route.path === '/tasks' }">
+          <span class="nav-icon"><IconStar :size="18" /></span>
+          <span class="nav-label">任务</span>
+          <kbd class="nav-shortcut">6</kbd>
         </router-link>
         <router-link to="/history" class="nav-item" :class="{ active: $route.path === '/history' }">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             <span v-if="historyRunsCount > 0" class="nav-badge nav-badge--running">{{ historyRunsCount > 99 ? '99+' : historyRunsCount }}</span>
           </span>
-          <span class="nav-label">{{ $t('nav.history') }}</span>
+          <span class="nav-label">历史</span>
           <kbd class="nav-shortcut">4</kbd>
         </router-link>
+
+        <div class="nav-divider"></div>
+
         <router-link to="/skills" class="nav-item" :class="{ active: $route.path === '/skills' }">
           <span class="nav-icon"><IconStore :size="18" /></span>
-          <span class="nav-label">{{ $t('nav.skills') }}</span>
+          <span class="nav-label">技能商店</span>
           <kbd class="nav-shortcut">5</kbd>
-        </router-link>
-        <router-link to="/tasks" class="nav-item" :class="{ active: $route.path === '/tasks' }">
-          <span class="nav-icon"><IconStar :size="18" /></span>
-          <span class="nav-label">{{ $t('nav.tasks') }}</span>
-          <kbd class="nav-shortcut">6</kbd>
         </router-link>
         <router-link to="/files" class="nav-item" :class="{ active: $route.path === '/files' }">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
           </span>
-          <span class="nav-label">{{ $t('nav.files') }}</span>
+          <span class="nav-label">文件</span>
         </router-link>
-        <router-link to="/group-chat" class="nav-item" :class="{ active: $route.path === '/group-chat' }">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          </span>
-          <span class="nav-label">{{ $t('nav.groupChat') }}</span>
-        </router-link>
+
+        <div class="nav-divider"></div>
+
         <router-link to="/settings" class="nav-item" :class="{ active: $route.path === '/settings' }">
           <span class="nav-icon"><IconSettings :size="18" /></span>
-          <span class="nav-label">{{ $t('nav.settings') }}</span>
+          <span class="nav-label">设置</span>
           <kbd class="nav-shortcut">9</kbd>
         </router-link>
       </nav>
@@ -334,6 +346,7 @@ import IconSun from './components/icons/IconSun.vue'
 import IconMoon from './components/icons/IconMoon.vue'
 import IconBrandLogo from './components/icons/IconBrandLogo.vue'
 import SplashScreen from './components/SplashScreen.vue'
+import OnboardingGuide from './components/OnboardingGuide.vue'
 import TitleBar from './components/TitleBar.vue'
 import VueBitsBg from './components/fx/VueBitsBg.vue'
 import { HxToast } from './components/ui'
@@ -782,6 +795,13 @@ async function exportSession() {
 /* Navigation */
 .sidebar-nav {
   padding: var(--space-2);
+}
+
+.nav-divider {
+  height: 1px;
+  margin: 6px 12px;
+  background: var(--glass-border);
+  opacity: .5;
 }
 
 .nav-item {

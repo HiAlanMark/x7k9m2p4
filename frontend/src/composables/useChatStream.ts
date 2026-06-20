@@ -73,7 +73,7 @@ export function useChatStream() {
         await api.agentStart('')
         appStore.agentRunning = true
       } catch (e: unknown) {
-        chatStore.addSystemMessage('Agent start failed: ' + e)
+        chatStore.addSystemMessage('启动 Agent 失败，请检查设置中的模型配置是否正确')
         isConnecting.value = false
         options?.onError?.(String(e))
         return
@@ -150,7 +150,7 @@ export function useChatStream() {
   /**
    * Cancel the execution entirely, including denying any pending approval.
    */
-  async function cancelExecution(systemMessage: string = 'Execution stopped') {
+  async function cancelExecution(systemMessage: string = '已停止执行') {
     try {
       if (pendingApproval.value) {
         const { id } = pendingApproval.value

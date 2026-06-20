@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { GroupChat, GroupAgent, GroupMessage } from '@/types'
 import { useChatStore } from './chat'
+import { useToast } from '@/composables/useToast'
 import {
   groupChatsList,
   groupChatsCreate,
@@ -243,6 +244,9 @@ export const useGroupChatStore = defineStore('groupChat', () => {
                 mentions: '',
               }
               messages.value.push(agentMsg)
+            } else if (parsed.type === 'error') {
+              const toast = useToast()
+              toast.error(`Agent 错误: ${parsed.message || '未知错误'}`)
             }
           } catch {
             // incomplete JSON, skip

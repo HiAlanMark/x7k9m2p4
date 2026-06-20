@@ -14,49 +14,40 @@
           <img src="@/../public/logo.svg" alt="Hi!XNS" />
           <div class="logo-glow"></div>
         </div>
-        <!-- Quick Actions -->
+        <!-- Welcome text -->
+        <p class="empty-welcome hero-fade-in hero-fade-in-1">你的全能 AI 助手，随时为你效劳</p>
+        <!-- Category tabs -->
+        <div class="quick-categories hero-fade-in hero-fade-in-2">
+          <button
+            v-for="cat in quickCategories"
+            :key="cat.id"
+            class="quick-cat-btn"
+            :class="{ active: activeQuickCat === cat.id }"
+            @click="activeQuickCat = cat.id"
+          >
+            <span class="quick-cat-icon" v-html="cat.icon"></span>
+            <span class="quick-cat-name">{{ cat.name }}</span>
+          </button>
+        </div>
+        <!-- Quick Actions Grid -->
         <div class="quick-bento hero-fade-in hero-fade-in-2">
-          <div class="quick-bento-card" @click="quickAsk('用 Python 写一个带类型提示的快速排序算法')">
-            <div class="quick-bento-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-            </div>
+          <div
+            v-for="item in activeQuickItems"
+            :key="item.label"
+            class="quick-bento-card"
+            @click="quickAsk(item.prompt)"
+          >
+            <div class="quick-bento-icon" v-html="item.icon"></div>
             <div class="quick-bento-text">
-              <span class="quick-bento-label">快速排序</span>
-              <span class="quick-bento-desc">Python 类型提示实现</span>
-            </div>
-          </div>
-          <div class="quick-bento-card" @click="quickAsk('解释 TCP 三次握手的工作原理')">
-            <div class="quick-bento-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            </div>
-            <div class="quick-bento-text">
-              <span class="quick-bento-label">TCP 三次握手</span>
-              <span class="quick-bento-desc">网络协议原理</span>
-            </div>
-          </div>
-          <div class="quick-bento-card" @click="quickAsk('审查这段代码的性能问题: def fib(n): return fib(n-1) + fib(n-2) if n > 1 else n')">
-            <div class="quick-bento-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            </div>
-            <div class="quick-bento-text">
-              <span class="quick-bento-label">代码审查</span>
-              <span class="quick-bento-desc">斐波那契性能分析</span>
-            </div>
-          </div>
-          <div class="quick-bento-card" @click="quickAsk('生成一个 Node.js 应用的多阶段构建 Dockerfile')">
-            <div class="quick-bento-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            </div>
-            <div class="quick-bento-text">
-              <span class="quick-bento-label">Dockerfile</span>
-              <span class="quick-bento-desc">多阶段构建优化</span>
+              <span class="quick-bento-label">{{ item.label }}</span>
+              <span class="quick-bento-desc">{{ item.desc }}</span>
             </div>
           </div>
         </div>
         <!-- Status -->
         <div class="empty-status hero-fade-in hero-fade-in-3">
           <span class="empty-status-dot" :class="appStore.connectionState"></span>
-          <span class="empty-status-text">{{ appStore.connectionState === 'connected' ? (t('chatView.ready') + ' · ' + (appStore.hermesStatus?.version?.split(' ')[0] || t('chatView.hermesIntegrated'))) : appStore.connectionState === 'connecting' ? t('chatView.connecting') : t('chatView.backendDisconnected') }}</span>
+          <span class="empty-status-text">{{ appStore.connectionState === 'connected' ? '已就绪' : appStore.connectionState === 'connecting' ? '连接中...' : '等待连接' }}</span>
         </div>
       </div>
     </div>
@@ -100,9 +91,9 @@
               <div class="card-header">
                 <span class="author-badge"><span class="ai-dot pulsing"></span> Hi!XNS</span>
                 <span class="meta-info">
-                  <span v-if="agentIteration > 0" class="meta-tag">Iter {{ agentIteration }}/{{ agentMaxIter }}</span>
+                  <span v-if="agentIteration > 0" class="meta-tag">第 {{ agentIteration }}/{{ agentMaxIter }} 轮</span>
                   <span class="meta-dot"></span>
-                  <span>Thinking...</span>
+                  <span>思考中...</span>
                 </span>
               </div>
 
@@ -175,7 +166,7 @@
             <div class="connecting-dots">
               <span class="dot"></span><span class="dot"></span><span class="dot"></span>
             </div>
-            <span>{{ t('chatView.connectingLabel') }}</span>
+            <span>正在连接 Agent...</span>
           </div>
 
           <!-- User/Assistant message -->
@@ -325,7 +316,6 @@
 <!-- END REMOVED BLUEPRINT BLOCK -->
 
         <div class="input-capsule" :class="{ focused: inputFocused }">
-        <span class="prompt-symbol">❯</span>
         
         <HxTextarea
           ref="chatInputRef"
@@ -334,7 +324,7 @@
           inline
           autoResize
           :maxHeight="120"
-          :placeholder="t('chatView.inputPlaceholder')"
+          placeholder="输入任何问题，或试试上面的快捷操作..."
           :rows="1"
           @keydown="onChatKeydown"
           @focus="inputFocused = true"
@@ -352,15 +342,23 @@
       </div>
       </div>
       <div class="input-status">
-        <span class="status-pill">{{ chatStore.getActiveConfig().model || t('chatView.noModelSelected') }}</span>
-        <span class="status-dot-sep">·</span>
-        <span class="status-pill" :class="chatStore.providerMode === 'custom' ? 'warning' : 'success'">{{ chatStore.providerMode === 'custom' ? 'Custom API' : 'gfw.net' }}</span>
-        <span class="status-dot-sep">·</span>
-        <span class="status-pill" :class="{ streaming: isStreaming }">{{ isStreaming ? `${t('chatView.generating')} ${streamElapsed}s` : t('chatView.ready') }}</span>
-        <span v-if="tokenEstimate > 0" class="status-dot-sep">·</span>
-        <span v-if="tokenEstimate > 0" class="status-pill" :class="{ warning: tokenEstimate > compressionThreshold }" :title="t('compression.thresholdHint')">{{ formatTokenCount(tokenEstimate) }} / {{ formatTokenCount(compressionThreshold) }}</span>
-        <span v-if="messages.length > 0" class="status-dot-sep">·</span>
-        <button v-if="messages.length > 0" class="export-btn" @click="exportChat" :title="t('chatView.exportMarkdown')">{{ t('chatView.exportMarkdown') }}</button>
+        <span class="status-pill" :class="{ streaming: isStreaming }">{{ isStreaming ? `生成中 ${streamElapsed}s` : '就绪' }}</span>
+        <button v-if="messages.length > 0" class="status-detail-toggle" @click="showStatusDetail = !showStatusDetail">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </button>
+        <template v-if="showStatusDetail">
+          <span class="status-dot-sep">·</span>
+          <span class="status-pill">{{ chatStore.getActiveConfig().model || '未选择模型' }}</span>
+          <span class="status-dot-sep">·</span>
+          <span class="status-pill" :class="chatStore.providerMode === 'custom' ? 'warning' : 'success'">{{ chatStore.providerMode === 'custom' ? '自定义' : 'gfw.net' }}</span>
+          <span v-if="tokenEstimate > 0" class="status-dot-sep">·</span>
+          <span v-if="tokenEstimate > 0" class="status-pill" :class="{ warning: tokenEstimate > compressionThreshold }" :title="t('compression.thresholdHint')">{{ formatTokenCount(tokenEstimate) }} / {{ formatTokenCount(compressionThreshold) }}</span>
+        </template>
+        <span class="status-spacer"></span>
+        <button v-if="messages.length > 0" class="export-btn" @click="exportChat" :title="t('chatView.exportMarkdown')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>导出</span>
+        </button>
       </div>
     </div>
     <!-- Context menu -->
@@ -484,6 +482,7 @@ function selectBlueprintRun(_run: any) {
 }
 
 const inputText = ref('')
+const showStatusDetail = ref(false)
 const scrollerRef = ref<any>(null)
 const chatInputRef = ref<InstanceType<typeof HxTextarea> | null>(null)
 
@@ -801,6 +800,64 @@ function formatTime(ts: string) {
   } catch (e) { console.warn('[ChatView] formatTime failed:', e); return '' }
 }
 
+// ===== Quick Actions: Category-based beginner-friendly prompts =====
+const activeQuickCat = ref('daily')
+
+const QUICK_ICONS = {
+  pen: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+  translate: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2v3"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>',
+  summary: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+  idea: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>',
+  code: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+  debug: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 0-4 4v2H6a2 2 0 0 0-2 2v8a6 6 0 0 0 12 0v-8a2 2 0 0 0-2-2h-2V6a4 4 0 0 0-4-4z"/><line x1="9" y1="14" x2="15" y2="14"/><line x1="9" y1="18" x2="15" y2="18"/></svg>',
+  explain: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  docker: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+  email: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+  schedule: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  travel: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  recipe: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.8-.1 2.6-.4"/><path d="M17 15l3 3-3 3"/><path d="M22 12a10 10 0 0 0-10-10"/></svg>',
+  study: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+  math: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  language: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  brain: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-7 7c0 3.5 2.5 6 4 7.5V19h6v-2.5c1.5-1.5 4-4 4-7.5a7 7 0 0 0-7-7z"/><path d="M9 22h6"/></svg>',
+}
+
+const quickCategories = [
+  { id: 'daily', name: '日常', icon: QUICK_ICONS.idea },
+  { id: 'writing', name: '写作', icon: QUICK_ICONS.pen },
+  { id: 'coding', name: '编程', icon: QUICK_ICONS.code },
+  { id: 'learning', name: '学习', icon: QUICK_ICONS.study },
+]
+
+const quickItemsMap: Record<string, Array<{ icon: string; label: string; desc: string; prompt: string }>> = {
+  daily: [
+    { icon: QUICK_ICONS.email, label: '写一封邮件', desc: '告诉我收件人和主题即可', prompt: '帮我写一封邮件，主题是请假一天，原因是身体不适，语气正式但不生硬' },
+    { icon: QUICK_ICONS.translate, label: '翻译内容', desc: '支持中英日韩等语言', prompt: '请将以下内容翻译为英文，保持专业语气：' },
+    { icon: QUICK_ICONS.schedule, label: '规划日程', desc: '高效安排你的一天', prompt: '我明天有以下事项要做：开周会、写报告、健身、买菜。请帮我合理规划明天的日程安排' },
+    { icon: QUICK_ICONS.travel, label: '旅行攻略', desc: '目的地推荐和行程规划', prompt: '帮我规划一个 3 天的杭州旅行攻略，预算中等，喜欢自然风景和美食' },
+  ],
+  writing: [
+    { icon: QUICK_ICONS.pen, label: '润色文章', desc: '让文字更流畅专业', prompt: '请帮我润色以下文字，使其更加通顺自然、表达更专业：' },
+    { icon: QUICK_ICONS.summary, label: '总结要点', desc: '长文秒变精华摘要', prompt: '请帮我总结以下内容的核心要点，用 3-5 条列出：' },
+    { icon: QUICK_ICONS.idea, label: '头脑风暴', desc: '激发创意灵感', prompt: '我想做一个短视频账号，主题是科技产品评测，请帮我想 10 个吸引人的账号名' },
+    { icon: QUICK_ICONS.language, label: '小红书文案', desc: '爆款标题和正文', prompt: '帮我写一篇小红书文案，主题是分享一家好吃的日料店，风格轻松种草，带适当的表情符号' },
+  ],
+  coding: [
+    { icon: QUICK_ICONS.code, label: '写代码', desc: '描述需求，我来实现', prompt: '用 Python 写一个带类型提示的快速排序算法，附带使用示例' },
+    { icon: QUICK_ICONS.debug, label: '修 Bug', desc: '粘贴错误信息即可', prompt: '帮我分析这个报错信息并给出解决方案：' },
+    { icon: QUICK_ICONS.explain, label: '解释代码', desc: '逐行分析代码逻辑', prompt: '请逐行解释以下代码的作用，用通俗易懂的方式：' },
+    { icon: QUICK_ICONS.docker, label: '生成配置', desc: 'Docker/CI/部署一键搞定', prompt: '生成一个 Node.js 应用的多阶段构建 Dockerfile，包含生产环境优化' },
+  ],
+  learning: [
+    { icon: QUICK_ICONS.study, label: '知识讲解', desc: '复杂概念简单说', prompt: '用通俗易懂的方式解释什么是量子计算，举一个生活中的类比' },
+    { icon: QUICK_ICONS.math, label: '解题辅导', desc: '数理化步骤详解', prompt: '请详细解答这道题，写出完整的解题步骤和思路：' },
+    { icon: QUICK_ICONS.brain, label: '学习计划', desc: '定制个性化学习路线', prompt: '我想从零开始学习 Web 前端开发，每天能投入 2 小时，请帮我制定一个 3 个月的学习计划' },
+    { icon: QUICK_ICONS.language, label: '英语练习', desc: '口语对话/写作批改', prompt: '请和我进行一段英语对话练习，场景是在咖啡店点单，如果我有语法错误请纠正我' },
+  ],
+}
+
+const activeQuickItems = computed(() => quickItemsMap[activeQuickCat.value] || quickItemsMap.daily)
+
 function quickAsk(text: string) {
   inputText.value = text
   sendMessage()
@@ -1073,9 +1130,9 @@ async function exportChat() {
 /* Large Logo */
 .empty-logo {
   position: relative;
-  width: 160px;
-  height: 160px;
-  margin-bottom: 48px;
+  width: 120px;
+  height: 120px;
+  margin-bottom: 20px;
 }
 .empty-logo img {
   width: 100%;
@@ -1083,6 +1140,62 @@ async function exportChat() {
   object-fit: contain;
   filter: drop-shadow(0 0 40px rgba(var(--accent-rgb),.25));
   animation: logoFloat 6s ease-in-out infinite;
+}
+
+/* Welcome text */
+.empty-welcome {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0 0 28px;
+  font-weight: 400;
+  letter-spacing: .02em;
+}
+
+/* Category Tabs */
+.quick-categories {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.quick-cat-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-base);
+  backdrop-filter: blur(8px);
+  color: var(--text-secondary);
+  font-size: .8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .25s var(--ease-expo);
+  white-space: nowrap;
+}
+.quick-cat-btn:hover {
+  border-color: var(--border-light);
+  color: var(--text-primary);
+  background: var(--glass-bg-hover);
+}
+.quick-cat-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb),.08);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb),.1);
+}
+.quick-cat-icon {
+  display: flex;
+  align-items: center;
+}
+.quick-cat-icon :deep(svg) {
+  width: 14px;
+  height: 14px;
+}
+.quick-cat-name {
+  line-height: 1;
 }
 .logo-glow {
   position: absolute;
@@ -1183,7 +1296,11 @@ async function exportChat() {
   display: flex; align-items: center; justify-content: center;
   color: var(--accent);
   flex-shrink: 0;
-  transition: all .3s var(--ease-spring);
+  transition: all .3s var(--ease-expo);
+}
+.quick-bento-icon :deep(svg) {
+  width: 20px;
+  height: 20px;
 }
 .quick-bento-card:hover .quick-bento-icon {
   background: rgba(var(--accent-rgb),.14);
@@ -1250,6 +1367,42 @@ async function exportChat() {
 @keyframes heroFadeIn {
   to { opacity: 1; transform: translateY(0) }
 }
+
+/* Welcome text shimmer */
+.empty-welcome {
+  background: linear-gradient(
+    90deg,
+    var(--text-secondary) 0%,
+    var(--accent) 50%,
+    var(--text-secondary) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: heroFadeIn .8s var(--ease-expo) forwards, shimmer 4s ease-in-out infinite 1.2s;
+  opacity: 0;
+  animation-delay: .15s, 1.2s;
+}
+@keyframes shimmer {
+  0%, 100% { background-position: 100% 0 }
+  50% { background-position: 0 0 }
+}
+
+/* Quick category hover micro-interaction */
+.quick-cat-btn:active {
+  transform: scale(.95);
+}
+
+/* Bento card stagger entrance */
+.quick-bento-card {
+  opacity: 0;
+  animation: heroFadeIn .6s var(--ease-expo) forwards;
+}
+.quick-bento-card:nth-child(1) { animation-delay: .3s }
+.quick-bento-card:nth-child(2) { animation-delay: .4s }
+.quick-bento-card:nth-child(3) { animation-delay: .5s }
+.quick-bento-card:nth-child(4) { animation-delay: .6s }
 
 /* ===== Message Wrappers ===== */
 .msg-wrapper {
@@ -2214,16 +2367,6 @@ async function exportChat() {
   box-shadow: var(--glass-inset), var(--shadow-lg), 0 0 12px var(--primary-glow-sm);
 }
 
-.prompt-symbol {
-  font-family: var(--font-mono);
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--primary-text);
-  user-select: none;
-  flex-shrink: 0;
-  animation: pulse 2s ease-in-out infinite;
-}
-
 /* HxTextarea inside input-capsule: no wrapper decoration */
 .input-capsule .hixns-textarea-wrap {
   flex: 1;
@@ -2396,7 +2539,6 @@ async function exportChat() {
 .input-status {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
   margin-top: 10px;
   font-size: 11px;
@@ -2417,7 +2559,31 @@ async function exportChat() {
 
 .status-dot-sep { font-size: 12px; opacity: 0.4; }
 
+.status-detail-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-base);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all .2s var(--ease-expo);
+}
+.status-detail-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--border-light);
+  background: var(--glass-bg-hover);
+}
+
+.status-spacer { flex: 1; }
+
 .export-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
   padding: 3px 8px;
   border-radius: 8px;

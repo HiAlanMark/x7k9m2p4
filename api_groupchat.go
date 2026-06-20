@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 type GroupChatMeta struct {
@@ -473,7 +475,19 @@ func handleGroupChatSend(w http.ResponseWriter, r *http.Request, groupID string)
 		return
 	}
 	if strings.TrimSpace(body.APIBase) == "" || strings.TrimSpace(body.APIKey) == "" || strings.TrimSpace(body.Model) == "" {
-		jsonError(w, "需要 api_base, api_key, model", 400)
+		defaultCfg := loadHermesDefaultConfig()
+		if strings.TrimSpace(body.APIBase) == "" {
+			body.APIBase = defaultCfg.BaseURL
+		}
+		if strings.TrimSpace(body.APIKey) == "" {
+			body.APIKey = defaultCfg.APIKey
+		}
+		if strings.TrimSpace(body.Model) == "" {
+			body.Model = defaultCfg.Model
+		}
+	}
+	if strings.TrimSpace(body.APIBase) == "" || strings.TrimSpace(body.APIKey) == "" || strings.TrimSpace(body.Model) == "" {
+		jsonError(w, "需要 api_base, api_key, model，请在设置中配置模型", 400)
 		return
 	}
 	agents, err := readGroupAgents(groupID)
@@ -626,4 +640,45 @@ func parseIntQuery(r *http.Request, key string, def int) int {
 		return def
 	}
 	return n
+}
+
+type hermesDefaultConfig struct {
+	BaseURL string
+	APIKey  string
+	Model   string
+}
+
+func loadHermesDefaultConfig() hermesDefaultConfig {
+	cfg := hermesDefaultConfig{}
+	configPath := filepath.Join(getHome(), ".hermes", "config.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return cfg
+	}
+	var raw map[string]any
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return cfg
+	}
+	if m, ok := raw["model"].(map[string]any); ok {
+		cfg.BaseURL = stringValue(m["base_url"])
+		cfg.APIKey = stringValue(m["api_key"])
+		if cfg.APIKey == "" {
+			cfg.APIKey = stringValue(m["apiKey"])
+		}
+		cfg.Model = stringValue(m["default"])
+	}
+	// When api_key is redacted by Hermes (contains "..."), read from env vars
+	if strings.Contains(cfg.APIKey, "...") || cfg.APIKey == "" {
+		if envKey := os.Getenv("GFW_API_KEY"); envKey != "" {
+			cfg.APIKey = envKey
+		} else if envKey := os.Getenv("HERMES_API_KEY"); envKey != "" {
+			cfg.APIKey = envKey
+		}
+	}
+	if cfg.BaseURL == "" {
+		if envBase := os.Getenv("GFW_BASE_URL"); envBase != "" {
+			cfg.BaseURL = envBase
+		}
+	}
+	return cfg
 }

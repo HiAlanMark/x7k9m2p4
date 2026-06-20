@@ -314,6 +314,9 @@
     "commandExecutionEnv": "命令执行环境",
     "workingDirectory": "工作目录",
     "workingDirectoryHint": "Agent 的默认工作目录",
+    "workingDirectoryPlaceholder": "例如: /home/user/project",
+    "systemPromptPlaceholder": "输入自定义系统提示词...",
+    "paginationInfo": "共 {total} 条，第 {page}/{pages} 页",
     "commandTimeout": "命令超时 (秒)",
     "commandTimeoutHint": "前台命令最大执行时间 (默认 180)",
     "commandApproval": "命令审批",
@@ -755,7 +758,11 @@
     "removeAgentSuccess": "智能体已移除",
     "removeAgentError": "移除智能体失败",
     "loadError": "加载群组聊天失败",
-    "sendError": "发送消息失败"
+    "sendError": "发送消息失败",
+    "selectOrCreate": "选择或新建一个群组开始协作",
+    "taskBoard": "任务看板",
+    "manageAgents": "管理智能体",
+    "error": "操作失败"
   },
   "codingAgents": {
     "title": "编程代理",
@@ -796,5 +803,11 @@
     "invalidToken": "令牌无效，请检查后重试",
     "connectFailed": "连接失败，Agent 服务器是否在运行？",
     "autoFailed": "自动连接失败，请手动输入令牌"
+  },
+  "compression": {
+    "autoCompress": "自动压缩",
+    "autoCompressHint": "当上下文超过阈值时自动压缩历史消息",
+    "threshold": "压缩阈值 (Token)",
+    "thresholdHint": "超过此 Token 数时触发自动压缩"
   }
 }

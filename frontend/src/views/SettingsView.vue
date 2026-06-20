@@ -72,293 +72,289 @@
           </div>
         </div>
 
-        <!-- ===== 模型 (合并: 设置 + 配置) ===== -->
+        <!-- ===== 模型设置 ===== -->
         <div v-if="activeSection === 'model'" class="content-section">
-          <h2 class="section-title">{{ t('settings.modelSettings') }}</h2>
+          <h2 class="section-title">模型设置</h2>
 
-          <!-- 当前活跃模型 -->
+          <!-- 当前活跃模型摘要 -->
           <HxCard style="margin-bottom: 16px;">
             <template #header>
-              <span>{{ t('settings.currentModel') }}</span>
+              <span>当前活跃模型</span>
             </template>
             <div v-if="chatStore.activeModelProfile" class="active-model-row">
               <div class="active-model-indicator"></div>
               <div class="active-model-info">
                 <div class="active-model-name">{{ chatStore.activeModelProfile.name }}</div>
                 <div class="active-model-meta">
-                  <span class="model-tag" :class="chatStore.activeModelProfile.provider">{{ chatStore.activeModelProfile.provider === 'gfw' ? 'GFW.NET' : t('settings.custom') }}</span>
+                  <span class="model-tag" :class="chatStore.activeModelProfile.provider">{{ chatStore.activeModelProfile.provider === 'gfw' ? 'GFW.NET' : '自定义' }}</span>
                   <span class="model-code">{{ chatStore.activeModelProfile.model }}</span>
                 </div>
               </div>
             </div>
             <div v-else class="no-active-model">
-              <span>{{ t('settings.noModelSelected') }}</span>
+              <span>尚未配置模型，请选择下方方式完成配置</span>
             </div>
           </HxCard>
 
-          <!-- 模型配置列表 -->
-          <div class="profile-grid">
-            <div
-              v-for="profile in chatStore.modelProfiles"
-              :key="profile.id"
-              :class="['profile-card', { active: chatStore.activeModelId === profile.id, editing: editingProfileId === profile.id }]"
-              @click="editingProfileId = editingProfileId === profile.id ? '' : profile.id"
-            >
-              <div class="profile-card-header">
-                <div class="profile-card-indicator" :class="{ pulse: chatStore.activeModelId === profile.id }"></div>
-                <span class="profile-card-name">{{ profile.name }}</span>
-                <span v-if="profile.isDefault" class="profile-badge-default">{{ $t('settings.modelDefault') }}</span>
-              </div>
-              <div class="profile-card-body">
-                <div class="profile-card-row">
-                  <span class="profile-card-label">Provider</span>
-                  <span class="profile-card-value">
-                    <span class="model-tag" :class="profile.provider">{{ profile.provider === 'gfw' ? 'GFW.NET' : t('settings.custom') }}</span>
-                  </span>
-                </div>
-                <div class="profile-card-row">
-                  <span class="profile-card-label">{{ $t('settings.model') }}</span>
-                  <span class="profile-card-value model-code">{{ profile.model }}</span>
-                </div>
-                <div v-if="profile.provider === 'custom'" class="profile-card-row">
-                  <span class="profile-card-label">Base URL</span>
-                  <span class="profile-card-value model-code">{{ profile.baseUrl }}</span>
-                </div>
-              </div>
-              <div class="profile-card-actions">
-                <button
-                  v-if="chatStore.activeModelId !== profile.id"
-                  class="profile-action-btn profile-action-switch"
-                  @click.stop="chatStore.switchModel(profile.id)"
-                >{{ $t('settings.switchModel') }}</button>
-                <span v-else class="profile-action-active">{{ $t('settings.activeModel') }}</span>
-                <button
-                  v-if="!profile.isDefault"
-                  class="profile-action-btn profile-action-default"
-                  @click.stop="chatStore.updateModelProfile(profile.id, { isDefault: true })"
-                >{{ $t('settings.modelSetDefault') }}</button>
-                <button
-                  class="profile-action-btn profile-action-delete"
-                  @click.stop="chatStore.removeModelProfile(profile.id)"
-                >{{ $t('settings.removeModel') }}</button>
-              </div>
-            </div>
-
-            <!-- 添加新模型卡片 -->
-            <div class="profile-card profile-card-add" @click="showAddProfile = true">
-              <div class="profile-add-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-              </div>
-              <span class="profile-add-text">{{ $t('settings.addModel') }}</span>
-            </div>
+          <!-- 模式切换标签 -->
+          <div class="model-mode-tabs">
+            <button :class="['model-mode-tab', { active: modelModeTab === 'gfw' }]" @click="modelModeTab = 'gfw'">
+              <svg class="model-mode-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-8v4h4l-5 8z"/>
+              </svg>
+              <span>GFW.NET</span>
+              <span class="model-mode-desc">登录后选择Key和模型即可使用</span>
+            </button>
+            <button :class="['model-mode-tab', { active: modelModeTab === 'custom' }]" @click="modelModeTab = 'custom'">
+              <svg class="model-mode-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                <path d="M9 12h6"/>
+                <path d="M12 9v6"/>
+                <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>
+              </svg>
+              <span>自定义配置</span>
+              <span class="model-mode-desc">手动输入接口地址和密钥</span>
+            </button>
           </div>
 
-          <!-- 添加模型弹窗 -->
-          <HxModal v-model="showAddProfile" :icon="'plus'" :title="$t('settings.addModel')" @contextmenu.prevent>
-            <div class="form-row">
-              <label class="form-label">{{ $t('settings.modelName') }}</label>
-              <HxInput v-model="newProfile.name" placeholder="GPT-4o / Claude 3.5 / ..." />
-            </div>
-            <div class="form-row">
-              <label class="form-label">{{ $t('settings.modelProvider') }}</label>
-              <div class="provider-tabs">
-                <button :class="['provider-tab', { active: newProfile.provider === 'gfw' }]" @click="newProfile.provider = 'gfw'">
-                  <span>GFW.NET</span>
-                </button>
-                <button :class="['provider-tab', { active: newProfile.provider === 'custom' }]" @click="newProfile.provider = 'custom'">
-                  <span>{{ $t('settings.customProvider') }}</span>
-                </button>
-              </div>
-            </div>
-            <div v-if="newProfile.provider === 'gfw'" class="form-row">
-              <div v-if="!gfwStore.isLoggedIn" class="gfw-login-box">
+          <!-- ═══ GFW.NET 模式 ═══ -->
+          <HxCard v-if="modelModeTab === 'gfw'" style="margin-top: 16px;">
+            <!-- 未登录状态 -->
+            <template v-if="!gfwStore.isLoggedIn">
+              <div class="gfw-login-section">
+                <div class="gfw-login-header">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-8v4h4l-5 8z"/>
+                  </svg>
+                  <div>
+                    <div class="gfw-login-title">登录 GFW.NET 平台</div>
+                    <div class="gfw-login-subtitle">登录后即可选择 API Key 和模型，一键配置</div>
+                  </div>
+                </div>
+
                 <div class="gfw-login-tabs">
                   <button :class="['gfw-tab', { active: gfwAuthMode === 'account' }]" @click="gfwAuthMode = 'account'">账号登录</button>
                   <button :class="['gfw-tab', { active: gfwAuthMode === 'manual' }]" @click="gfwAuthMode = 'manual'">Token 登录</button>
                 </div>
+
                 <div v-if="gfwAuthMode === 'account'" class="gfw-form">
-                  <HxInput v-model="addModelGfwPhone" placeholder="手机号 / 邮箱" class="gfw-input" />
-                  <HxInput v-model="addModelGfwCode" placeholder="验证码" class="gfw-input" />
-                  <HxButton variant="secondary" size="sm" :loading="addModelGfwLogging" @click="handleGfwLogin">登录</HxButton>
+                  <div class="form-row">
+                    <label class="form-label">手机号 / 邮箱</label>
+                    <HxInput v-model="addModelGfwPhone" placeholder="请输入手机号或邮箱" class="gfw-input" />
+                  </div>
+                  <div class="form-row">
+                    <label class="form-label">验证码</label>
+                    <HxInput v-model="addModelGfwCode" placeholder="请输入验证码" class="gfw-input" />
+                  </div>
+                  <HxButton variant="primary" :loading="addModelGfwLogging" @click="handleGfwLogin" style="width: 100%;">
+                    登录
+                  </HxButton>
                 </div>
+
                 <div v-else class="gfw-form">
-                  <HxInput v-model="addModelGfwToken" placeholder="gfw-..." type="password" class="gfw-input" />
-                  <HxButton variant="secondary" size="sm" :loading="addModelGfwLogging" @click="handleGfwTokenLogin">登录</HxButton>
-                </div>
-              </div>
-              <div v-else class="gfw-config">
-                <label class="form-label">API Key</label>
-                <HxSelect v-model="addModelSelectedGfwKey" :options="addModelGfwKeyOptions" placeholder="选择 Key" />
-                <label class="form-label" style="margin-top: 8px;">模型</label>
-                <HxSelect v-model="addModelSelectedGfwModel" :options="addModelGfwModelOptions" placeholder="选择模型" @update:modelValue="(v) => onGfwModelSelect(String(v))" />
-              </div>
-            </div>
-            <div v-if="newProfile.provider === 'custom'" class="form-row">
-              <label class="form-label">{{ $t('settings.modelProvider') }}</label>
-              <div class="provider-presets">
-                <button v-for="p in addModelProviderPresets" :key="p.value" :class="['preset-btn', { active: newProfile.baseUrl === p.baseUrl }]" @click="selectAddModelPresetProvider(p)">
-                  {{ p.label }}
-                </button>
-              </div>
-              <label class="form-label" style="margin-top: 8px;">{{ $t('settings.modelBaseUrl') }}</label>
-              <HxInput v-model="newProfile.baseUrl" placeholder="https://..." />
-              <label class="form-label" style="margin-top: 8px;">{{ $t('settings.modelApiKey') }}</label>
-              <HxInput v-model="newProfile.apiKey" type="password" placeholder="sk-..." />
-            </div>
-            <div class="form-row">
-              <label class="form-label">{{ $t('settings.model') }}</label>
-              <HxInput v-model="newProfile.model" placeholder="gpt-4o / claude-3-5-sonnet / ..." />
-            </div>
-            <div class="form-row">
-              <label class="form-label">{{ $t('settings.modelDefault') }}</label>
-              <HxToggle :modelValue="newProfile.isDefault" @update:modelValue="newProfile.isDefault = $event" />
-            </div>
-            <template #footer>
-              <HxButton variant="ghost" @click="showAddProfile = false">{{ $t('common.cancel') }}</HxButton>
-              <HxButton variant="primary" :disabled="!newProfile.name || !newProfile.model" @click="addModelProfile">
-                {{ $t('common.create') }}
-              </HxButton>
-            </template>
-          </HxModal>
-
-          <!-- 编辑选中 Profile 的配置 -->
-          <HxCard v-if="editingProfile" style="margin-top: 16px;">
-            <template #header>
-              <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
-                <span>{{ t('settings.editModelConfig') }} — {{ editingProfile.name }}</span>
-                <HxButton variant="ghost" size="sm" @click="editingProfileId = ''">{{ $t('common.cancel') }}</HxButton>
-              </div>
-            </template>
-
-            <!-- Provider 选择 -->
-            <div class="provider-tabs" style="margin-bottom: 16px;">
-              <button
-                :class="['provider-tab', { active: editingProfile.provider === 'gfw' }]"
-                @click="updateEditingProfile('provider', 'gfw')"
-              >
-                <img class="provider-logo" src="../assets/gfw-logo.svg" alt="GFW.NET" />
-                <span>{{ t('settings.gfwProvider') }}</span>
-              </button>
-              <button
-                :class="['provider-tab', { active: editingProfile.provider === 'custom' }]"
-                @click="updateEditingProfile('provider', 'custom')"
-              >
-                <svg class="provider-logo" viewBox="0 0 1024 1024"><path d="M0 0m256 0l512 0q256 0 256 256l0 512q0 256-256 256l-512 0q-256 0-256-256l0-512q0-256 256-256Z" fill="#176AF0"></path><path d="M837.76 639.808a112.512 112.512 0 0 1-14.592 55.36 109.696 109.696 0 0 1-39.744 40.512l-217.152 128a106.816 106.816 0 0 1-108.8 0l-217.088-128a109.632 109.632 0 0 1-39.744-40.512 112.512 112.512 0 0 1-14.592-55.36v-256a112.512 112.512 0 0 1 14.528-55.36 109.696 109.696 0 0 1 39.744-40.512l217.152-128a106.816 106.816 0 0 1 108.8 0l217.216 128a109.696 109.696 0 0 1 39.744 40.576 112.448 112.448 0 0 1 14.528 55.36v256z m-157.44-198.912a36.224 36.224 0 0 0-22.592-15.936 35.584 35.584 0 0 0-27.264 4.992l-125.76 82.56-124.992-82.432-3.712-2.112a35.52 35.52 0 0 0-26.624-2.24 36.352 36.352 0 0 0-20.864 17.088 37.568 37.568 0 0 0-3.648 27.008 36.928 36.928 0 0 0 15.552 22.208l144.512 95.296 4.096 2.304a35.584 35.584 0 0 0 35.136-2.304l145.344-95.424 3.456-2.496a37.504 37.504 0 0 0 7.424-48.512z" fill="#FFFFFF"></path></svg>
-                <span>{{ t('settings.customProvider') }}</span>
-              </button>
-            </div>
-
-            <!-- GFW.NET 模式 -->
-            <template v-if="editingProfile.provider === 'gfw'">
-              <div class="form-row">
-                <label class="form-label">API Key</label>
-                <HxInput v-model="editGfwApiKey" type="password" placeholder="gfw-..." />
-              </div>
-              <div class="form-row">
-                <label class="form-label">
-                  {{ t('settings.model') }}
-                  <HxButton variant="ghost" size="sm" :loading="gfwSyncing" @click="syncGfwModels" style="margin-left:8px;">
-                    {{ gfwSyncing ? t('settings.syncing') : t('settings.sync') }}
-                  </HxButton>
-                </label>
-                <div v-if="gfwProviders.length > 0" class="provider-chips">
-                  <button
-                    v-for="p in gfwProviders"
-                    :key="p"
-                    :class="['chip', { active: selectedProvider === p }]"
-                    @click="selectedProvider = p"
-                  >{{ p }} <span class="chip-count">{{ providerModelCount(p) }}</span></button>
-                </div>
-                <HxSelect
-                  v-if="filteredGfwModels.length > 0"
-                  v-model="editModelName"
-                  :options="gfwModelOptions"
-                />
-                <HxInput v-else v-model="editModelName" :placeholder="t('settings.inputModelName')" />
-              </div>
-            </template>
-
-            <!-- 自定义提供商模式 -->
-            <template v-if="editingProfile.provider === 'custom'">
-              <div class="form-row">
-                <label class="form-label">{{ t('settings.upstreamProvider') }}</label>
-                <div class="provider-chips">
-                  <button
-                    v-for="preset in providerPresets"
-                    :key="preset.name"
-                    :class="['chip', { active: editUpstream === preset.name }]"
-                    @click="selectEditUpstream(preset)"
-                    :title="preset.name"
-                  >
-                    <img v-if="providerIconMap[preset.iconKey]" class="chip-icon-img" :src="providerIconMap[preset.iconKey]" :alt="preset.name" />
-                    <span class="chip-name">{{ preset.name }}</span>
-                  </button>
-                  <button
-                    :class="['chip', { active: editUpstream === '__manual__' }]"
-                    @click="editUpstream = '__manual__'"
-                    :title="t('settings.manualInputCustomProvider')"
-                  >
-                    <span class="chip-icon">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                    </span>
-                    <span class="chip-name">{{ t('settings.manual') }}</span>
-                  </button>
-                </div>
-              </div>
-              <div class="form-row" v-if="editUpstream === '__manual__'">
-                <label class="form-label">{{ t('settings.providerName') }}</label>
-                <HxInput v-model="editName" placeholder="my-provider" />
-              </div>
-              <div class="form-row">
-                <label class="form-label">{{ t('settings.baseUrl') }}</label>
-                <HxInput v-model="editBaseUrl" placeholder="https://api.openai.com/v1" />
-              </div>
-              <div class="form-row">
-                <label class="form-label">{{ t('settings.modelApiKey') }}</label>
-                <div style="display: flex; gap: 8px;">
-                  <HxInput v-model="editApiKey" type="password" placeholder="sk-..." style="flex: 1;" />
-                  <HxButton variant="secondary" :loading="testing" @click="testConnection" style="white-space: nowrap;">
-                    {{ testing ? t('settings.testing') : t('settings.testConnection') }}
+                  <div class="form-row">
+                    <label class="form-label">API Token</label>
+                    <HxInput v-model="addModelGfwToken" placeholder="gfw-..." type="password" class="gfw-input" />
+                  </div>
+                  <HxButton variant="primary" :loading="addModelGfwLogging" @click="handleGfwTokenLogin" style="width: 100%;">
+                    登录
                   </HxButton>
                 </div>
               </div>
-              <div v-if="testResult" style="margin-top: 8px;">
-                <span :class="['test-result', testResult.ok ? 'success' : 'error']" style="display: block; text-align: center;">
-                  {{ testResult.message }}
-                </span>
-              </div>
-              <div class="form-row" style="margin-top: 16px; border-top: 1px solid var(--border-base); padding-top: 16px;">
-                <label class="form-label">
-                  {{ t('settings.model') }}
-                  <HxButton variant="ghost" size="sm" :loading="upstreamModelsSyncing" @click="fetchUpstreamModels" style="margin-left:8px;">
-                    {{ upstreamModelsSyncing ? t('settings.fetching') : t('settings.refresh') }}
-                  </HxButton>
-                </label>
-                <HxSelect
-                  v-if="upstreamModels.length > 0"
-                  v-model="editModelName"
-                  :options="upstreamModelOptions"
-                />
-                <HxInput v-else v-model="editModelName" :placeholder="t('settings.inputModelName')" />
-                <p v-if="upstreamModelsError" class="form-hint" style="color: var(--error);">{{ upstreamModelsError }}</p>
-                <p v-else-if="upstreamModels.length > 0" class="form-hint" style="color: var(--success); margin-top: 4px;">{{ t('settings.modelsFetched', { n: upstreamModels.length }) }}</p>
-              </div>
             </template>
 
-            <div class="form-actions" style="margin-top: 20px;">
-              <HxButton variant="primary" @click="saveEditingProfile">{{ t('settings.saveSettings') }}</HxButton>
-              <span v-if="saveSuccess" class="save-feedback">{{ t('settings.settingsSaved') }}</span>
-            </div>
+            <!-- 已登录状态 -->
+            <template v-else>
+              <div class="gfw-loggedin-section">
+                <!-- 用户信息行 -->
+                <div class="gfw-user-bar">
+                  <div class="gfw-user-info-inline">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span class="gfw-user-name">{{ user?.nickname || user?.email || '已登录用户' }}</span>
+                  </div>
+                  <div class="gfw-balance-badge">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M12 6v12M8 10h8M8 14h8"/>
+                    </svg>
+                    <span>{{ balance?.toFixed(2) || '0.00' }} G币</span>
+                  </div>
+                  <HxButton variant="ghost" size="sm" @click="gfwStore.logout(); toast.info('已登出')">登出</HxButton>
+                </div>
+
+                <!-- API Key 选择 -->
+                <div class="form-row">
+                  <label class="form-label">
+                    API Key
+                    <HxButton variant="ghost" size="sm" style="margin-left: 8px;" @click="showGfwCreateKey = true">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      创建新Key
+                    </HxButton>
+                  </label>
+                  <div v-if="gfwStore.apiKeys.length > 0" class="gfw-key-list">
+                    <div
+                      v-for="k in gfwStore.apiKeys" :key="k.id"
+                      :class="['gfw-key-item', { active: gfwSelectedKeyId === String(k.id) }]"
+                      @click="gfwSelectedKeyId = String(k.id); gfwApiKey = k.full_key || k.key_prefix + '***'"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m2.5-2.5L21 2"/>
+                      </svg>
+                      <span class="gfw-key-name">{{ k.name || 'Key' }}</span>
+                      <span class="gfw-key-limit">{{ (k.gcoin_limit || 0).toFixed(2) }} G</span>
+                      <span v-if="gfwSelectedKeyId === String(k.id)" class="gfw-key-active-dot"></span>
+                    </div>
+                  </div>
+                  <div v-else class="gfw-no-keys">
+                    <span>暂无 API Key，请先创建</span>
+                  </div>
+                </div>
+
+                <!-- 模型选择 -->
+                <div class="form-row" style="margin-top: 16px; border-top: 1px solid var(--border-base); padding-top: 16px;">
+                  <label class="form-label">
+                    模型
+                    <HxButton variant="ghost" size="sm" :loading="gfwSyncing" @click="syncGfwModels" style="margin-left: 8px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                      </svg>
+                      {{ gfwSyncing ? '同步中...' : '同步' }}
+                    </HxButton>
+                  </label>
+                  <div v-if="gfwProviders.length > 0" class="provider-chips">
+                    <button
+                      v-for="p in gfwProviders" :key="p"
+                      :class="['chip', { active: selectedProvider === p }]"
+                      @click="selectedProvider = p"
+                    >{{ p }} <span class="chip-count">{{ providerModelCount(p) }}</span></button>
+                  </div>
+                  <HxSelect
+                    v-if="filteredGfwModels.length > 0"
+                    v-model="selectedModel"
+                    :options="gfwModelOptions"
+                  />
+                  <HxInput v-else v-model="selectedModel" placeholder="请输入模型名称" />
+                </div>
+
+                <!-- 保存按钮 -->
+                <div class="form-actions" style="margin-top: 20px; border-top: 1px solid var(--border-base); padding-top: 16px;">
+                  <HxButton variant="primary" :disabled="!gfwApiKey || !selectedModel" @click="saveGfwModelProfile">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    设为活跃模型
+                  </HxButton>
+                  <span v-if="saveSuccess" class="save-feedback">已保存并激活</span>
+                </div>
+              </div>
+            </template>
           </HxCard>
 
-          <!-- 未选中 Profile 提示 -->
-          <div v-if="!editingProfile && chatStore.modelProfiles.length > 0" style="text-align:center;padding:24px;color:var(--text-tertiary);font-size:14px;">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:8px;opacity:0.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-            <div>{{ t('settings.clickProfileToEdit') }}</div>
-          </div>
+          <!-- ═══ 自定义配置模式 ═══ -->
+          <HxCard v-if="modelModeTab === 'custom'" style="margin-top: 16px;">
+            <!-- 提供商预设 -->
+            <div class="form-row">
+              <label class="form-label">提供商预设</label>
+              <div class="provider-chips custom-provider-chips">
+                <button
+                  v-for="preset in providerPresets" :key="preset.name"
+                  :class="['chip', { active: customUpstream === preset.name }]"
+                  @click="selectUpstream(preset)"
+                  :title="preset.baseUrl"
+                >
+                  <img v-if="providerIconMap[preset.iconKey]" class="chip-icon-img" :src="providerIconMap[preset.iconKey]" :alt="preset.name" />
+                  <span class="chip-name">{{ preset.name }}</span>
+                </button>
+                <button
+                  :class="['chip', { active: customUpstream === '__manual__' }]"
+                  @click="customUpstream = '__manual__'"
+                  title="手动输入自定义提供商"
+                >
+                  <span class="chip-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  </span>
+                  <span class="chip-name">手动</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 自定义提供商名称 -->
+            <div v-if="customUpstream === '__manual__'" class="form-row">
+              <label class="form-label">提供商名称</label>
+              <HxInput v-model="customName" placeholder="my-provider" />
+            </div>
+
+            <!-- Base URL -->
+            <div class="form-row">
+              <label class="form-label">接口地址 (Base URL)</label>
+              <HxInput v-model="customBaseUrl" placeholder="https://api.openai.com/v1" />
+              <p v-if="hasPlaceholder(customBaseUrl)" class="form-hint" style="color: var(--warning);">地址包含占位符，请替换为实际值</p>
+            </div>
+
+            <!-- API Key -->
+            <div class="form-row">
+              <label class="form-label">API 密钥</label>
+              <div style="display: flex; gap: 8px;">
+                <HxInput v-model="customApiKey" type="password" placeholder="sk-..." style="flex: 1;" />
+                <HxButton variant="secondary" :loading="testing" @click="testConnection" style="white-space: nowrap;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  {{ testing ? '测试中...' : '测试连接' }}
+                </HxButton>
+              </div>
+            </div>
+
+            <!-- 测试结果 -->
+            <div v-if="testResult" style="margin-top: 8px;">
+              <span :class="['test-result', testResult.ok ? 'success' : 'error']" style="display: block; text-align: center;">
+                {{ testResult.message }}
+              </span>
+            </div>
+
+            <!-- 模型 -->
+            <div class="form-row" style="margin-top: 16px; border-top: 1px solid var(--border-base); padding-top: 16px;">
+              <label class="form-label">
+                模型
+                <HxButton variant="ghost" size="sm" :loading="upstreamModelsSyncing" @click="fetchUpstreamModels" style="margin-left: 8px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                  {{ upstreamModelsSyncing ? '获取中...' : '刷新模型' }}
+                </HxButton>
+              </label>
+              <HxSelect
+                v-if="upstreamModels.length > 0"
+                v-model="customModel"
+                :options="upstreamModelOptions"
+              />
+              <HxInput v-else v-model="customModel" placeholder="gpt-4o / claude-3-5-sonnet / ..." />
+              <p v-if="upstreamModelsError" class="form-hint" style="color: var(--error);">{{ upstreamModelsError }}</p>
+              <p v-else-if="upstreamModels.length > 0" class="form-hint" style="color: var(--success); margin-top: 4px;">已获取 {{ upstreamModels.length }} 个模型</p>
+            </div>
+
+            <!-- 设为默认 & 保存 -->
+            <div class="form-actions" style="margin-top: 20px; border-top: 1px solid var(--border-base); padding-top: 16px;">
+              <label class="toolset-item" style="margin-bottom: 12px; border: none; padding: 0; background: none;">
+                <span class="toolset-label">设为默认模型</span>
+                <HxToggle v-model="customIsDefault" :label="customIsDefault ? '是' : '否'" />
+              </label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <HxButton variant="primary" :disabled="!customBaseUrl || !customApiKey || !customModel" @click="saveCustomModelProfile">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  设为活跃模型
+                </HxButton>
+                <span v-if="saveSuccess" class="save-feedback">已保存并激活</span>
+              </div>
+            </div>
+          </HxCard>
         </div>
 
         <!-- Usage section -->
@@ -1308,6 +1304,10 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
+// ── 模型模式标签 ──
+const modelModeTab = ref<'gfw' | 'custom'>('gfw')
+const customIsDefault = ref(false)
+
 // 自定义 provider
 const providerMode = ref(storeProviderMode.value)
 const customName = ref(customProvider.value.name)
@@ -1318,9 +1318,7 @@ const testing = ref(false)
 const testResult = ref<{ ok: boolean; message: string } | null>(null)
 const saveSuccess = ref(false)
 
-// ── 编辑 Profile ──
-const editingProfileId = ref('')
-const editingProfile = computed(() => chatStore.modelProfiles.find(p => p.id === editingProfileId.value) || null)
+// ── 编辑 Profile（保留变量用于编辑弹窗） ──
 const editGfwApiKey = ref('')
 const editModelName = ref('')
 const editUpstream = ref('')
@@ -1328,89 +1326,18 @@ const editName = ref('')
 const editBaseUrl = ref('')
 const editApiKey = ref('')
 
-watch(editingProfileId, (id) => {
-  const p = chatStore.modelProfiles.find(pr => pr.id === id)
-  if (p) {
-    editModelName.value = p.model
-    editGfwApiKey.value = p.provider === 'gfw' ? p.apiKey : ''
-    editUpstream.value = '__manual__'
-    editName.value = p.name
-    editBaseUrl.value = p.baseUrl || ''
-    editApiKey.value = p.apiKey || ''
-  }
-})
-
-function updateEditingProfile(field: string, value: string) {
-  if (!editingProfileId.value) return
-  chatStore.updateModelProfile(editingProfileId.value, { [field]: value })
-  if (field === 'provider') {
-    editingProfileId.value = editingProfileId.value // trigger reactivity
-  }
-}
-
 function selectEditUpstream(preset: { name: string; baseUrl: string; model: string; defaultModels?: string[] }) {
   editUpstream.value = preset.name
   editBaseUrl.value = preset.baseUrl
   editModelName.value = preset.model || ''
 }
-
-function saveEditingProfile() {
-  if (!editingProfileId.value || !editingProfile.value) return
-  const updates: Record<string, any> = {
-    model: editModelName.value,
-    name: editName.value,
-  }
-  if (editingProfile.value.provider === 'gfw') {
-    updates.apiKey = editGfwApiKey.value
-  } else {
-    updates.baseUrl = editBaseUrl.value
-    updates.apiKey = editApiKey.value
-  }
-  chatStore.updateModelProfile(editingProfileId.value, updates)
-  // Also switch to this profile
-  chatStore.switchModel(editingProfileId.value)
-  saveSuccess.value = true
-  setTimeout(() => { saveSuccess.value = false }, 2000)
-}
 const apiVerified = ref(false)  // API Key 验证通过标志
 
-// 多模型配置
-const showAddProfile = ref(false)
-
-// ── Add Model GFW State ──
+// ── GFW Login State ──
 const addModelGfwPhone = ref('')
 const addModelGfwCode = ref('')
 const addModelGfwToken = ref('')
 const addModelGfwLogging = ref(false)
-const addModelSelectedGfwKey = ref('')
-const addModelSelectedGfwModel = ref('')
-
-// ── GFW Options ──
-const addModelGfwKeyOptions = computed(() => gfwStore.apiKeys.map(k => ({ value: k.full_key || k.key_prefix || String(k.id), label: `${k.name || 'Key'} (${(k.gcoin_limit || 0).toFixed(2)} G)` })))
-const addModelGfwModelOptions = computed(() => gfwStore.models.filter(m => m.is_available).map(m => ({ value: m.id, label: m.name })))
-
-// ── Provider Presets ──
-const addModelProviderPresets = [
-  { label: 'OpenAI', value: 'openai', baseUrl: 'https://api.openai.com/v1' },
-  { label: 'Anthropic', value: 'anthropic', baseUrl: 'https://api.anthropic.com/v1' },
-  { label: 'Google', value: 'google', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai' },
-  { label: 'DeepSeek', value: 'deepseek', baseUrl: 'https://api.deepseek.com/v1' },
-  { label: '自定义', value: 'custom', baseUrl: '' },
-]
-
-function selectAddModelPresetProvider(preset: typeof addModelProviderPresets[number]) {
-  newProfile.provider = 'custom'
-  newProfile.baseUrl = preset.baseUrl
-  newProfile.name = preset.label
-}
-
-function onGfwModelSelect(modelId: string) {
-  const model = gfwStore.models.find(m => m.id === modelId)
-  if (model) {
-    newProfile.name = model.name
-    newProfile.model = model.id
-  }
-}
 
 async function handleGfwLogin() {
   if (!addModelGfwPhone.value) return
@@ -1437,48 +1364,6 @@ async function handleGfwTokenLogin() {
   } finally {
     addModelGfwLogging.value = false
   }
-}
-
-// ── Add Model ──
-const newProfile = reactive({
-  name: '',
-  provider: 'gfw' as 'gfw' | 'custom',
-  apiKey: '',
-  baseUrl: '',
-  model: '',
-  isDefault: false,
-})
-
-watch(showAddProfile, (val) => {
-  if (val) {
-    newProfile.name = ''
-    newProfile.provider = 'gfw'
-    newProfile.apiKey = ''
-    newProfile.baseUrl = ''
-    newProfile.model = ''
-    newProfile.isDefault = false
-    addModelSelectedGfwKey.value = ''
-    addModelSelectedGfwModel.value = ''
-  }
-})
-
-function addModelProfile() {
-  if (newProfile.provider === 'gfw') {
-    newProfile.apiKey = addModelSelectedGfwKey.value
-    if (!addModelSelectedGfwModel.value) {
-      toast.error('请选择模型')
-      return
-    }
-  }
-  chatStore.addModelProfile({
-    name: newProfile.name,
-    provider: newProfile.provider,
-    model: newProfile.model,
-    baseUrl: newProfile.baseUrl,
-    apiKey: newProfile.apiKey,
-    isDefault: newProfile.isDefault,
-  })
-  showAddProfile.value = false
 }
 
 // 模型上下文长度映射（根据模型名称自动设置）
@@ -2277,6 +2162,64 @@ function saveModelSettings() {
   saveSuccess.value = true
   setTimeout(() => { saveSuccess.value = false }, 2000)
   toast.success('模型设置已保存')
+}
+
+// ── GFW 保存模型 Profile ──
+function saveGfwModelProfile() {
+  if (!gfwApiKey.value || !selectedModel.value) {
+    toast.error('请选择 API Key 和模型')
+    return
+  }
+  chatStore.addModelProfile({
+    name: selectedModel.value,
+    provider: 'gfw',
+    model: selectedModel.value,
+    apiKey: gfwApiKey.value,
+    baseUrl: '',
+    isDefault: true,
+  })
+  // 切换到最新添加的 profile
+  const profiles = chatStore.modelProfiles
+  if (profiles.length > 0) {
+    chatStore.switchModel(profiles[profiles.length - 1].id)
+  }
+  providerMode.value = 'gfw'
+  chatStore.setProviderMode('gfw')
+  saveSuccess.value = true
+  setTimeout(() => { saveSuccess.value = false }, 2000)
+  toast.success('GFW.NET 模型已激活')
+}
+
+// ── 自定义 保存模型 Profile ──
+function saveCustomModelProfile() {
+  if (!customBaseUrl.value || !customApiKey.value || !customModel.value) {
+    toast.error('请填写接口地址、密钥和模型')
+    return
+  }
+  chatStore.addModelProfile({
+    name: customName.value || customModel.value,
+    provider: 'custom',
+    model: customModel.value,
+    baseUrl: customBaseUrl.value,
+    apiKey: customApiKey.value,
+    isDefault: customIsDefault.value,
+  })
+  const profiles = chatStore.modelProfiles
+  if (profiles.length > 0) {
+    chatStore.switchModel(profiles[profiles.length - 1].id)
+  }
+  providerMode.value = 'custom'
+  chatStore.setProviderMode('custom')
+  chatStore.setCustomProvider({
+    name: customName.value || customModel.value,
+    baseUrl: customBaseUrl.value,
+    apiKey: customApiKey.value,
+    model: customModel.value,
+  })
+  chatStore.selectedModel = customModel.value
+  saveSuccess.value = true
+  setTimeout(() => { saveSuccess.value = false }, 2000)
+  toast.success('自定义模型已激活')
 }
 
 const featuredModels = computed(() => {
@@ -4526,149 +4469,6 @@ const pageNumbers = computed<(number | string)[]>(() => {
   font-size: 13px;
   color: var(--text-secondary, #8b949e);
 }
-.profile-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-.profile-card {
-  border-radius: 12px;
-  background: var(--glass-bg, rgba(255,255,255,0.06));
-  border: 1px solid var(--border-base, rgba(255,255,255,0.1));
-  backdrop-filter: blur(32px) saturate(1.5);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  transition: border-color 0.2s;
-}
-.profile-card.active {
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-  box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 8%, transparent);
-}
-.profile-card:hover {
-  border-color: color-mix(in srgb, var(--accent) 20%, transparent);
-}
-.profile-card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.profile-card-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-secondary, #6e7681);
-  flex-shrink: 0;
-}
-.profile-card-indicator.pulse {
-  background: var(--success);
-  animation: pulse 2s infinite;
-}
-.profile-card-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary, #e6edf3);
-  flex: 1;
-}
-.profile-badge-default {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent, #5ac8fa);
-  font-weight: 500;
-}
-.profile-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.profile-card-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.profile-card-label {
-  font-size: 12px;
-  color: var(--text-secondary, #8b949e);
-}
-.profile-card-value {
-  font-size: 13px;
-  color: var(--text-primary, #e6edf3);
-}
-.profile-card-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-base, rgba(255,255,255,0.06));
-}
-.profile-action-btn {
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border-base, rgba(255,255,255,0.1));
-  background: transparent;
-  color: var(--text-secondary, #8b949e);
-  font-size: 12px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-.profile-action-btn:hover {
-  color: var(--text-primary, #e6edf3);
-  border-color: var(--border-strong);
-}
-.profile-action-switch {
-  color: var(--accent, #5ac8fa);
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-}
-.profile-action-switch:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-}
-.profile-action-default {
-  color: var(--warning);
-  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
-}
-.profile-action-default:hover {
-  background: color-mix(in srgb, var(--warning) 10%, transparent);
-}
-.profile-action-delete {
-  color: var(--error);
-  border-color: color-mix(in srgb, var(--error) 20%, transparent);
-}
-.profile-action-delete:hover {
-  background: color-mix(in srgb, var(--error) 10%, transparent);
-}
-.profile-action-active {
-  font-size: 12px;
-  color: var(--success);
-  font-weight: 500;
-  padding: 4px 10px;
-}
-.profile-card-add {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  cursor: pointer;
-  border-style: dashed;
-  border-color: var(--border-light);
-  min-height: 160px;
-  transition: border-color 0.2s, background 0.2s;
-}
-.profile-card-add:hover {
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
-}
-.profile-add-icon {
-  color: var(--text-secondary, #6e7681);
-}
-.profile-add-text {
-  font-size: 13px;
-  color: var(--text-secondary, #8b949e);
-}
-
 /* ── Credentials Section ── */
 .cred-list {
   display: flex;
@@ -4737,6 +4537,171 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 /* ═══ Embedded views (Profiles, Channels, CodingAgents) normalize styling ═══ */
+
+/* ── Model Mode Tabs ── */
+.model-mode-tabs {
+  display: flex;
+  gap: var(--space-3);
+}
+.model-mode-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-xl);
+  background: var(--glass-base);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background var(--fast), color var(--fast), border-color var(--fast), box-shadow var(--fast);
+}
+.model-mode-tab:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+.model-mode-tab.active {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, transparent) 0%, color-mix(in srgb, var(--accent) 12%, transparent) 100%);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 16px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.model-mode-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.model-mode-desc {
+  font-size: var(--text-xs);
+  font-weight: var(--font-normal);
+  color: var(--text-tertiary);
+}
+
+/* ── GFW Login Section ── */
+.gfw-login-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.gfw-login-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-radius: var(--radius-lg);
+}
+.gfw-login-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}
+.gfw-login-subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* ── GFW Logged-in Section ── */
+.gfw-loggedin-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.gfw-user-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-radius: var(--radius-lg);
+}
+.gfw-user-info-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+}
+.gfw-user-name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+.gfw-balance-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  font-family: var(--font-mono);
+}
+
+/* ── GFW Key List ── */
+.gfw-key-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.gfw-key-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+  background: var(--glass-base);
+  cursor: pointer;
+  transition: border-color var(--fast), background var(--fast);
+}
+.gfw-key-item:hover {
+  border-color: var(--border-light);
+  background: var(--glass-bg-hover);
+}
+.gfw-key-item.active {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.gfw-key-name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  flex: 1;
+}
+.gfw-key-limit {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+.gfw-key-active-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.gfw-no-keys {
+  text-align: center;
+  padding: var(--space-3);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
+/* ── Custom Provider Chips (scrollable) ── */
+.custom-provider-chips {
+  max-height: none;
+  overflow-y: visible;
+}
+
+/* ═══ Embedded views (Profiles, Channels, CodingAgents) normalize styling ═══ */
 .embedded-view-wrap {
   max-width: 100%;
 }
@@ -4770,12 +4735,6 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 
 /* ── Model Add Modal ── */
-.gfw-login-box {
-  border: 1px solid var(--border-base);
-  border-radius: 8px;
-  padding: 12px;
-  background: var(--glass-weak);
-}
 .gfw-login-tabs {
   display: flex;
   gap: 8px;
@@ -4803,30 +4762,5 @@ const pageNumbers = computed<(number | string)[]>(() => {
 }
 .gfw-input {
   width: 100%;
-}
-.gfw-config {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.provider-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.preset-btn {
-  padding: 6px 12px;
-  border-radius: 20px;
-  background: var(--glass-base);
-  border: 1px solid var(--border-base);
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-}
-.preset-btn.active, .preset-btn:hover {
-  background: var(--accent-light);
-  border-color: var(--accent);
-  color: var(--text-primary);
 }
 </style>

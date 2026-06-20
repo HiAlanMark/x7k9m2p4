@@ -616,40 +616,40 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 
 				sse.send(map[string]any{"type": "tool_call", "id": tcID, "tool": ntc.Name, "args": args, "status": "running"})
 
-			// 危险命令检测
-			if ntc.Name == "run_terminal" {
-				if cmd, ok := args["command"].(string); ok && isDangerousCommand(cmd) {
-					sse.send(map[string]any{
-						"type": "approval_request", "id": tcID, "tool": ntc.Name,
-						"command": cmd, "reason": "此命令可能修改系统状态，需要您的确认",
-					})
-					// 阻塞等待前端用户审批
-					ch := registerApproval(tcID)
-					select {
-					case result := <-ch:
-						if !result.Approved {
-							sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": "用户拒绝了命令执行", "duration": 0, "status": "denied"})
-							toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 用户拒绝执行\n</tool_result>\n", ntc.Name))
+				// 危险命令检测
+				if ntc.Name == "run_terminal" {
+					if cmd, ok := args["command"].(string); ok && isDangerousCommand(cmd) {
+						sse.send(map[string]any{
+							"type": "approval_request", "id": tcID, "tool": ntc.Name,
+							"command": cmd, "reason": "此命令可能修改系统状态，需要您的确认",
+						})
+						// 阻塞等待前端用户审批
+						ch := registerApproval(tcID)
+						select {
+						case result := <-ch:
+							if !result.Approved {
+								sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": "用户拒绝了命令执行", "duration": 0, "status": "denied"})
+								toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 用户拒绝执行\n</tool_result>\n", ntc.Name))
+								messages = append(messages, map[string]any{"role": "assistant", "content": text, "tool_calls": apiToolCalls})
+								messages = append(messages, map[string]any{"role": "tool", "tool_call_id": tcID, "content": "用户拒绝执行"})
+								continue
+							}
+						case <-time.After(120 * time.Second):
+							sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": "审批超时，命令未执行", "duration": 0, "status": "timeout"})
+							completeApproval(tcID, approvalResult{}) // cleanup
+							toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 审批超时\n</tool_result>\n", ntc.Name))
 							messages = append(messages, map[string]any{"role": "assistant", "content": text, "tool_calls": apiToolCalls})
-							messages = append(messages, map[string]any{"role": "tool", "tool_call_id": tcID, "content": "用户拒绝执行"})
+							messages = append(messages, map[string]any{"role": "tool", "tool_call_id": tcID, "content": "审批超时"})
 							continue
 						}
-					case <-time.After(120 * time.Second):
-						sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": "审批超时，命令未执行", "duration": 0, "status": "timeout"})
-						completeApproval(tcID, approvalResult{}) // cleanup
-						toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 审批超时\n</tool_result>\n", ntc.Name))
-						messages = append(messages, map[string]any{"role": "assistant", "content": text, "tool_calls": apiToolCalls})
-						messages = append(messages, map[string]any{"role": "tool", "tool_call_id": tcID, "content": "审批超时"})
-						continue
 					}
 				}
-			}
 
-			t0 := time.Now()
-			result := executeToolExtended(ntc.Name, args)
-			duration := time.Since(t0).Seconds()
+				t0 := time.Now()
+				result := executeToolExtended(ntc.Name, args)
+				duration := time.Since(t0).Seconds()
 
-			sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
+				sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": ntc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
 
 				toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: %s\n</tool_result>\n", ntc.Name, truncate(result, 3500)))
 
@@ -710,36 +710,36 @@ func agentLoop(sse *sseWriter, messages []map[string]any, apiBase, apiKey, model
 
 			sse.send(map[string]any{"type": "tool_call", "id": tcID, "tool": tc.Name, "args": tc.Args, "status": "running"})
 
-		// 检查是否为危险命令（需要审批）
-		if tc.Name == "run_terminal" {
-			if cmd, ok := tc.Args["command"].(string); ok && isDangerousCommand(cmd) {
-				sse.send(map[string]any{
-					"type": "approval_request", "id": tcID, "tool": tc.Name,
-					"command": cmd, "reason": "此命令可能修改系统状态，需要您的确认",
-				})
-				// 阻塞等待前端用户审批
-				ch := registerApproval(tcID)
-				select {
-				case result := <-ch:
-					if !result.Approved {
-						sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": "用户拒绝了命令执行", "duration": 0, "status": "denied"})
-						toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 用户拒绝执行\n</tool_result>\n", tc.Name))
+			// 检查是否为危险命令（需要审批）
+			if tc.Name == "run_terminal" {
+				if cmd, ok := tc.Args["command"].(string); ok && isDangerousCommand(cmd) {
+					sse.send(map[string]any{
+						"type": "approval_request", "id": tcID, "tool": tc.Name,
+						"command": cmd, "reason": "此命令可能修改系统状态，需要您的确认",
+					})
+					// 阻塞等待前端用户审批
+					ch := registerApproval(tcID)
+					select {
+					case result := <-ch:
+						if !result.Approved {
+							sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": "用户拒绝了命令执行", "duration": 0, "status": "denied"})
+							toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 用户拒绝执行\n</tool_result>\n", tc.Name))
+							continue
+						}
+					case <-time.After(120 * time.Second):
+						sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": "审批超时，命令未执行", "duration": 0, "status": "timeout"})
+						completeApproval(tcID, approvalResult{})
+						toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 审批超时\n</tool_result>\n", tc.Name))
 						continue
 					}
-				case <-time.After(120 * time.Second):
-					sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": "审批超时，命令未执行", "duration": 0, "status": "timeout"})
-					completeApproval(tcID, approvalResult{})
-					toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: 审批超时\n</tool_result>\n", tc.Name))
-					continue
 				}
 			}
-		}
 
-		t0 := time.Now()
-		result := executeToolExtended(tc.Name, tc.Args)
-		duration := time.Since(t0).Seconds()
+			t0 := time.Now()
+			result := executeToolExtended(tc.Name, tc.Args)
+			duration := time.Since(t0).Seconds()
 
-		sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
+			sse.send(map[string]any{"type": "tool_result", "id": tcID, "tool": tc.Name, "result": truncate(result, 5000), "duration": duration, "status": "completed"})
 
 			toolResults.WriteString(fmt.Sprintf("\n<tool_result>\n工具: %s\n结果: %s\n</tool_result>\n", tc.Name, truncate(result, 3500)))
 		}
@@ -803,7 +803,19 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if body.APIBase == "" || body.APIKey == "" || body.Model == "" {
-		http.Error(w, `{"error":"需要 api_base, api_key, model"}`, 400)
+		defaultCfg := loadHermesDefaultConfig()
+		if body.APIBase == "" {
+			body.APIBase = defaultCfg.BaseURL
+		}
+		if body.APIKey == "" {
+			body.APIKey = defaultCfg.APIKey
+		}
+		if body.Model == "" {
+			body.Model = defaultCfg.Model
+		}
+	}
+	if body.APIBase == "" || body.APIKey == "" || body.Model == "" {
+		http.Error(w, `{"error":"需要 api_base, api_key, model，请在设置中配置模型"}`, 400)
 		return
 	}
 
@@ -1025,7 +1037,10 @@ var activeCmdMu sync.Mutex
 
 func handleCancel(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 	activeCmdMu.Lock()
 	cmd := activeCmd
 	activeCmdMu.Unlock()
@@ -1043,7 +1058,10 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 
 func handleConfig(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	// 直接读取 config.yaml
 	configPath := filepath.Join(getHome(), ".hermes", "config.yaml")
@@ -1058,7 +1076,10 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 
 func handleConfigSet(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	var body struct {
 		Key   string `json:"key"`
@@ -1086,7 +1107,10 @@ func handleConfigSet(w http.ResponseWriter, r *http.Request) {
 
 func handleCronList(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	// 直接读取 cron jobs.json
 	jobsPath := filepath.Join(getHome(), ".hermes", "cron", "jobs.json")
@@ -1117,7 +1141,10 @@ func handleCronList(w http.ResponseWriter, r *http.Request) {
 
 func handleCronCreate(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	var body struct {
 		Schedule string `json:"schedule"`
@@ -1143,8 +1170,13 @@ func handleCronCreate(w http.ResponseWriter, r *http.Request) {
 
 func handleCronPause(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
-	var body struct{ ID string `json:"id"` }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+	var body struct {
+		ID string `json:"id"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
 		jsonError(w, "无效请求: 需要 id 字段", 400)
 		return
@@ -1159,8 +1191,13 @@ func handleCronPause(w http.ResponseWriter, r *http.Request) {
 
 func handleCronResume(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
-	var body struct{ ID string `json:"id"` }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+	var body struct {
+		ID string `json:"id"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
 		jsonError(w, "无效请求: 需要 id 字段", 400)
 		return
@@ -1175,8 +1212,13 @@ func handleCronResume(w http.ResponseWriter, r *http.Request) {
 
 func handleCronRemove(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
-	var body struct{ ID string `json:"id"` }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+	var body struct {
+		ID string `json:"id"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
 		jsonError(w, "无效请求: 需要 id 字段", 400)
 		return
@@ -1191,8 +1233,13 @@ func handleCronRemove(w http.ResponseWriter, r *http.Request) {
 
 func handleCronRun(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
-	var body struct{ ID string `json:"id"` }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+	var body struct {
+		ID string `json:"id"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
 		jsonError(w, "无效请求: 需要 id 字段", 400)
 		return
@@ -1207,7 +1254,10 @@ func handleCronRun(w http.ResponseWriter, r *http.Request) {
 
 func handleCronUpdate(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 	var body struct {
 		ID       string `json:"id"`
 		Schedule string `json:"schedule"`
@@ -1243,7 +1293,10 @@ func handleCronUpdate(w http.ResponseWriter, r *http.Request) {
 
 func handleSessionsList(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	// 从 SQLite state.db 读取会话列表（hermes 的真实数据源）
 	dbPath := filepath.Join(getHome(), ".hermes", "state.db")
@@ -1299,8 +1352,13 @@ func handleSessionsList(w http.ResponseWriter, r *http.Request) {
 
 func handleSessionsDelete(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
-	var body struct{ ID string `json:"id"` }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+	var body struct {
+		ID string `json:"id"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" {
 		jsonError(w, "无效请求: 需要 id 字段", 400)
 		return
@@ -1316,7 +1374,10 @@ func handleSessionsDelete(w http.ResponseWriter, r *http.Request) {
 
 func handleSessionsRename(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 	var body struct {
 		ID    string `json:"id"`
 		Title string `json:"title"`
@@ -1337,7 +1398,10 @@ func handleSessionsRename(w http.ResponseWriter, r *http.Request) {
 
 func handleChatSessionsList(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	if r.Method == "GET" {
 		metas, err := listChatSessions()
@@ -1374,7 +1438,10 @@ func handleChatSessionsList(w http.ResponseWriter, r *http.Request) {
 
 func handleChatSessionMessages(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	if r.Method == "GET" {
 		sessionID := r.URL.Query().Get("session_id")
@@ -1417,7 +1484,10 @@ func handleChatSessionMessages(w http.ResponseWriter, r *http.Request) {
 
 func handleChatSessionRename(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 	if r.Method != "POST" {
 		http.Error(w, `{"error":"method not allowed"}`, 405)
 		return
@@ -1444,7 +1514,10 @@ func handleChatSessionRename(w http.ResponseWriter, r *http.Request) {
 
 func handleChatSessionDelete(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 	if r.Method != "POST" {
 		http.Error(w, `{"error":"method not allowed"}`, 405)
 		return
@@ -1474,24 +1547,30 @@ func handleChatSessionDelete(w http.ResponseWriter, r *http.Request) {
 
 func handleMemory(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	memDir := filepath.Join(getHome(), ".hermes", "memories")
 	memoryMd, _ := os.ReadFile(filepath.Join(memDir, "MEMORY.md"))
 	userMd, _ := os.ReadFile(filepath.Join(memDir, "USER.md"))
 
 	jsonResponse(w, map[string]any{
-		"memory":  string(memoryMd),
-		"user":    string(userMd),
+		"memory": string(memoryMd),
+		"user":   string(userMd),
 	})
 }
 
 func handleMemoryEdit(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	var body struct {
-		Target  string `json:"target"`  // "memory" or "user"
+		Target  string `json:"target"` // "memory" or "user"
 		Content string `json:"content"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -1520,7 +1599,10 @@ func handleMemoryEdit(w http.ResponseWriter, r *http.Request) {
 
 func handleToolsList(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	// Merge Go builtin tools + skill tools
 	allTools := getToolDefs()
@@ -1574,8 +1656,13 @@ func handleToolsList(w http.ResponseWriter, r *http.Request) {
 
 func handleToolsEnable(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
-	var body struct{ Name string `json:"name"` }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+	var body struct {
+		Name string `json:"name"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
 		jsonError(w, "无效请求: 需要 name 字段", 400)
 		return
@@ -1590,8 +1677,13 @@ func handleToolsEnable(w http.ResponseWriter, r *http.Request) {
 
 func handleToolsDisable(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
-	var body struct{ Name string `json:"name"` }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+	var body struct {
+		Name string `json:"name"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
 		jsonError(w, "无效请求: 需要 name 字段", 400)
 		return
@@ -1734,7 +1826,7 @@ func sanitizeCategory(cat string) string {
 		"效率提升": "productivity", "效率": "productivity",
 		"开发工具": "devtools", "开发": "devtools",
 		"浏览器自动化": "browser-automation",
-		"安全合规": "security", "安全": "security",
+		"安全合规":   "security", "安全": "security",
 		"知识管理": "knowledge", "知识": "knowledge",
 		"通讯协作": "communication", "通讯": "communication",
 		"数据分析": "data", "数据": "data",
@@ -2022,8 +2114,8 @@ func detectHermes() hermesInfo {
 	bundledPaths := []string{}
 	if exeDir != "" {
 		bundledPaths = append(bundledPaths,
-			filepath.Join(exeDir, "hermes-agent"),                // 安装包同目录 (Wails NSIS/AppImage)
-			filepath.Join(exeDir, "bundled", "hermes-agent"),     // 备用
+			filepath.Join(exeDir, "hermes-agent"),            // 安装包同目录 (Wails NSIS/AppImage)
+			filepath.Join(exeDir, "bundled", "hermes-agent"), // 备用
 			filepath.Join(exeDir, "..", "bundled", "hermes-agent"),
 			filepath.Join(exeDir, "..", "Resources", "hermes-agent"),
 		)
@@ -2037,50 +2129,50 @@ func detectHermes() hermesInfo {
 		if _, err := os.Stat(filepath.Join(bp, "run_agent.py")); err == nil {
 			info.SourceDir = bp
 
-		// 方式A: 内嵌 Python 运行时 (hermes-python/)
-		pythonDir := filepath.Join(filepath.Dir(bp), "hermes-python")
-		pythonExe := filepath.Join(pythonDir, "python.exe") // Windows
-		if runtime.GOOS != "windows" {
-			pythonExe = filepath.Join(pythonDir, "bin", "python3")
-		}
-		// On Windows, prefer pythonw.exe (no console window) over python.exe
-		if runtime.GOOS == "windows" {
-			pythonwExe := filepath.Join(pythonDir, "pythonw.exe")
-			if _, err := os.Stat(pythonwExe); err == nil {
-				pythonExe = pythonwExe
+			// 方式A: 内嵌 Python 运行时 (hermes-python/)
+			pythonDir := filepath.Join(filepath.Dir(bp), "hermes-python")
+			pythonExe := filepath.Join(pythonDir, "python.exe") // Windows
+			if runtime.GOOS != "windows" {
+				pythonExe = filepath.Join(pythonDir, "bin", "python3")
+			}
+			// On Windows, prefer pythonw.exe (no console window) over python.exe
+			if runtime.GOOS == "windows" {
+				pythonwExe := filepath.Join(pythonDir, "pythonw.exe")
+				if _, err := os.Stat(pythonwExe); err == nil {
+					pythonExe = pythonwExe
+				}
+			}
+			if _, err := os.Stat(pythonExe); err == nil {
+				// 用嵌入式 Python 运行 hermes
+				hermesPath = pythonExe
+				info.Source = "bundled-python"
+				break
+			}
+
+			// 方式B: 内嵌 venv (hermes-agent/venv/)
+			venvHermes := filepath.Join(bp, "venv", "bin", "hermes")
+			if runtime.GOOS == "windows" {
+				venvHermes = filepath.Join(bp, "venv", "Scripts", "hermes.exe")
+			}
+			if _, err := os.Stat(venvHermes); err == nil {
+				hermesPath = venvHermes
+				break
+			}
+
+			// 方式C: run-hermes.sh 启动脚本
+			runScript := filepath.Join(bp, "run-hermes.sh")
+			if _, err := os.Stat(runScript); err == nil {
+				hermesPath = runScript
+				break
+			}
+
+			// 方式D: run-hermes.bat (Windows)
+			runBat := filepath.Join(bp, "run-hermes.bat")
+			if _, err := os.Stat(runBat); err == nil {
+				hermesPath = runBat
+				break
 			}
 		}
-		if _, err := os.Stat(pythonExe); err == nil {
-			// 用嵌入式 Python 运行 hermes
-			hermesPath = pythonExe
-			info.Source = "bundled-python"
-			break
-		}
-
-		// 方式B: 内嵌 venv (hermes-agent/venv/)
-		venvHermes := filepath.Join(bp, "venv", "bin", "hermes")
-		if runtime.GOOS == "windows" {
-			venvHermes = filepath.Join(bp, "venv", "Scripts", "hermes.exe")
-		}
-		if _, err := os.Stat(venvHermes); err == nil {
-			hermesPath = venvHermes
-			break
-		}
-
-		// 方式C: run-hermes.sh 启动脚本
-		runScript := filepath.Join(bp, "run-hermes.sh")
-		if _, err := os.Stat(runScript); err == nil {
-			hermesPath = runScript
-			break
-		}
-
-		// 方式D: run-hermes.bat (Windows)
-		runBat := filepath.Join(bp, "run-hermes.bat")
-		if _, err := os.Stat(runBat); err == nil {
-			hermesPath = runBat
-			break
-		}
-	}
 	}
 
 	// 2. 系统安装
@@ -2227,14 +2319,20 @@ func twoXProxy(w http.ResponseWriter, r *http.Request, path string) {
 // handleStoreSkills 技能列表/搜索
 func handleStoreSkills(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 	twoXProxy(w, r, "/api/v1/skills")
 }
 
 // handleStoreSkillDetail 技能详情 + 下载
 func handleStoreSkillDetail(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	// /v1/store/skills/{slug}/... → /api/v1/skills/{slug}/...
 	rest := strings.TrimPrefix(r.URL.Path, "/v1/store/skills/")
@@ -2251,7 +2349,10 @@ func handleStoreSkillDetail(w http.ResponseWriter, r *http.Request) {
 // handleStoreRankings 排行榜
 func handleStoreRankings(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	// /v1/store/rankings/{type} → /api/v1/rankings/{type}
 	rest := strings.TrimPrefix(r.URL.Path, "/v1/store/rankings/")
@@ -2261,16 +2362,19 @@ func handleStoreRankings(w http.ResponseWriter, r *http.Request) {
 // handleStoreInstall 安装技能（下载 + 解压到 ~/.hermes/skills/）
 func handleStoreInstall(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 	if r.Method != "POST" {
 		http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req struct {
-		Slug      string `json:"slug"`
-		Version   string `json:"version"`
-		OSSURL    string `json:"oss_url"`
+		Slug    string `json:"slug"`
+		Version string `json:"version"`
+		OSSURL  string `json:"oss_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
@@ -2457,7 +2561,10 @@ func completeApproval(id string, result approvalResult) {
 // handleApprove — POST /v1/agent/approve — 前端发送审批响应
 func handleApprove(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 	if r.Method != "POST" {
 		http.Error(w, `{"error":"method not allowed"}`, 405)
 		return
@@ -2479,7 +2586,10 @@ func handleApprove(w http.ResponseWriter, r *http.Request) {
 // handleStatus 返回详细的系统状态（包括 Hermes 连接状态）
 func handleStatus(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	tools := make([]string, len(toolDefs))
 	for i, t := range toolDefs {
@@ -2489,14 +2599,14 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"status":  "ok",
-		"uptime":  time.Since(startTime).Seconds(),
-		"agent":   "Hi!XNS Agent",
-		"version": "0.5.0",
-		"runtime": "go " + runtime.Version(),
-		"tools":   tools,
+		"status":   "ok",
+		"uptime":   time.Since(startTime).Seconds(),
+		"agent":    "Hi!XNS Agent",
+		"version":  "0.5.0",
+		"runtime":  "go " + runtime.Version(),
+		"tools":    tools,
 		"platform": runtime.GOOS + " " + runtime.GOARCH,
-		"hermes":  hermesState,
+		"hermes":   hermesState,
 	})
 }
 
@@ -2537,6 +2647,7 @@ func main() {
 	mux.HandleFunc("/v1/agent/approve", handleApprove)
 	mux.HandleFunc("/v1/agent/config", handleConfig)
 	mux.HandleFunc("/v1/agent/config/set", handleConfigSet)
+	mux.HandleFunc("/v1/agent/available-models", handleAvailableModels)
 
 	// Credentials API
 	mux.HandleFunc("/v1/agent/config/credentials", handleConfigCredentials)
@@ -2562,10 +2673,10 @@ func main() {
 	mux.HandleFunc("/v1/agent/sessions/list", handleSessionsList)
 	mux.HandleFunc("/v1/agent/sessions/delete", handleSessionsDelete)
 	mux.HandleFunc("/v1/agent/sessions/rename", handleSessionsRename)
-	mux.HandleFunc("/v1/agent/chat-sessions", handleChatSessionsList)       // GET list, POST create
+	mux.HandleFunc("/v1/agent/chat-sessions", handleChatSessionsList)             // GET list, POST create
 	mux.HandleFunc("/v1/agent/chat-sessions/messages", handleChatSessionMessages) // GET messages, POST append
-	mux.HandleFunc("/v1/agent/chat-sessions/rename", handleChatSessionRename)    // POST rename
-	mux.HandleFunc("/v1/agent/chat-sessions/delete", handleChatSessionDelete)    // POST delete
+	mux.HandleFunc("/v1/agent/chat-sessions/rename", handleChatSessionRename)     // POST rename
+	mux.HandleFunc("/v1/agent/chat-sessions/delete", handleChatSessionDelete)     // POST delete
 	mux.HandleFunc("/v1/agent/memory", handleMemory)
 	mux.HandleFunc("/v1/agent/memory/edit", handleMemoryEdit)
 	mux.HandleFunc("/v1/agent/tools/list", handleToolsList)
@@ -2577,14 +2688,14 @@ func main() {
 	mux.HandleFunc("/v1/agent/group-chats/", handleGroupChatRouter)
 
 	// Inbox / runs API
-	mux.HandleFunc("/v1/agent/runs", handleRunsList)                   // GET list all runs
-	mux.HandleFunc("/v1/agent/inbox", handleInboxList)                 // GET
-	mux.HandleFunc("/v1/agent/inbox/create", handleInboxCreate)         // POST create proposal/notification items
-	mux.HandleFunc("/v1/agent/inbox/", handleInboxRouter)              // /{id}/approve, /{id}/reject, /{id}/reply, /{id}/read
+	mux.HandleFunc("/v1/agent/runs", handleRunsList)            // GET list all runs
+	mux.HandleFunc("/v1/agent/inbox", handleInboxList)          // GET
+	mux.HandleFunc("/v1/agent/inbox/create", handleInboxCreate) // POST create proposal/notification items
+	mux.HandleFunc("/v1/agent/inbox/", handleInboxRouter)       // /{id}/approve, /{id}/reject, /{id}/reply, /{id}/read
 
 	// ── 2x 技能商店代理 ──
 	mux.HandleFunc("/v1/store/skills", handleStoreSkills)
-	mux.HandleFunc("/v1/store/skills/", handleStoreSkillDetail)  // /v1/store/skills/{slug}/...
+	mux.HandleFunc("/v1/store/skills/", handleStoreSkillDetail) // /v1/store/skills/{slug}/...
 	mux.HandleFunc("/v1/store/rankings/", handleStoreRankings)
 	mux.HandleFunc("/v1/store/install", handleStoreInstall)
 
@@ -2782,12 +2893,17 @@ const (
 
 func handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 
 	current := r.URL.Query().Get("current")
 	if current == "" {
 		// 尝试从 body 读取
-		var body struct{ Current string `json:"current"` }
+		var body struct {
+			Current string `json:"current"`
+		}
 		if r.Method == "POST" {
 			json.NewDecoder(r.Body).Decode(&body)
 			current = body.Current
@@ -2798,10 +2914,10 @@ func handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	hasUpdate := compareVersions(hixnsVersion, current)
 
 	resp := map[string]any{
-		"latest":       hixnsVersion,
-		"current":      current,
-		"has_update":   hasUpdate,
-		"download_url": hixnsVersionURL + "/downloads/",
+		"latest":        hixnsVersion,
+		"current":       current,
+		"has_update":    hasUpdate,
+		"download_url":  hixnsVersionURL + "/downloads/",
 		"release_notes": hixnsVersionURL + "/#changelog",
 		"changelog": []string{
 			"Go Agent Loop: 动态工具发现 + 5个新内置工具 + 技能加载",
@@ -2817,22 +2933,43 @@ func handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 
 // compareVersions returns true if latest > current (semantic versioning)
 func compareVersions(latest, current string) bool {
-	if current == "" { return false }
-	if current == latest { return false }
+	if current == "" {
+		return false
+	}
+	if current == latest {
+		return false
+	}
 	lParts := strings.Split(strings.TrimPrefix(latest, "v"), ".")
 	cParts := strings.Split(strings.TrimPrefix(current, "v"), ".")
 	for i := 0; i < 3; i++ {
-		l, _ := strconv.Atoi(func() string { if i < len(lParts) { return lParts[i] }; return "0" }())
-		c, _ := strconv.Atoi(func() string { if i < len(cParts) { return cParts[i] }; return "0" }())
-		if l > c { return true }
-		if l < c { return false }
+		l, _ := strconv.Atoi(func() string {
+			if i < len(lParts) {
+				return lParts[i]
+			}
+			return "0"
+		}())
+		c, _ := strconv.Atoi(func() string {
+			if i < len(cParts) {
+				return cParts[i]
+			}
+			return "0"
+		}())
+		if l > c {
+			return true
+		}
+		if l < c {
+			return false
+		}
 	}
 	return false
 }
 
 func handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 	jsonResponse(w, map[string]any{
 		"authenticated": true,
 		"has_token":     true,
@@ -2841,7 +2978,10 @@ func handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 
 func handleAuthAutoLogin(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
 	token := fmt.Sprintf("hixns-auto-%d", time.Now().UnixMilli())
 	jsonResponse(w, map[string]any{
 		"success": true,
@@ -2851,8 +2991,13 @@ func handleAuthAutoLogin(w http.ResponseWriter, r *http.Request) {
 
 func handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	setCORS(w)
-	if r.Method == "OPTIONS" { w.WriteHeader(204); return }
-	var body struct{ Token string `json:"token"` }
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+	var body struct {
+		Token string `json:"token"`
+	}
 	json.NewDecoder(r.Body).Decode(&body)
 	token := body.Token
 	if token == "" {
