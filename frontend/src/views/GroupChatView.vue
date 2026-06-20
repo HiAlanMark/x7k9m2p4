@@ -141,12 +141,36 @@
       </template>
       
       <div v-else class="gc-empty">
-        <HxEmpty :description="t('groupChat.selectOrCreate')" />
+        <div class="gc-empty-inner">
+          <div class="gc-empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3 class="gc-empty-title">多人协作</h3>
+          <p class="gc-empty-desc">创建一个群组，让多个 AI 智能体协作完成复杂任务</p>
+          <div class="gc-empty-tips">
+            <div class="gc-empty-tip">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/><path d="M9 18h6"/></svg>
+              <span>每个智能体有独立角色和能力</span>
+            </div>
+            <div class="gc-empty-tip">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>用 @名称 指定谁来回答</span>
+            </div>
+            <div class="gc-empty-tip">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M3 9h18"/></svg>
+              <span>开启执行模式让 Agent 直接干活</span>
+            </div>
+          </div>
+          <button class="gc-empty-create" @click="showCreateModal = true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>创建第一个群组</span>
+          </button>
+        </div>
       </div>
     </main>
 
     <!-- Create Group Modal -->
-    <HxModal v-model:visible="showCreateModal" :title="t('groupChat.createGroup')" size="md">
+    <HxModal v-model="showCreateModal" :title="t('groupChat.createGroup')" size="md">
       <div class="gc-modal-body">
         <label class="gc-field">
           <span class="gc-field-label">{{ t('groupChat.groupName') }}</span>
@@ -210,7 +234,7 @@
     </HxModal>
 
     <!-- Add Agent Modal -->
-    <HxModal v-model:visible="showAddAgentModal" :title="t('groupChat.addAgent')" size="md">
+    <HxModal v-model="showAddAgentModal" :title="t('groupChat.addAgent')" size="md">
       <div class="gc-modal-body">
         <div class="gc-role-section">
           <h4 class="gc-section-title">选择角色模板:</h4>
@@ -256,7 +280,7 @@
     </HxModal>
 
     <!-- Delete Confirm Modal -->
-    <HxModal v-model:visible="showDeleteConfirm" :title="t('groupChat.deleteGroup')" size="sm">
+    <HxModal v-model="showDeleteConfirm" :title="t('groupChat.deleteGroup')" size="sm">
       <p>{{ t('groupChat.deleteConfirm') }}</p>
       <template #footer>
         <HxButton variant="ghost" @click="showDeleteConfirm = false">{{ t('common.cancel') }}</HxButton>
@@ -1112,6 +1136,82 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.gc-empty-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 360px;
+  padding: 40px 20px;
+}
+.gc-empty-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb),.08);
+  border: 1px solid rgba(var(--accent-rgb),.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  margin-bottom: 20px;
+}
+.gc-empty-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+.gc-empty-desc {
+  font-size: .875rem;
+  color: var(--text-secondary);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+.gc-empty-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 28px;
+}
+.gc-empty-tip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--glass-base);
+  border: 1px solid var(--glass-border);
+  text-align: left;
+}
+.gc-empty-tip svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.gc-empty-tip span {
+  font-size: .8rem;
+  color: var(--text-primary);
+}
+.gc-empty-create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: .875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s var(--ease-expo);
+  box-shadow: 0 4px 16px rgba(var(--accent-rgb),.3);
+}
+.gc-empty-create:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(var(--accent-rgb),.4);
 }
 
 /* Modal */
