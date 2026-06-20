@@ -812,6 +812,53 @@ onMounted(() => {
   color: var(--text-secondary);
   margin: 0 0 8px 0;
 }
+
+/* Presets Section */
+.gc-presets-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gc-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+.gc-preset-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--glass-border, rgba(255,255,255,.08));
+  background: var(--glass-base, rgba(255,255,255,.03));
+  cursor: pointer;
+  transition: all .2s var(--ease-expo, ease);
+}
+.gc-preset-btn:hover {
+  border-color: var(--accent, #5ac8fa);
+  background: rgba(90,200,250,.06);
+  transform: translateY(-1px);
+}
+.preset-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent, #5ac8fa);
+  flex-shrink: 0;
+}
+.preset-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.preset-name {
+  font-size: .8rem;
+  font-weight: 500;
+  color: var(--text-primary, #e0e0e0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .gc-role-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
@@ -849,40 +896,81 @@ onMounted(() => {
 /* Role Select Mini (for Create Group) */
 .gc-agent-def {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  padding: 4px;
-  border-radius: 6px;
-  background: var(--glass-bg);
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md, 8px);
+  background: var(--glass-base, rgba(255,255,255,.03));
+  border: 1px solid var(--glass-border, rgba(255,255,255,.08));
 }
 .gc-agent-role-select {
   display: flex;
   gap: 2px;
+  flex-wrap: wrap;
 }
 .gc-role-mini {
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   font-size: 14px;
   line-height: 1;
   padding: 0;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 6px;
   opacity: 0.5;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-secondary);
 }
 .gc-role-mini:hover {
   opacity: 1;
-  background: var(--glass-hover);
+  background: var(--glass-bg-hover, rgba(255,255,255,.06));
+  border-color: var(--glass-border);
 }
 .gc-role-mini.active {
   opacity: 1;
-  background: var(--accent-alpha);
+  background: rgba(90,200,250,.1);
+  border-color: var(--accent, #5ac8fa);
+  color: var(--accent, #5ac8fa);
+}
+.gc-agent-def-colors {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.gc-color-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color .15s, transform .15s;
+}
+.gc-color-dot:hover {
+  transform: scale(1.15);
+}
+.gc-color-dot.selected {
+  border-color: #fff;
+  box-shadow: 0 0 6px rgba(255,255,255,.3);
+  transform: scale(1.1);
+}
+.gc-agent-def-remove {
+  background: none;
+  border: none;
+  color: var(--text-secondary, rgba(255,255,255,.4));
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all .15s;
+}
+.gc-agent-def-remove:hover {
+  color: #ff6b6b;
+  background: rgba(255,107,107,.1);
 }
 
 .gc-field-separator {
@@ -1229,35 +1317,5 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary, rgba(255,255,255,.6));
-}
-.gc-agent-def {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.gc-agent-def-colors {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 4px;
-}
-.gc-color-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: border-color .15s;
-}
-.gc-color-dot.selected {
-  border-color: #fff;
-  box-shadow: 0 0 6px rgba(255,255,255,.3);
-}
-.gc-agent-def-remove {
-  background: none;
-  border: none;
-  color: var(--text-secondary, rgba(255,255,255,.4));
-  cursor: pointer;
-  padding: 2px;
 }
 </style>
