@@ -2689,6 +2689,13 @@ func main() {
 
 	// Inbox / runs API
 	mux.HandleFunc("/v1/agent/runs", handleRunsList)            // GET list all runs
+	mux.HandleFunc("/v1/agent/sessions/usage", handleSessionsUsage) // GET usage stats
+	mux.HandleFunc("/v1/agent/logs", handleLogsList)                // GET logs
+	mux.HandleFunc("/v1/agent/skills/usage/stats", handleSkillsUsageStats) // GET skills usage
+	mux.HandleFunc("/v1/agent/cron-history", handleCronHistory)     // GET cron execution history
+	mux.HandleFunc("/v1/agent/profiles", handleProfilesList)        // GET profiles
+	mux.HandleFunc("/v1/agent/profiles/runtime-statuses", handleProfilesRuntimeStatuses) // GET
+	mux.HandleFunc("/v1/agent/channels", handleChannelsList)        // GET channels
 	mux.HandleFunc("/v1/agent/inbox", handleInboxList)          // GET
 	mux.HandleFunc("/v1/agent/inbox/create", handleInboxCreate) // POST create proposal/notification items
 	mux.HandleFunc("/v1/agent/inbox/", handleInboxRouter)       // /{id}/approve, /{id}/reject, /{id}/reply, /{id}/read
